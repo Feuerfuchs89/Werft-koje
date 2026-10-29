@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Werftkoje – schlankes Boots-CAD: Rumpf vermessen und formen, Teile und Mechanik einbauen, Klassenmaße prüfen.">
+<meta name="theme-color" content="#0c1820">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Werftkoje">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
+<title>Werftkoje</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500&family=Saira+Condensed:wght@600;700;800&display=swap">
+<style>
+/* Layout: Vollbild-3D-Bootshalle. Rechts die Modell-Karteikarte (Klassenregeln, Ansicht, Lage, Steuerung), links das verschiebbare Werkstatt-Fenster (Rumpf · Teile · Mechanik · Projekt). Am Handy beide als umschaltbare Bodenleiste. Bewusst eine dunkle Werft-Optik. */
+:root{
+  --bg:#0c1820;--panel:rgba(14,30,40,.95);--field:#09141a;--ink:#e8eef0;--dim:#9db2bb;--rule:rgba(160,200,215,.2);
+  --accent:#f2c230;--ok:#7fd49b;--bad:#ff8a78;--sel:rgba(242,194,48,.16);
+  --f-disp:"Saira Condensed","Arial Narrow",sans-serif;--f-body:"Barlow","Segoe UI",system-ui,sans-serif;--f-mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;overflow:hidden;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:12px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.bar{position:fixed;z-index:6;top:calc(env(safe-area-inset-top,0px) + 12px);left:max(12px,env(safe-area-inset-left,0px));display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 8px;border-radius:10px}
+.brand{font-family:var(--f-disp);font-weight:800;font-size:21px;letter-spacing:.04em;padding:0 6px 0 2px;line-height:1}
+.brand b{color:var(--accent);font-weight:800}
+.card{position:fixed;z-index:4;top:calc(env(safe-area-inset-top,0px) + 12px);right:max(12px,env(safe-area-inset-right,0px));width:300px;max-height:calc(100% - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow:auto;padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.win{position:fixed;z-index:5;top:var(--wy,calc(env(safe-area-inset-top,0px) + 64px));left:var(--wx,max(12px,env(safe-area-inset-left,0px)));width:360px;max-height:calc(100% - 76px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;overflow:hidden}
+.win-h{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;cursor:move;user-select:none;touch-action:none}
+.grip{color:var(--dim);font-size:12px;letter-spacing:2px}
+.tabs{display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--rule)}
+.tabs button{flex:1;font:600 13px var(--f-body);color:var(--dim);background:transparent;border:0;border-bottom:2px solid transparent;padding:7px 2px;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.win-b{overflow:auto;padding:12px 14px 16px;display:flex;flex-direction:column;gap:10px;min-height:0}
+h1{margin:0;font-family:var(--f-disp);font-weight:800;font-size:30px;letter-spacing:.03em;line-height:1;text-wrap:balance}
+h1 small{display:block;font-family:var(--f-body);font-weight:500;font-size:13px;color:var(--dim);letter-spacing:0;margin-top:4px}
+.dims{display:grid;grid-template-columns:1fr auto;gap:3px 10px;margin:0;font-size:13px}
+.dims dt{color:var(--dim)} .dims dd{margin:0;font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums;text-align:right}
+.dims dd.ok{color:var(--ok)} .dims dd.bad{color:var(--bad)}
+.lbl{font-family:var(--f-disp);font-weight:700;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.sub{font-family:var(--f-disp);font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);border-top:1px solid var(--rule);padding-top:10px;margin-top:4px}
+.sub:first-child{border-top:0;padding-top:0;margin-top:0}
+.grp{display:flex;flex-direction:column;gap:6px}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+button.v{font:600 13px var(--f-body);color:var(--ink);background:transparent;border:1px solid var(--rule);border-radius:7px;padding:5px 10px;cursor:pointer}
+button.v:hover{border-color:var(--dim)}
+button.v[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button.v.ic{padding:5px 9px;font-size:15px;line-height:1}
+button.v.pri{background:var(--accent);color:#14202a;border-color:var(--accent)}
+button.v.warn{border-color:var(--bad);color:var(--bad)}
+button.v:disabled{opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sl{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 8px;font-size:13px}
+.sl output{font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.sl input{grid-column:1 / -1;width:100%;accent-color:var(--accent);margin:0}
+.fld{display:grid;grid-template-columns:1fr 86px 30px;align-items:center;gap:2px 6px;font-size:13px}
+.fld label{color:var(--dim);min-width:0}
+.fld input[type=range]{grid-column:1 / -1;width:100%;accent-color:var(--accent);margin:0 0 2px}
+.fld2{display:grid;grid-template-columns:1fr 1.5fr;align-items:center;gap:6px;font-size:13px}
+.fld2 label{color:var(--dim)}
+.chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ink)}
+.chk input{accent-color:var(--accent);width:16px;height:16px;margin:0}
+.u{font-family:var(--f-mono);font-size:11px;color:var(--dim)}
+input[type=number],input[type=text],select,textarea{font:500 12px var(--f-mono);color:var(--ink);background:var(--field);border:1px solid var(--rule);border-radius:6px;padding:5px 6px;width:100%;min-width:0;box-sizing:border-box}
+input[type=text]{font-family:var(--f-body);font-size:13px}
+input[type=color]{width:40px;height:28px;padding:0;border:1px solid var(--rule);border-radius:6px;background:var(--field)}
+textarea{min-height:90px;resize:vertical}
+.plist{display:flex;flex-direction:column;gap:1px;max-height:210px;overflow:auto;border:1px solid var(--rule);border-radius:8px;padding:3px}
+.plist button{display:flex;justify-content:space-between;align-items:baseline;gap:8px;text-align:left;font:500 13px var(--f-body);color:var(--ink);background:transparent;border:0;border-radius:5px;padding:5px 8px;cursor:pointer}
+.plist button span{color:var(--dim);font-size:11px;font-family:var(--f-mono);white-space:nowrap}
+.plist button[aria-pressed="true"]{background:var(--sel);font-weight:600}
+.plist button.kid{padding-left:22px}
+.mrow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px;border:1px solid var(--rule);border-radius:8px}
+.mrow .full{grid-column:1 / -1}
+.mrow label{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--dim);min-width:0}
+.note{font-size:12px;color:var(--dim);line-height:1.45;margin:0}
+.live{font-family:var(--f-mono);font-size:12px;color:var(--ink);background:rgba(242,194,48,.08);border:1px solid rgba(242,194,48,.25);border-radius:7px;padding:6px 8px;line-height:1.55}
+.res{font-family:var(--f-mono);font-size:12px;line-height:1.6}
+.res .ok{color:var(--ok)} .res .bad{color:var(--bad)}
+.ed{display:flex;flex-direction:column;gap:6px}
+.edc{display:block;width:100%;height:230px;border:1px solid var(--rule);border-radius:8px;background:var(--field);touch-action:none;cursor:crosshair}
+.edi{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end}
+.edi label{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--dim);min-width:0}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.amt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:4px;align-items:center}
+.amt.amt3{grid-template-columns:repeat(2,minmax(0,1fr)) auto}
+.amh{font-size:11px;color:var(--dim)}
+.amt input{padding:4px}
+.amt input.foc{border-color:var(--accent);background:rgba(242,194,48,.08)}
+.toast{position:fixed;z-index:9;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 70px);background:var(--ink);color:var(--bg);font:600 13px var(--f-body);padding:8px 14px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.prow{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:6px 8px;border:1px solid var(--rule);border-radius:8px}
+.prow b{font-weight:600}.prow span{display:block;font-size:11px;color:var(--dim);font-family:var(--f-mono)}
+.hint{position:fixed;left:50%;transform:translateX(-50%);white-space:nowrap;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);font-size:12px;color:var(--dim);background:rgba(12,24,32,.7);padding:5px 9px;border-radius:7px}
+.card,.win{resize:both;min-width:240px;min-height:120px}
+.handle{display:none}
+.pull{display:none;width:44px;height:5px;border-radius:3px;background:var(--dim);opacity:.7}
+@media (max-width:720px){
+  .card,.win{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));width:auto;height:var(--sh,42%);max-height:none;min-height:0;min-width:0;resize:none}
+  .card{padding:0 14px 14px}
+  .handle{display:flex;justify-content:center;align-items:center;position:sticky;top:0;z-index:3;height:26px;margin:0 -14px -4px;background:var(--panel);touch-action:none;cursor:ns-resize;flex:none}
+  .pull{display:block}
+  .win-h{cursor:ns-resize;flex-direction:column;gap:6px;padding-top:8px}
+  .win-h .grip{display:none}
+  h1{font-size:24px} .hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div id="stage"></div>
+
+<nav class="bar panel" id="bar" aria-label="Werkzeugleiste">
+  <span class="brand">Werft<b>koje</b></span>
+  <button class="v" id="bWerk" aria-pressed="true">Werkstatt</button>
+  <button class="v" id="bModell" aria-pressed="true">Modell</button>
+  <button class="v ic" id="bUndo" title="Rückgängig (Strg+Z)" aria-label="Rückgängig">↶</button>
+  <button class="v ic" id="bLock" aria-pressed="false" title="Messpunkte gegen Verschieben sperren" aria-label="Messpunkte sperren">🔓</button>
+  <button class="v pri" id="bSave" title="Speichern (Strg+S)">Speichern</button>
+  <button class="v ic" id="bRedo" title="Wiederholen (Strg+Y)" aria-label="Wiederholen">↷</button>
+</nav>
+
+<section class="win panel" id="win" aria-label="Werkstatt">
+  <header class="win-h" id="winH" title="Ziehen: Größe ändern · Tippen: ein-/ausklappen"><span class="pull" aria-hidden="true"></span><span class="lbl">Werkstatt</span><span class="grip" aria-hidden="true">⠿ verschieben</span></header>
+  <div class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="rumpf" aria-selected="false">Rumpf</button>
+    <button role="tab" data-tab="teile" aria-selected="true">Teile</button>
+    <button role="tab" data-tab="linien" aria-selected="false">Linien</button>
+    <button role="tab" data-tab="mechanik" aria-selected="false">Mechanik</button>
+    <button role="tab" data-tab="projekt" aria-selected="false">Projekt</button>
+  </div>
+  <div class="win-b" id="winB"></div>
+</section>
+
+<aside class="card panel" id="card" aria-label="Modell">
+  <div class="handle" id="cardH" title="Ziehen: Größe ändern · Tippen: ein-/ausklappen"><span class="pull" aria-hidden="true"></span></div>
+  <h1 id="pName">Marblehead<small id="pSub"></small></h1>
+  <dl class="dims" id="regeln"></dl>
+  <div class="grp"><span class="lbl">Ansicht</span>
+    <div class="row" id="views">
+      <button class="v" data-view="side" aria-pressed="false">Seite</button><button class="v" data-view="bow" aria-pressed="false">Bug</button><button class="v" data-view="stern" aria-pressed="false">Heck</button><button class="v" data-view="top" aria-pressed="false">Oben</button><button class="v" data-view="under" aria-pressed="false">Unterwasser</button><button class="v" data-view="free" aria-pressed="true">Frei</button>
+    </div>
+    <div class="row"><button class="v" id="tOrtho" aria-pressed="false" title="Ohne Perspektive, wie eine Bauzeichnung">Parallelansicht</button></div>
+  </div>
+  <div class="grp"><span class="lbl">Lage im Wasser</span>
+    <label class="sl" for="lHoehe">Höhe über Wasser <output id="lHoeheO"></output><input type="range" id="lHoehe"></label>
+    <label class="sl" for="lHeel">Krängung <output id="lHeelO"></output><input type="range" id="lHeel" min="-30" max="45" step="1"></label>
+    <label class="sl" for="lTrim">Trimm (+ = Bug hoch) <output id="lTrimO"></output><input type="range" id="lTrim" min="-15" max="15" step="0.5"></label>
+    <div class="row"><button class="v" id="tAnim" aria-pressed="false">Wellen</button></div>
+  </div>
+  <div class="grp"><span class="lbl">Steuerung</span><div class="grp" id="steuerBox"></div></div>
+  <div class="live" id="live" aria-live="polite"></div>
+  <div class="grp"><span class="lbl">Einblenden</span>
+    <div class="row"><button class="v" id="tSail" aria-pressed="true">Segel</button><button class="v" id="tMech" aria-pressed="true">Gestänge</button><button class="v" id="tWater" aria-pressed="true">Wasser</button><button class="v" id="tDims" aria-pressed="true">Maße</button><button class="v" id="tGrid" aria-pressed="true">Raster</button><button class="v" id="tLines" aria-pressed="true">Linien</button><button class="v" id="tSee" aria-pressed="false" title="Rumpf durchsichtig, um innen zu planen">Durchsicht</button></div></div>
+</aside>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<div class="hint">Ziehen = drehen · Mausrad = zoomen · Rechtsklick = verschieben · Klick auf ein Teil = bearbeiten</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+"use strict";
+/* ================= Grundlagen ================= */
+const DEG=Math.PI/180,clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const NS=80,NB=8,NT=4; // Rumpfauflösung: Stationen, Boden- und Seitenpunkte
+const $=id=>document.getElementById(id);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+function el(tag,attrs,...kids){const e=document.createElement(tag);if(attrs)for(const k in attrs){const v=attrs[k];if(v==null||v===false)continue;if(k==='class')e.className=v;else if(k==='text')e.textContent=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else e.setAttribute(k,v===true?'':v);}for(const c of kids)if(c!=null)e.append(c);return e;}
+const fmtN=(v,d=0)=>(+v).toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d});
+const mm=v=>fmtN(Math.round(v))+' mm';
+const deg=v=>(v>0.05?'+':'')+fmtN(v,1)+'°';
+const area=c=>c>=10000?fmtN(c/10000,2)+' m²':fmtN(Math.round(c))+' cm²';
+const gram=g=>g>=10000?fmtN(g/1000,1)+' kg':fmtN(Math.round(g))+' g';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let uidN=0;const uid=()=>'t'+Date.now().toString(36).slice(-5)+(uidN++).toString(36);
+
+/* ================= Datenmodell & Vorlagen ================= */
+/* Koordinaten in mm: x = Abstand vom Bug, y = Höhe über Wasserlinie, s = seitlich (+ = Steuerbord). Winkel in Grad. */
+const TYPEN={profil:'Profil',bombe:'Bombe / Körper',rohr:'Rohr / Stab',kasten:'Kasten',servo:'Servo / Winde',segel:'Segel',fuehler:'Fühler (Wand)',platte:'Platte / Netz',kiel:'Kiel / Steven'};
+const TYPHILFE={profil:'Flosse, Ruder, Schwert, Tragflügel, Klappe',bombe:'Bleibombe oder stromlinienförmiger Körper',rohr:'Mast, Baum, Gestänge, Flügelrohr',kasten:'Akku, Empfänger, Halterung',servo:'Servo mit Hebelarm, Segelwinde',segel:'Großsegel, Fock',fuehler:'Pendel, das auf dem Wasser schleift',platte:'Trampolin, Deckel, Spant',kiel:'Balken unter dem Rumpf, folgt Kiellinie und Vorsteven'};
+const KLASSEN={
+  marblehead:{name:'Marblehead (Klasse M)',regeln:{loa:1290,tiefgang:700,hoehe:2160,segel:5161}},
+  moth:{name:'Internationale Moth',regeln:{loa:3355,breite:2250,segel:82500}},
+  k6:{name:'Kutter K6 (Sollwerte laut Generalplan)',regeln:{loa:5500,breite:2100,tiefgang:1450,segel:137000}},
+  zk10:{name:'ZK 10 (Klassenvorschrift, Höchstmaße)',regeln:{loa:7550,breite:2200,tiefgang:1560,segel:239800}},
+  frei:{name:'Freie Konstruktion',regeln:{}}
+};
+function base(typ,name,o){return Object.assign({id:uid(),typ,name,parent:null,x:0,y:0,s:0,achse:'y',winkel:0,antrieb:null,farbe:'#d9dde0',masse:0,anker:[0,0,0]},o);}
+const drv=(quelle,faktor,versatz,min,max)=>({quelle,faktor,versatz,min,max});
+
+/* Kutter K6, rekonstruiert nach Generalplanskizze (10) 160.55.5-03 – Rumpf als Aufmaß ab Spiegel, Höhen ab Basis */
+const K6_JSON='{"v":1,"k6v":2,"name":"Kutter K6","klasse":"k6","rumpf":{"L":5500,"B":2000,"Bpos":50,"H":600,"sprung":350,"T":370,"seite":300,"bug":10,"spiegel":76,"boden":40,"masse":380000,"farbe":"#f4f5f2","aufmassAktiv":true,"eigen":true,"offen":true,"aufmass":{"bezug":{"laengs":"heck","versatz":0,"wl":370,"kieloben":false},"stationen":[{"id":"st0","pos":0,"deck":1000,"kiel":170,"breite":760,"spant":[[220,113],[294,262],[419,459],[585,635],[751,727],[900,757]]},{"id":"st550","pos":550,"deck":985,"kiel":80,"breite":870,"spant":[[134,152],[216,344],[352,582],[532,769],[714,849],[876,869]]},{"id":"st1100","pos":1100,"deck":975,"kiel":55,"breite":945,"spant":[[110,184],[193,410],[331,674],[515,861],[699,931],[865,944]]},{"id":"st1650","pos":1650,"deck":970,"kiel":50,"breite":985,"spant":[[105,206],[188,454],[326,731],[510,914],[694,975],[860,985]]},{"id":"st2200","pos":2200,"deck":970,"kiel":50,"breite":1000,"spant":[[105,214],[188,469],[326,751],[510,933],[694,991],[860,1000]]},{"id":"st2750","pos":2750,"deck":980,"kiel":50,"breite":1000,"spant":[[106,214],[190,469],[329,751],[515,933],[701,991],[868,1000]]},{"id":"st3300","pos":3300,"deck":1000,"kiel":50,"breite":985,"spant":[[107,197],[192,436],[335,712],[525,904],[715,972],[886,985]]},{"id":"st3850","pos":3850,"deck":1040,"kiel":55,"breite":935,"spant":[[114,158],[203,361],[350,614],[548,818],[744,910],[922,933]]},{"id":"st4400","pos":4400,"deck":1100,"kiel":80,"breite":835,"spant":[[141,111],[233,260],[386,467],[590,665],[794,783],[978,829]]},{"id":"st4950","pos":4950,"deck":1200,"kiel":180,"breite":600,"spant":[[241,57],[333,137],[486,261],[690,402],[894,513],[1078,580]]},{"id":"st5150","pos":5150,"deck":1250,"kiel":400,"breite":420,"spant":[]},{"id":"st5300","pos":5300,"deck":1290,"kiel":700,"breite":260,"spant":[]},{"id":"st5420","pos":5420,"deck":1325,"kiel":1000,"breite":110,"spant":[]},{"id":"st5500","pos":5500,"deck":1350,"kiel":1300,"breite":0,"spant":[]}],"senten":[]}},"lage":{"hoehe":0,"kraengung":0,"trimm":0,"hMin":-200,"hMax":200},"steuer":[{"id":"ruder","name":"Ruder","min":-35,"max":35,"wert":0,"einheit":"°"},{"id":"schot","name":"Schot (Segelwinkel)","min":0,"max":80,"wert":15,"einheit":"°"},{"id":"schwert","name":"Schwert hochholen","min":0,"max":85,"wert":0,"einheit":"°"}],"teile":[{"id":"kielbalken","typ":"kasten","name":"Kielbalken","parent":null,"x":3000,"y":-340,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#8a6a48","masse":18000,"anker":[0,0,0],"laenge":3800,"breite":80,"hoehe":60},{"id":"schwertkasten","typ":"kasten","name":"Schwertkasten","parent":null,"x":2750.0,"y":-20,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#8a6a48","masse":15000,"anker":[0,0,0],"laenge":1100,"breite":70,"hoehe":600},{"id":"schwert","typ":"profil","name":"Schwert","parent":null,"x":2250,"y":-290,"s":0,"achse":"x","winkel":0,"antrieb":{"quelle":"steuer:schwert","faktor":-1,"versatz":0,"min":-90,"max":0},"farbe":"#6c7780","masse":45000,"anker":[0,0,0],"lage":"senkrecht","spann":790,"sehneWurzel":550,"sehneSpitze":450,"dicke":4,"pfeil":150,"drehpunkt":0},{"id":"ruder","typ":"profil","name":"Ruder","parent":null,"x":5540,"y":700,"s":0,"achse":"y","winkel":0,"antrieb":{"quelle":"steuer:ruder","faktor":1,"versatz":0,"min":-40,"max":40},"farbe":"#c9a77c","masse":12000,"anker":[0,0,0],"lage":"senkrecht","spann":1620,"sehneWurzel":260,"sehneSpitze":460,"dicke":6,"pfeil":60,"drehpunkt":8},{"id":"pinne","typ":"rohr","name":"Pinne","parent":"ruder","x":5540,"y":660,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#8a6a48","masse":2000,"anker":[0,0,0],"x2":4300,"y2":720,"s2":0,"durchm":40},{"id":"mast","typ":"rohr","name":"Mast","parent":null,"x":2030,"y":-320,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":22000,"anker":[0,0,0],"x2":2030,"y2":4730,"s2":0,"durchm":100},{"id":"vorstag","typ":"rohr","name":"Vorstag","parent":null,"x":60,"y":980,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":500,"anker":[0,0,0],"x2":2030,"y2":4600,"s2":0,"durchm":6},{"id":"want-stb","typ":"rohr","name":"Want Stb.","parent":null,"x":2030,"y":4580,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":400,"anker":[0,0,0],"x2":2300,"y2":625,"s2":989,"durchm":6},{"id":"want-bb","typ":"rohr","name":"Want Bb.","parent":null,"x":2030,"y":4580,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":400,"anker":[0,0,0],"x2":2300,"y2":625,"s2":-989,"durchm":6},{"id":"gross","typ":"segel","name":"Großsegel","parent":null,"x":2050,"y":900,"s":0,"achse":"y","winkel":0,"antrieb":{"quelle":"steuer:schot","faktor":1,"versatz":0,"min":0,"max":90},"farbe":"#f3efe4","masse":7000,"anker":[2600,0,0],"vorliek":2800,"fall":0,"unterliek":2600,"kopf":0,"gaffel":2900,"gaffelWinkel":18,"rundung":85,"woelbung":9,"baum":true},{"id":"fock","typ":"segel","name":"Fock","parent":null,"x":80,"y":950,"s":0,"achse":"y","winkel":0,"antrieb":{"quelle":"steuer:schot","faktor":1,"versatz":0,"min":0,"max":90},"farbe":"#f3efe4","masse":3500,"anker":[2384,1268,0],"vorliek":4100,"fall":28,"unterliek":2700,"kopf":0,"rundung":0,"woelbung":8,"baum":false},{"id":"ducht0","typ":"kasten","name":"Mastducht","parent":null,"x":2030,"y":265,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":9000,"anker":[0,0,0],"laenge":220,"breite":1709,"hoehe":30},{"id":"ducht1","typ":"kasten","name":"Ruderducht 1","parent":null,"x":2900,"y":265,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":9000,"anker":[0,0,0],"laenge":220,"breite":1831,"hoehe":30},{"id":"ducht2","typ":"kasten","name":"Ruderducht 2","parent":null,"x":3750,"y":265,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":9000,"anker":[0,0,0],"laenge":220,"breite":1799,"hoehe":30},{"id":"bank-stb","typ":"kasten","name":"Seitenbank Stb.","parent":null,"x":3050.0,"y":260,"s":725,"achse":"y","winkel":0,"antrieb":null,"farbe":"#e7e2d6","masse":9000,"anker":[0,0,0],"laenge":2200,"breite":260,"hoehe":40},{"id":"bank-bb","typ":"kasten","name":"Seitenbank Bb.","parent":null,"x":3050.0,"y":260,"s":-725,"achse":"y","winkel":0,"antrieb":null,"farbe":"#e7e2d6","masse":9000,"anker":[0,0,0],"laenge":2200,"breite":260,"hoehe":40},{"id":"achterbank","typ":"kasten","name":"Achterbank","parent":null,"x":4950.0,"y":260,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#e7e2d6","masse":9000,"anker":[0,0,0],"laenge":800,"breite":1291,"hoehe":40},{"id":"vordeck","typ":"platte","name":"Vordeck","parent":null,"x":0,"y":0,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":8000,"anker":[0,0,0],"pts":[[50,965,-20],[50,965,20],[900,766,742],[900,766,-742]]},{"id":"dolle0s","typ":"kasten","name":"Dolle 1 Stb.","parent":null,"x":3230,"y":640,"s":970,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80},{"id":"dolle0b","typ":"kasten","name":"Dolle 1 Bb.","parent":null,"x":3230,"y":640,"s":-970,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80},{"id":"dolle1s","typ":"kasten","name":"Dolle 2 Stb.","parent":null,"x":4080,"y":641,"s":942,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80},{"id":"dolle1b","typ":"kasten","name":"Dolle 2 Bb.","parent":null,"x":4080,"y":641,"s":-942,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80}],"verbindungen":[],"linien":[]}';
+/* ZK 10 (GFK), rekonstruiert nach KV-ZK 10-005, Bauplan 2104-1000 und Klassenvorschrift ZK 10 */
+const ZK10_JSON='{"v":1,"zk10v":1,"name":"ZK 10","klasse":"zk10","rumpf":{"L":7500,"B":2080,"Bpos":50,"H":600,"sprung":350,"T":490,"seite":300,"bug":10,"spiegel":70,"boden":40,"masse":750000,"farbe":"#f4f5f2","aufmassAktiv":true,"eigen":true,"offen":true,"aufmass":{"bezug":{"laengs":"heck","versatz":0,"wl":490,"kieloben":false},"stationen":[{"id":"st0","pos":0,"deck":1225,"kiel":190,"breite":715,"spant":[[252,79],[345,189],[500,351],[708,522],[914,642],[1101,702]]},{"id":"st375","pos":375,"deck":1185,"kiel":175,"breite":770,"spant":[[236,92],[326,219],[478,401],[680,585],[882,706],[1064,760]]},{"id":"st740","pos":740,"deck":1150,"kiel":170,"breite":820,"spant":[[229,106],[317,250],[464,451],[660,646],[856,765],[1032,813]]},{"id":"st1480","pos":1480,"deck":1090,"kiel":170,"breite":890,"spant":[[225,123],[308,288],[446,513],[630,723],[814,841],[980,885]]},{"id":"st2220","pos":2220,"deck":1045,"kiel":170,"breite":945,"spant":[[222,135],[301,315],[432,556],[608,777],[782,898],[940,940]]},{"id":"st2960","pos":2960,"deck":1015,"kiel":170,"breite":995,"spant":[[221,147],[297,341],[424,599],[592,829],[762,950],[914,991]]},{"id":"st3700","pos":3700,"deck":1000,"kiel":170,"breite":1040,"spant":[[220,153],[294,356],[419,626],[585,866],[751,993],[900,1036]]},{"id":"st4440","pos":4440,"deck":1005,"kiel":170,"breite":1035,"spant":[[220,148],[295,344],[420,609],[588,851],[754,983],[905,1030]]},{"id":"st5180","pos":5180,"deck":1040,"kiel":175,"breite":950,"spant":[[227,123],[305,290],[434,523],[608,749],[780,886],[936,942]]},{"id":"st5920","pos":5920,"deck":1110,"kiel":185,"breite":810,"spant":[[240,89],[324,214],[462,397],[648,591],[832,727],[999,795]]},{"id":"st6290","pos":6290,"deck":1160,"kiel":200,"breite":700,"spant":[[258,67],[344,163],[488,309],[680,474],[872,602],[1045,678]]},{"id":"st6660","pos":6660,"deck":1240,"kiel":260,"breite":560,"spant":[[319,46],[407,113],[554,218],[750,345],[946,454],[1122,530]]},{"id":"st7030","pos":7030,"deck":1330,"kiel":380,"breite":380,"spant":[]},{"id":"st7250","pos":7250,"deck":1400,"kiel":520,"breite":240,"spant":[]},{"id":"st7400","pos":7400,"deck":1460,"kiel":700,"breite":110,"spant":[]},{"id":"st7470","pos":7470,"deck":1490,"kiel":950,"breite":40,"spant":[]},{"id":"st7500","pos":7500,"deck":1500,"kiel":1480,"breite":0,"spant":[]}],"senten":[]}},"lage":{"hoehe":0,"kraengung":0,"trimm":0,"hMin":-250,"hMax":250},"steuer":[{"id":"ruder","name":"Ruder","min":-35,"max":35,"wert":0,"einheit":"°"},{"id":"schot","name":"Großschot + Fock","min":0,"max":80,"wert":15,"einheit":"°"},{"id":"besanschot","name":"Besanschot","min":0,"max":80,"wert":10,"einheit":"°"},{"id":"schwert","name":"Schwert hochholen","min":0,"max":85,"wert":0,"einheit":"°"}],"teile":[{"id":"kielbalken","typ":"kasten","name":"Kielbalken","parent":null,"x":3800,"y":-405,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#e9ebe8","masse":60000,"anker":[0,0,0],"laenge":5920,"breite":100,"hoehe":170},{"id":"schwertkasten","typ":"kasten","name":"Schwertkasten","parent":null,"x":4409.5,"y":-80,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#e9ebe8","masse":30000,"anker":[0,0,0],"laenge":1491,"breite":80,"hoehe":480},{"id":"schwert","typ":"profil","name":"Schwert","parent":null,"x":3740,"y":-270,"s":0,"achse":"x","winkel":0,"antrieb":{"quelle":"steuer:schwert","faktor":-1,"versatz":0,"min":-90,"max":0},"farbe":"#4b5258","masse":60000,"anker":[0,0,0],"lage":"senkrecht","spann":1290,"sehneWurzel":780,"sehneSpitze":620,"dicke":1.5,"pfeil":330,"drehpunkt":0},{"id":"ruder","typ":"profil","name":"Ruder","parent":null,"x":7550,"y":830,"s":0,"achse":"y","winkel":0,"antrieb":{"quelle":"steuer:ruder","faktor":1,"versatz":0,"min":-40,"max":40},"farbe":"#e9ebe8","masse":15000,"anker":[0,0,0],"lage":"senkrecht","spann":1470,"sehneWurzel":320,"sehneSpitze":640,"dicke":5,"pfeil":120,"drehpunkt":5},{"id":"pinne","typ":"rohr","name":"Pinne","parent":"ruder","x":7550,"y":790,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#8a6a48","masse":2500,"anker":[0,0,0],"x2":6150,"y2":860,"s2":0,"durchm":45},{"id":"grossmast","typ":"rohr","name":"Großmast","parent":null,"x":2034,"y":-320,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":25000,"anker":[0,0,0],"x2":2034,"y2":5660,"s2":0,"durchm":90},{"id":"besanmast","typ":"rohr","name":"Besanmast","parent":null,"x":5300,"y":-320,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":15000,"anker":[0,0,0],"x2":5300,"y2":3960,"s2":0,"durchm":75},{"id":"vorstag","typ":"rohr","name":"Vorstag","parent":null,"x":10,"y":1015,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":600,"anker":[0,0,0],"x2":2034,"y2":5402,"s2":0,"durchm":6},{"id":"want-grossmast-s","typ":"rohr","name":"Want Groß Stb.","parent":null,"x":2034,"y":5360,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":400,"anker":[0,0,0],"x2":2800,"y2":522,"s2":1018,"durchm":5},{"id":"want-grossmast-b","typ":"rohr","name":"Want Groß Bb.","parent":null,"x":2034,"y":5360,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":400,"anker":[0,0,0],"x2":2800,"y2":522,"s2":-1018,"durchm":5},{"id":"want-besanmast-s","typ":"rohr","name":"Want Besan Stb.","parent":null,"x":5300,"y":3410,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":400,"anker":[0,0,0],"x2":6000,"y2":599,"s2":892,"durchm":5},{"id":"want-besanmast-b","typ":"rohr","name":"Want Besan Bb.","parent":null,"x":5300,"y":3410,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":400,"anker":[0,0,0],"x2":6000,"y2":599,"s2":-892,"durchm":5},{"id":"gross","typ":"segel","name":"Großsegel","parent":null,"x":2060,"y":1070,"s":0,"achse":"y","winkel":0,"antrieb":{"quelle":"steuer:schot","faktor":1,"versatz":0,"min":0,"max":90},"farbe":"#f3efe4","masse":12000,"anker":[2740,0,0],"vorliek":2700,"fall":0,"unterliek":2740,"kopf":0,"gaffel":3350,"gaffelWinkel":20,"rundung":228,"woelbung":9,"baum":true},{"id":"besan","typ":"segel","name":"Besan","parent":null,"x":5325,"y":930,"s":0,"achse":"y","winkel":0,"antrieb":{"quelle":"steuer:besanschot","faktor":1,"versatz":0,"min":0,"max":90},"farbe":"#f3efe4","masse":8000,"anker":[2220,0,0],"vorliek":2050,"fall":0,"unterliek":2220,"kopf":0,"gaffel":2650,"gaffelWinkel":20,"rundung":159,"woelbung":9,"baum":true},{"id":"fock","typ":"segel","name":"Fock","parent":null,"x":30,"y":1010,"s":0,"achse":"y","winkel":0,"antrieb":{"quelle":"steuer:schot","faktor":1,"versatz":0,"min":0,"max":90},"farbe":"#f3efe4","masse":5000,"anker":[2726,1252,0],"vorliek":4800,"fall":24.7,"unterliek":3000,"kopf":0,"rundung":0,"woelbung":8,"baum":false},{"id":"ducht0","typ":"kasten","name":"Schlagducht","parent":null,"x":5091,"y":145,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":8000,"anker":[0,0,0],"laenge":210,"breite":1473,"hoehe":30},{"id":"ducht1","typ":"kasten","name":"2. Arbeitsducht","parent":null,"x":4109,"y":145,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":8000,"anker":[0,0,0],"laenge":210,"breite":1642,"hoehe":30},{"id":"ducht2","typ":"kasten","name":"3. Arbeitsducht","parent":null,"x":3167,"y":145,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":8000,"anker":[0,0,0],"laenge":210,"breite":1649,"hoehe":30},{"id":"ducht3","typ":"kasten","name":"4. Arbeitsducht","parent":null,"x":2197,"y":145,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":8000,"anker":[0,0,0],"laenge":210,"breite":1301,"hoehe":30},{"id":"ducht4","typ":"kasten","name":"Bugducht","parent":null,"x":1270,"y":145,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":8000,"anker":[0,0,0],"laenge":210,"breite":695,"hoehe":30},{"id":"laengs-s","typ":"kasten","name":"Längsducht Stb.","parent":null,"x":4000.0,"y":140,"s":366,"achse":"y","winkel":0,"antrieb":null,"farbe":"#e9ebe8","masse":12000,"anker":[0,0,0],"laenge":4842,"breite":260,"hoehe":40},{"id":"laengs-b","typ":"kasten","name":"Längsducht Bb.","parent":null,"x":4000.0,"y":140,"s":-366,"achse":"y","winkel":0,"antrieb":null,"farbe":"#e9ebe8","masse":12000,"anker":[0,0,0],"laenge":4842,"breite":260,"hoehe":40},{"id":"achterdeck","typ":"platte","name":"Achterdeck","parent":null,"x":0,"y":0,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#e9ebe8","masse":15000,"anker":[0,0,0],"pts":[[7480,728,-688],[7480,728,688],[6621,643,805],[6621,643,-805]]},{"id":"vordeck","typ":"platte","name":"Vordeck","parent":null,"x":0,"y":0,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#e9ebe8","masse":15000,"anker":[0,0,0],"pts":[[1379,640,-725],[1379,640,725],[30,995,20],[30,995,-20]]},{"id":"dolle0s","typ":"kasten","name":"Dolle 1 Stb.","parent":null,"x":5457,"y":604,"s":897,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80},{"id":"dolle0b","typ":"kasten","name":"Dolle 1 Bb.","parent":null,"x":5457,"y":604,"s":-897,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80},{"id":"dolle1s","typ":"kasten","name":"Dolle 2 Stb.","parent":null,"x":4488,"y":564,"s":964,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80},{"id":"dolle1b","typ":"kasten","name":"Dolle 2 Bb.","parent":null,"x":4488,"y":564,"s":-964,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80},{"id":"dolle2s","typ":"kasten","name":"Dolle 3 Stb.","parent":null,"x":3531,"y":551,"s":1004,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80},{"id":"dolle2b","typ":"kasten","name":"Dolle 3 Bb.","parent":null,"x":3531,"y":551,"s":-1004,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80},{"id":"dolle3s","typ":"kasten","name":"Dolle 4 Stb.","parent":null,"x":2561,"y":575,"s":951,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80},{"id":"dolle3b","typ":"kasten","name":"Dolle 4 Bb.","parent":null,"x":2561,"y":575,"s":-951,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80},{"id":"dolle4s","typ":"kasten","name":"Dolle 5 Stb.","parent":null,"x":1640,"y":653,"s":789,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80},{"id":"dolle4b","typ":"kasten","name":"Dolle 5 Bb.","parent":null,"x":1640,"y":653,"s":-789,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":500,"anker":[0,0,0],"laenge":40,"breite":40,"hoehe":80}],"verbindungen":[],"linien":[]}';
+const TEMPLATES={
+ marblehead:()=>({v:1,name:'Marblehead',klasse:'marblehead',
+  rumpf:{L:1290,B:230,Bpos:55,H:50,sprung:25,T:70,seite:30,bug:35,spiegel:50,boden:15,masse:700,farbe:'#f4f5f2'},
+  lage:{hoehe:0,kraengung:10,trimm:0,hMin:-60,hMax:60},
+  steuer:[{id:'ruder',name:'Ruder',min:-35,max:35,wert:0,einheit:'°'},{id:'schot',name:'Schot (Segelwinkel)',min:0,max:80,wert:20,einheit:'°'}],
+  teile:[
+   base('profil','Kielflosse',{id:'kiel',x:606,y:-50,lage:'senkrecht',spann:590,sehneWurzel:75,sehneSpitze:60,dicke:9,pfeil:10,drehpunkt:50,farbe:'#2b3135',masse:160}),
+   base('bombe','Bleibombe',{id:'bombe',x:620,y:-660,laenge:300,durchm:44,blei:true,farbe:'#6c7780'}),
+   base('profil','Ruderblatt',{id:'ruderblatt',x:1161,y:-30,lage:'senkrecht',spann:200,sehneWurzel:65,sehneSpitze:45,dicke:10,pfeil:20,drehpunkt:25,antrieb:drv('teil:ruderservo',1,0,-40,40),anker:[0,65,22],farbe:'#2b3135',masse:20}),
+   base('servo','Ruderservo',{id:'ruderservo',x:1000,y:10,laenge:40,breite:20,hoehe:38,arm:22,antrieb:drv('steuer:ruder',1,0,-45,45),anker:[0,4,22],farbe:'#1b2024',masse:45}),
+   base('servo','Segelwinde',{id:'winde',x:500,y:15,laenge:60,breite:35,hoehe:40,arm:60,antrieb:drv('steuer:schot',1.4,-55,-70,70),anker:[0,4,60],farbe:'#1b2024',masse:80}),
+   base('kasten','Akku',{id:'akku',x:720,y:0,laenge:70,breite:32,hoehe:24,farbe:'#3a6ea5',masse:110}),
+   base('kasten','Empfänger',{id:'empf',x:850,y:5,laenge:40,breite:24,hoehe:14,farbe:'#6b7a83',masse:12}),
+   base('rohr','Mast',{id:'mast',x:440,y:61,x2:513,y2:2150,s2:0,durchm:10,farbe:'#1b2024',masse:55}),
+   base('segel','Großsegel',{id:'gross',x:442,y:106,vorliek:1700,fall:2,unterliek:300,kopf:40,rundung:70,woelbung:8,baum:true,antrieb:drv('steuer:schot',1,0,0,90),anker:[300,0,0],farbe:'#e9eef2',masse:40}),
+   base('rohr','Vorstag',{id:'vorstag',x:165,y:70,x2:485,y2:1360,s2:0,durchm:2,farbe:'#c9d1d6',masse:3}),
+   base('segel','Fock',{id:'fock',x:170,y:90,vorliek:1300,fall:14,unterliek:240,kopf:10,rundung:0,woelbung:7,baum:true,antrieb:drv('steuer:schot',1,0,0,90),anker:[240,0,0],farbe:'#e9eef2',masse:25})
+  ],
+  verbindungen:[{id:'v1',name:'Schubstange Ruder',a:'ruderservo',b:'ruderblatt',art:'stange'},{id:'v2',name:'Großschot',a:'winde',b:'gross',art:'seil'},{id:'v3',name:'Fockschot',a:'winde',b:'fock',art:'seil'}]
+ }),
+ moth:()=>{const WY=372,T=[];
+  T.push(base('profil','Schwert',{id:'schwert',x:1577,y:-110,lage:'senkrecht',spann:940,sehneWurzel:130,sehneSpitze:130,dicke:12,pfeil:0,drehpunkt:50,masse:1500}));
+  T.push(base('profil','Hauptflügel',{id:'hauptfoil',x:1577,y:-1050,lage:'waagerecht',achse:'x',spann:1020,sehneWurzel:130,sehneSpitze:72,dicke:12,pfeil:0,drehpunkt:50,masse:900}));
+  T.push(base('profil','Klappe',{id:'klappe',x:1642,y:-1050,lage:'waagerecht',achse:'x',spann:860,sehneWurzel:45,sehneSpitze:30,dicke:13,pfeil:0,drehpunkt:0,farbe:'#e8553f',antrieb:drv('teil:wand',-0.55,32.5,-4,16),masse:150}));
+  T.push(base('fuehler','Wand (Höhenfühler)',{id:'wand',x:30,y:420,laenge:1150,auto:true,achse:'x',anker:[0,30,0],farbe:'#1b2024',masse:150}));
+  T.push(base('profil','Ruderstange',{id:'ruderstange',x:3775,y:320,lage:'senkrecht',spann:1270,sehneWurzel:100,sehneSpitze:100,dicke:13,pfeil:0,drehpunkt:50,antrieb:drv('steuer:pinne',1,0,-35,35),masse:800}));
+  T.push(base('profil','Höhenruder',{id:'elevator',parent:'ruderstange',x:3775,y:-950,lage:'waagerecht',achse:'x',spann:680,sehneWurzel:100,sehneSpitze:55,dicke:12,pfeil:0,drehpunkt:50,antrieb:drv('steuer:elev',1,0,-6,6),masse:400}));
+  T.push(base('rohr','Pinne',{id:'pinne',parent:'ruderstange',x:3775,y:400,x2:2080,y2:440,s2:0,durchm:24,farbe:'#1b2024',masse:300}));
+  T.push(base('rohr','Pinnenausleger',{id:'ausleger',parent:'pinne',x:2080,y:440,x2:1510,y2:690,s2:850,durchm:16,farbe:'#1b2024',masse:150}));
+  for(const [sd,n] of [[1,'Stb.'],[-1,'Bb.']]){
+   T.push(base('rohr','Flügel vorn '+n,{x:1006,y:WY,s:160*sd,x2:1677,y2:542,s2:1100*sd,durchm:32,farbe:'#1b2024',masse:500}));
+   T.push(base('rohr','Flügel hinten '+n,{x:2952,y:WY,s:150*sd,x2:2483,y2:542,s2:1100*sd,durchm:32,farbe:'#1b2024',masse:500}));
+   T.push(base('rohr','Flügel außen '+n,{x:1476,y:542,s:1100*sd,x2:2684,y2:542,s2:1100*sd,durchm:44,farbe:'#1b2024',masse:400}));
+   T.push(base('platte','Trampolin '+n,{pts:[[1006,WY-10,160*sd],[1677,532,1100*sd],[2483,532,1100*sd],[2952,WY-10,150*sd]],farbe:'#3a4146',masse:300}));
+   T.push(base('rohr','Ruderträger oben '+n,{x:3335,y:340,s:130*sd,x2:3775,y2:320,s2:0,durchm:26,farbe:'#1b2024',masse:200}));
+   T.push(base('rohr','Ruderträger unten '+n,{x:2751,y:342,s:100*sd,x2:3335,y2:340,s2:130*sd,durchm:22,farbe:'#1b2024',masse:150}));
+  }
+  T.push(base('rohr','Mast',{id:'mast',x:1392,y:377,x2:1719,y2:6619,s2:0,durchm:50,farbe:'#1b2024',masse:2200}));
+  T.push(base('segel','Segel',{id:'segel',x:1402,y:577,vorliek:6000,fall:3,unterliek:1900,kopf:400,rundung:400,woelbung:9,baum:true,farbe:'#2a3034',antrieb:drv('steuer:schot',1,0,0,90),anker:[1900,0,0],masse:3000}));
+  return {v:1,name:'Foiling Moth',klasse:'moth',
+   rumpf:{L:3355,B:330,Bpos:28,H:340,sprung:50,T:130,seite:200,bug:0,spiegel:86,boden:73,masse:14000,farbe:'#9aa3a8'},
+   lage:{hoehe:700,kraengung:8,trimm:0,hMin:0,hMax:850},
+   steuer:[{id:'pinne',name:'Pinne',min:-30,max:30,wert:0,einheit:'°'},{id:'elev',name:'Ruder-Elevator (Wormscrew)',min:-3,max:4,wert:1,einheit:'°'},{id:'schot',name:'Schot (Segelwinkel)',min:0,max:60,wert:12,einheit:'°'}],
+   teile:T,verbindungen:[{id:'v1',name:'Wand-Seil zur Klappe',a:'wand',b:'klappe',art:'seil'}]};
+ },
+ k6:()=>JSON.parse(K6_JSON),
+ zk10:()=>JSON.parse(ZK10_JSON),
+ leer:()=>({v:1,name:'Neues Boot',klasse:'frei',
+  rumpf:{L:1290,B:230,Bpos:55,H:50,sprung:25,T:70,seite:30,bug:35,spiegel:50,boden:15,masse:0,farbe:'#f4f5f2'},
+  lage:{hoehe:0,kraengung:0,trimm:0,hMin:-60,hMax:60},steuer:[],teile:[],verbindungen:[]})
+};
+
+function typDefaults(typ,R){const L=R.L,r=v=>Math.round(v);const d=base(typ,TYPEN[typ]||'Teil',{x:r(L/2),y:r(hdimsR(R,0.5).Ys*1000)});
+ switch(typ){
+  case 'profil':Object.assign(d,{lage:'senkrecht',spann:r(L*0.3),sehneWurzel:r(L*0.06),sehneSpitze:r(L*0.045),dicke:10,pfeil:0,drehpunkt:25,y:r(-R.T*0.6),farbe:'#d9dde0'});break;
+  case 'bombe':Object.assign(d,{laenge:r(L*0.2),durchm:r(L*0.035),blei:true,y:r(-L*0.45),farbe:'#6c7780'});break;
+  case 'rohr':Object.assign(d,{x2:r(L*0.7),y2:d.y,s2:0,durchm:Math.max(6,r(L*0.008)),farbe:'#1b2024'});break;
+  case 'kasten':Object.assign(d,{laenge:r(L*0.05),breite:r(L*0.025),hoehe:r(L*0.02),y:0,farbe:'#3a6ea5'});break;
+  case 'servo':Object.assign(d,{laenge:40,breite:20,hoehe:38,arm:22,y:0,anker:[0,4,22],farbe:'#1b2024'});break;
+  case 'segel':Object.assign(d,{vorliek:r(L*1.2),unterliek:r(L*0.25),kopf:r(L*0.03),rundung:r(L*0.05),fall:2,woelbung:8,baum:true,anker:[r(L*0.25),0,0],farbe:'#e9eef2'});break;
+  case 'fuehler':Object.assign(d,{laenge:r(L*0.35),auto:true,achse:'x',x:r(L*0.02),anker:[0,30,0],farbe:'#1b2024'});break;
+  case 'kiel':Object.assign(d,{breite:Math.max(20,r(L*0.013)),hoehe:r(L*0.02),hoeheSteven:r(L*0.01),hoeheHeck:r(L*0.02),farbe:'#8a6a48'});break;
+  case 'platte':{const x=d.x,y=d.y,a=r(L*0.1);Object.assign(d,{pts:[[x-a,y,-a],[x+a,y,-a],[x+a,y,a],[x-a,y,a]],farbe:'#3a4146'});break;}
+ }
+ if(typ==='profil')d.achse='y';return d;}
+
+function normalize(o){const d=TEMPLATES.leer();o=o&&typeof o==='object'?o:{};
+ o.rumpf=Object.assign(d.rumpf,o.rumpf||{});o.lage=Object.assign(d.lage,o.lage||{});
+ o.steuer=Array.isArray(o.steuer)?o.steuer:[];o.verbindungen=Array.isArray(o.verbindungen)?o.verbindungen:[];
+ o.teile=(Array.isArray(o.teile)?o.teile:[]).filter(p=>p&&TYPEN[p.typ]).map(p=>{const t=typDefaults(p.typ,o.rumpf);const q=Object.assign(t,p);if(!Array.isArray(q.anker))q.anker=[0,0,0];return q;});
+ o.linien=(Array.isArray(o.linien)?o.linien:[]).filter(l=>l&&Array.isArray(l.pts));
+ // Ältere Marblehead-Vorlage: Fock an das neue Vorstag anpassen
+ const fk=o.teile.find(t=>t.id==='fock');if(o.klasse==='marblehead'&&fk&&fk.fall===12&&fk.vorliek===1350&&!o.teile.find(t=>t.id==='vorstag')){Object.assign(fk,{x:170,y:90,vorliek:1300,fall:14});o.teile.splice(o.teile.indexOf(fk),0,Object.assign(typDefaults('rohr',o.rumpf),{id:'vorstag',name:'Vorstag',x:165,y:70,s:0,x2:485,y2:1360,s2:0,durchm:2,farbe:'#c9d1d6',masse:3}));}
+ // K6 mit altem Rigg auf Spitzgaffel und offenes Boot umstellen
+ if(o.klasse==='k6'&&(o.k6v||0)<2){const t=JSON.parse(K6_JSON);o.teile=t.teile.map(p=>Object.assign(typDefaults(p.typ,o.rumpf),p));o.rumpf.offen=true;o.k6v=2;}
+ if(o.klasse==='k6'){const t=JSON.parse(K6_JSON),g=o.teile.find(x=>x.id==='gross'),mt=o.teile.find(x=>x.id==='mast');if(g&&!(+g.gaffel>0)){const ng=t.teile.find(x=>x.id==='gross'),nm=t.teile.find(x=>x.id==='mast');Object.assign(g,{vorliek:ng.vorliek,unterliek:ng.unterliek,kopf:0,gaffel:ng.gaffel,gaffelWinkel:ng.gaffelWinkel,rundung:ng.rundung,anker:ng.anker});if(mt)Object.assign(mt,{y2:nm.y2});o.rumpf.offen=true;}}
+ for(const t of o.teile){if(t.id==='kielbalken'&&t.typ==='kasten'){const zk=o.klasse==='zk10';Object.assign(t,{typ:'kiel',name:'Kiel und Vorsteven',breite:zk?100:80,hoehe:zk?170:50,hoeheSteven:zk?70:50,hoeheHeck:zk?150:40});}}
+ if(!o.rumpf.eigen&&!(o.rumpf.aufmass&&o.rumpf.aufmass.stationen&&o.rumpf.aufmass.stationen.length))aufmassAusForm(o.rumpf);
+ o.name=o.name||'Ohne Namen';o.klasse=KLASSEN[o.klasse]?o.klasse:'frei';return o;}
+
+/* ================= Speicher & Rückgängig ================= */
+const KEY='werftkoje-projekt-v1';
+function loadSaved(){try{const s=localStorage.getItem(KEY);return s?normalize(JSON.parse(s)):null;}catch(e){return null;}}
+function save(s){try{localStorage.setItem(KEY,s);}catch(e){}}
+let P=loadSaved()||normalize(TEMPLATES.marblehead());
+let hist=[JSON.stringify(P)],hi=0,commitT=null;
+function commit(){commitT=null;const s=JSON.stringify(P);if(s!==hist[hi]){hist=hist.slice(0,hi+1);hist.push(s);if(hist.length>80)hist.shift();hi=hist.length-1;}save(s);updUndo();}
+function commitSoon(){clearTimeout(commitT);commitT=setTimeout(commit,350);}
+function flush(){if(commitT){clearTimeout(commitT);commit();}}
+function restore(s){P=normalize(JSON.parse(s));if(sel&&sel!=='rumpf'&&!P.teile.find(p=>p.id===sel))sel=null;save(s);needRebuild=true;renderAll();updUndo();}
+function undo(){flush();if(hi>0){hi--;restore(hist[hi]);}}
+function redo(){flush();if(hi<hist.length-1){hi++;restore(hist[hi]);}}
+function updUndo(){$('bUndo').disabled=hi<=0;$('bRedo').disabled=hi>=hist.length-1;}
+let needRebuild=true,needApply=true;
+function changed(kind){if(kind==='geo')needRebuild=true;else needApply=true;commitSoon();}
+
+/* ================= 3D-Szene ================= */
+const stage=$('stage');
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputEncoding=THREE.sRGBEncoding;stage.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#0c1820');scene.fog=new THREE.Fog('#0c1820',30,90);
+const persp=new THREE.PerspectiveCamera(40,1,0.01,500);persp.position.set(-3,2,-3);
+const ortho=new THREE.OrthographicCamera(-1,1,1,-1,-300,600);let cam=persp,orthoH=2;
+function MiniOrbit(c,elm){const o={target:new THREE.Vector3(),object:c,update(){o.object.lookAt(o.target);}};let drag=null;
+ elm.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};});elm.addEventListener('pointerup',()=>{drag=null;});
+ elm.addEventListener('pointermove',e=>{if(!drag)return;const v=o.object.position.clone().sub(o.target);const sp=new THREE.Spherical().setFromVector3(v);sp.theta-=(e.clientX-drag.x)*0.006;sp.phi=clamp(sp.phi-(e.clientY-drag.y)*0.006,0.05,3.1);drag={x:e.clientX,y:e.clientY};o.object.position.copy(o.target).add(new THREE.Vector3().setFromSpherical(sp));});
+ elm.addEventListener('wheel',e=>{e.preventDefault();const v=o.object.position.clone().sub(o.target);v.multiplyScalar(e.deltaY>0?1.1:0.9);o.object.position.copy(o.target).add(v);},{passive:false});return o;}
+const controls=THREE.OrbitControls?new THREE.OrbitControls(persp,renderer.domElement):MiniOrbit(persp,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=0.08;
+
+scene.add(new THREE.HemisphereLight(0xdfefff,0x20323c,0.75));
+const sun=new THREE.DirectionalLight(0xffffff,0.95);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);scene.add(sun);scene.add(sun.target);
+const fill=new THREE.DirectionalLight(0x9fc4ff,0.35);fill.position.set(6,2,7);scene.add(fill);
+const water=new THREE.Mesh(new THREE.CircleGeometry(60,72).rotateX(-Math.PI/2),new THREE.MeshStandardMaterial({color:'#1f5f7c',roughness:0.25,metalness:0.1,transparent:true,opacity:0.5,depthWrite:false}));water.receiveShadow=true;scene.add(water);
+let grid=null;
+const world=new THREE.Group();scene.add(world);      // Krängung
+const boat=new THREE.Group();world.add(boat);          // Höhe & Trimm
+const selBox=new THREE.Box3(),selHelper=new THREE.Box3Helper(selBox,0xf2c230);selHelper.visible=false;scene.add(selHelper);
+
+/* Materialien */
+const MATS={};
+function mat(c){return MATS[c]||(MATS[c]=new THREE.MeshStandardMaterial({color:c,roughness:0.42,metalness:0.12,side:THREE.DoubleSide}));}
+const hullMat=new THREE.MeshPhysicalMaterial({color:'#f4f5f2',roughness:0.35,metalness:0.1,clearcoat:0.7,clearcoatRoughness:0.25,side:THREE.DoubleSide});
+const deckMat=new THREE.MeshStandardMaterial({color:'#dfe3e5',roughness:0.6,side:THREE.DoubleSide});
+const battenTex=(()=>{const c=document.createElement('canvas');c.width=128;c.height=512;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,128,512);x.strokeStyle='rgba(120,130,140,.55)';x.lineWidth=3;for(let k=1;k<7;k++){x.beginPath();x.moveTo(0,k*73);x.lineTo(128,k*73-8);x.stroke();}x.fillStyle='rgba(242,194,48,.9)';x.fillRect(0,0,6,512);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t;})();
+const SAILM={};
+function sailMat(c){return SAILM[c]||(SAILM[c]=new THREE.MeshStandardMaterial({color:c,map:battenTex,roughness:0.6,side:THREE.DoubleSide,transparent:true,opacity:0.9}));}
+const linkMatSeil=new THREE.LineDashedMaterial({color:0xe8553f,dashSize:0.02,gapSize:0.012,depthTest:false,transparent:true});
+const linkMatStange=new THREE.MeshBasicMaterial({color:0xff7a55,depthTest:false,transparent:true,opacity:0.95});
+
+/* ================= Rumpf ================= */
+function sstep(a,b,x){const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);}
+/* Monotone kubische Interpolation durch Punkte [[a,b],…] (nach a sortiert) – schwingt nicht über */
+function mono(pts,x){const n=pts.length;if(!n)return 0;if(n===1||x<=pts[0][0])return pts[0][1];if(x>=pts[n-1][0])return pts[n-1][1];
+ const d=[],m=[];for(let k=0;k<n-1;k++){const h=pts[k+1][0]-pts[k][0];d.push(h>0?(pts[k+1][1]-pts[k][1])/h:0);}
+ m[0]=d[0];m[n-1]=d[n-2];for(let k=1;k<n-1;k++)m[k]=d[k-1]*d[k]<=0?0:(d[k-1]+d[k])/2;
+ for(let k=0;k<n-1;k++){if(d[k]===0){m[k]=0;m[k+1]=0;continue;}const a=m[k]/d[k],b=m[k+1]/d[k],s=a*a+b*b;if(s>9){const t=3/Math.sqrt(s);m[k]=t*a*d[k];m[k+1]=t*b*d[k];}}
+ let i=0;while(i<n-2&&x>pts[i+1][0])i++;const h=pts[i+1][0]-pts[i][0];if(h<=0)return pts[i][1];const t=(x-pts[i][0])/h,t2=t*t,t3=t2*t;
+ return (2*t3-3*t2+1)*pts[i][1]+(t3-2*t2+t)*h*m[i]+(-2*t3+3*t2)*pts[i+1][1]+(t3-t2)*h*m[i+1];}
+function hdimsR(R,u){if(R.eigen&&R.linien&&R.linien.breite&&R.linien.deck&&R.linien.kiel){u=clamp(u,0,1);const x=u*R.L,Li=R.linien;
+  const B=Math.max(0,mono(Li.breite,x))/1000,Ys=mono(Li.deck,x)/1000,Yk=Math.min(mono(Li.kiel,x)/1000,Ys-0.001);return {B,Ys,Yk,Yc:clamp(Ys-R.seite/1000,Yk,Ys)};}
+ return hdimsP(R,u);}
+function seedLines(R){const us=[0,0.04,0.12,0.25,0.4,0.55,0.7,0.85,0.95,1],r=Math.round;const d=us.map(u=>[u,hdimsP(R,u)]);
+ R.linien={breite:d.map(([u,q])=>[r(u*R.L),r(q.B*1000)]),deck:d.map(([u,q])=>[r(u*R.L),r(q.Ys*1000)]),kiel:d.map(([u,q])=>[r(u*R.L),r(q.Yk*1000)])};}
+/* Messpunkte aus der Parameterform erzeugen: Stationen vom Bug zum Heck, Höhen ab Wasserlinie */
+function aufmassAusForm(R){const L=R.L,ex=0.5+0.5*clamp(R.boden/100,0,1),us=[0,0.02,0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],st=[],r=Math.round;
+ for(const u of us){const d=hdimsP(R,u);const spant=d.B>0.001&&u>0.03?[0.12,0.3,0.5,0.62,0.75,0.9].map(t=>{const [b,y]=sect(d,t,ex);return [r(y*1000),r(b*1000)];}):[];
+  st.push({id:uid(),pos:r(u*L),deck:r(d.Ys*1000),kiel:r(d.Yk*1000),breite:r(d.B*1000),spant});}
+ R.aufmass={bezug:{laengs:'bug',versatz:0,wl:0,kieloben:false},stationen:st,senten:[]};R.aufmassAktiv=true;R.eigen=true;}
+function hdimsP(R,u){u=clamp(u,0,1);const bp=clamp(R.Bpos/100,0.1,0.9),hb=R.B/2000,sp=clamp(R.spiegel/100,0.02,1);
+ const B=u<bp?hb*Math.pow(Math.sin(Math.PI/2*u/bp),0.62):hb*(1-(1-sp)*Math.pow((u-bp)/(1-bp),2));
+ const Ys=(R.H+R.sprung*Math.pow(1-u,2))/1000;
+ let Yk=-R.T/1000*Math.pow(Math.sin(Math.PI*Math.min(0.95,0.04+0.96*u)),0.45);
+ const bug=clamp(R.bug/100,0,1);if(bug>0){const r=bug*Math.pow(1-clamp(u/(0.06+0.3*bug),0,1),2);Yk=Yk*(1-r)+(Ys-0.005)*r;}
+ const Yc=clamp(Ys-R.seite/1000,Yk,Ys);return {B,Ys,Yk,Yc};}
+const hdims=u=>hdimsR(P.rumpf,u);
+const Lm=()=>P.rumpf.L/1000;
+const zOf=u=>(-0.5+u)*Lm();
+function sect(d,t,ex){const tb=NB/(NB+NT);if(t<=tb){const s=t/tb;return [d.B*0.96*Math.pow(s,ex),d.Yk+(d.Yc-d.Yk)*Math.pow(s,1.25)];}const s=(t-tb)/(1-tb);return [d.B*(0.96+0.04*s),d.Yc+(d.Ys-d.Yc)*s];}
+/* ================= Aufmaß: echte Messwerte → Linien & Spantformen ================= */
+const isNum=v=>v!==null&&v!==''&&v!==undefined&&isFinite(v);
+function amX(A,pos){const b=A.bezug;return b.laengs==='heck'?P.rumpf.L-(+pos+(+b.versatz||0)):(+pos+(+b.versatz||0));}
+function amY(A,m){const b=A.bezug;return b.kieloben?((+b.wl||0)-m):(m-(+b.wl||0));}
+/* Messwerte → Linien. Wo noch nichts gemessen ist, füllt die Parameterform die Lücke, damit jede Eingabe sofort wirkt. */
+function deriveAufmass(){const R=P.rumpf,A=R.aufmass;if(!A)return false;const L=R.L,st=A.stationen.filter(s=>isNum(s.pos)).map(s=>({s,x:amX(A,+s.pos)}));
+ const grid=[];for(let k=0;k<=12;k++)grid.push(Math.round(L*k/12));
+ const cur=(k,pf)=>{const m=st.filter(o=>isNum(o.s[k])).map(o=>[Math.round(o.x),Math.round(k==='breite'?+o.s[k]:amY(A,+o.s[k]))]);const pts=m.slice();
+  for(const x of grid)if(!m.some(q=>Math.abs(q[0]-x)<L*0.12))pts.push([x,Math.round(pf(hdimsP(R,x/L))*1000)]);
+  pts.sort((a,b)=>a[0]-b[0]);return pts.filter((q,i)=>i===0||q[0]!==pts[i-1][0]);};
+ R.linien={deck:cur('deck',d=>d.Ys),kiel:cur('kiel',d=>d.Yk),breite:cur('breite',d=>d.B)};R.eigen=true;return true;}
+/* Sente: gerade Linie im Spantriss vom Ursprung auf der Mittellinie (Höhe im Bezugsmaß) unter einem Winkel zur Waagerechten Richtung Kiel */
+function sentePt(A,se,dist){const a=(+se.winkel||0)*DEG,y0=amY(A,+se.hoehe||0);return [dist*Math.cos(a),y0-dist*Math.sin(a)];} // [½ Breite, Höhe] in mm
+function stationSecPts(A,s){const o=[];for(const q of s.spant||[])if(isNum(q[0])&&isNum(q[1]))o.push([amY(A,+q[0]),+q[1]]);
+ for(const se of A.senten||[]){const v=s.sv&&s.sv[se.id];if(isNum(v)){const [b,y]=sentePt(A,se,+v);o.push([y,b]);}}return o;} // [[Höhe, ½ Breite]]
+let SHAPES=null;
+function computeShapes(){const R=P.rumpf,A=R.aufmass;if(!R.aufmassAktiv||!A)return null;const out=[];
+ for(const s of A.stationen){if(!isNum(s.pos))continue;const q=stationSecPts(A,s);if(!q.length)continue;
+  const x=amX(A,+s.pos),d=hdims(x/R.L),H=d.Ys-d.Yk;if(H<=0||d.B<=0)continue;
+  const pts=[[0,0],...q.map(p=>[clamp((p[0]/1000-d.Yk)/H,0,1),Math.max(0,p[1]/1000/d.B)]),[1,1]].sort((a,b)=>a[0]-b[0]);out.push({u:x/R.L,pts});}
+ out.sort((a,b)=>a.u-b.u);return out.length?out:null;}
+function secAt(u,d,ex){if(SHAPES){let i=0;while(i<SHAPES.length-1&&u>SHAPES[i+1].u)i++;const A=SHAPES[i],B=SHAPES[Math.min(i+1,SHAPES.length-1)];
+  const w=(B===A||u<=A.u)?0:u>=B.u?1:(u-A.u)/(B.u-A.u);return t=>[d.B*Math.max(0,(1-w)*mono(A.pts,t)+w*mono(B.pts,t)),d.Yk+(d.Ys-d.Yk)*t];}
+ return t=>sect(d,t,ex);}
+function hullGeo(){const ex=0.5+0.5*clamp(P.rumpf.boden/100,0,1),pos=[],idx=[],M=(NB+NT)*2+1;
+ for(let i=0;i<=NS;i++){const u=i/NS,d=hdims(u),z=zOf(u);for(let j=0;j<M;j++){const t=Math.abs(j/(M-1)*2-1),sd=j<(M-1)/2?-1:1;const [x,y]=secAt(u,d,ex)(t);pos.push(sd*x,y,z);}}
+ for(let i=0;i<NS;i++)for(let j=0;j<M-1;j++){const a=i*M+j,b=a+1,c=a+M,e=c+1;idx.push(a,c,b,b,c,e);}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g;}
+function capGeo(){const ex=0.5+0.5*clamp(P.rumpf.boden/100,0,1),d=hdims(1),M=(NB+NT)*2,pts=[];for(let j=0;j<=M;j++){const t=Math.abs(j/M*2-1),sd=j<M/2?-1:1;const [x,y]=secAt(1,d,ex)(t);pts.push(new THREE.Vector2(sd*x,y));}
+ const g=new THREE.ShapeGeometry(new THREE.Shape(pts));g.translate(0,0,zOf(1)+0.0005);return g;}
+const crown=()=>clamp((P.rumpf.wolbung==null?9:+P.rumpf.wolbung)/100,0,0.5);
+function deckGeo(){const pos=[],idx=[],K=12;
+ for(let i=0;i<=NS;i++){const u=i/NS,d=hdims(u),z=zOf(u);for(let k=0;k<=K;k++){const t=k/K*2-1;pos.push(t*d.B,d.Ys+crown()*d.B*(1-t*t),z);}}
+ for(let i=0;i<NS;i++)for(let k=0;k<K;k++){const a=i*(K+1)+k,b=a+1,c=a+K+1,e=c+1;idx.push(a,b,c,b,e,c);}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g;}
+
+/* ================= Teile-Geometrie ================= */
+const posOf=(x,y,s)=>V(s/1000,y/1000,(x-P.rumpf.L/2)/1000);
+function profilGeo(p){const vert=p.lage!=='waagerecht',ns=vert?12:16,np=32,th=Math.max(0.005,p.dicke/100),span=p.spann/1000,cr=p.sehneWurzel/1000,ct=p.sehneSpitze/1000,sw=p.pfeil/1000,dp=clamp(p.drehpunkt/100,0,1);
+ const yt=t=>5*th*(0.2969*Math.sqrt(t)-0.126*t-0.3516*t*t+0.2843*t*t*t-0.1036*t*t*t*t);const pos=[],idx=[];
+ for(let i=0;i<=ns;i++){const e=vert?i/ns:i/ns*2-1,k=Math.abs(e),ch=cr+(ct-cr)*k,z0=-dp*ch+sw*k;
+  for(let j=0;j<np;j++){const a=2*Math.PI*j/np,t=(1+Math.cos(a))/2,off=(Math.sin(a)>=0?1:-1)*yt(t)*ch,z=z0+t*ch;if(vert)pos.push(off,-e*span,z);else pos.push(e*span/2,off,z);}}
+ for(let i=0;i<ns;i++)for(let j=0;j<np;j++){const a=i*np+j,b=i*np+(j+1)%np,c=a+np,d=b+np;idx.push(a,c,b,b,c,d);}
+ for(const i of [0,ns]){let cx=0,cy=0,cz=0;for(let j=0;j<np;j++){const q=(i*np+j)*3;cx+=pos[q];cy+=pos[q+1];cz+=pos[q+2];}const ci=pos.length/3;pos.push(cx/np,cy/np,cz/np);for(let j=0;j<np;j++)idx.push(ci,i*np+j,i*np+(j+1)%np);}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g;}
+const bombeR=(p,t)=>p.durchm/2*Math.pow(Math.sin(Math.PI*Math.pow(t,0.8)),0.6);
+function bombeGeo(p){const n=32,pts=[];for(let k=0;k<=n;k++){const t=k/n;pts.push(new THREE.Vector2(Math.max(1e-5,bombeR(p,t)/1000),(t-0.5)*p.laenge/1000));}const g=new THREE.LatheGeometry(pts,28);g.rotateX(Math.PI/2);return g;}
+function bombeMasse(p){let v=0;const n=100;for(let k=0;k<n;k++){const r=bombeR(p,(k+0.5)/n);v+=Math.PI*r*r*p.laenge/n;}return v/1000*11.34;} // Blei 11,34 g/cm³
+function tubeGeo(a,b,r){const v=b.clone().sub(a),len=Math.max(1e-4,v.length());const g=new THREE.CylinderGeometry(r,r,len,12);g.translate(0,len/2,0);g.applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0,1,0),v.normalize())));g.translate(a.x,a.y,a.z);return g;}
+const sailChord=(p,v)=>p.unterliek*(1-v)+p.kopf*v+p.rundung*Math.sin(Math.PI*v)*(1-0.5*v);
+function gaffPts(p){const f=p.fall*DEG,a=(+p.gaffelWinkel||0)*DEG,lu=p.vorliek,U=p.unterliek,G=+p.gaffel; // lokal [y,z] in mm, Vorliek = y
+ const T=[0,0],C=[U*Math.sin(f),U*Math.cos(f)],Th=[lu,0],Pk=[lu+G*Math.cos(a),G*Math.sin(a)];return {T,C,Th,Pk};}
+function sailArea(p){if(+p.gaffel>0){const {T,C,Th,Pk}=gaffPts(p),q=[T,C,Pk,Th];let A=0;for(let k=0;k<4;k++){const a=q[k],b=q[(k+1)%4];A+=a[1]*b[0]-b[1]*a[0];}
+  const lee=Math.hypot(Pk[0]-C[0],Pk[1]-C[1]);return (Math.abs(A)/2+2/3*(+p.rundung||0)*lee)/100;}
+ let a=0;const n=60;for(let k=0;k<n;k++)a+=sailChord(p,(k+0.5)/n);return a/n*p.vorliek*Math.cos(p.fall*DEG)/100;} // cm², Sehnen waagerecht
+function segelGeoGaff(p){const nu=12,nv=24,pos=[],uv=[],idx=[],{T,C,Th,Pk}=gaffPts(p),L=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+ const ly=Pk[0]-C[0],lz=Pk[1]-C[1],ll=Math.hypot(ly,lz)||1,ny=-lz/ll,nz=ly/ll;
+ for(let j=0;j<=nv;j++){const v=j/nv;const lp=L(T,Th,v),rp=L(C,Pk,v),cl=Math.hypot(rp[0]-lp[0],rp[1]-lp[1]);
+  for(let i=0;i<=nu;i++){const u=i/nu,q=L(lp,rp,u),r=(+p.rundung||0)*Math.sin(Math.PI*v)*u*u*u;pos.push(p.woelbung/100*cl*Math.sin(Math.PI*Math.pow(u,0.8))/1000,(q[0]+r*ny)/1000,(q[1]+r*nz)/1000);uv.push(u,v);}}
+ for(let j=0;j<nv;j++)for(let i=0;i<nu;i++){const a=j*(nu+1)+i,b=a+1,c=a+nu+1,e=c+1;idx.push(a,b,c,b,e,c);}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g;}
+function segelGeo(p){if(+p.gaffel>0)return segelGeoGaff(p);const nu=10,nv=24,pos=[],uv=[],idx=[],f=0,lu=p.vorliek/1000,cf=Math.cos(p.fall*DEG),sf=Math.sin(p.fall*DEG);
+ for(let j=0;j<=nv;j++){const v=j/nv,ly=lu*v*Math.cos(f),lz=lu*v*Math.sin(f),ch=sailChord(p,v)/1000;
+  for(let i=0;i<=nu;i++){const u=i/nu;pos.push(p.woelbung/100*ch*Math.sin(Math.PI*Math.pow(u,0.8)),ly+u*ch*sf,lz+u*ch*cf);uv.push(u,v);}}
+ for(let j=0;j<nv;j++)for(let i=0;i<nu;i++){const a=j*(nu+1)+i,b=a+1,c=a+nu+1,e=c+1;idx.push(a,b,c,b,e,c);}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g;}
+/* Kiel/Steven: Rechteckprofil entlang der Kiellinie, unten nach unten, am Steven nach vorn versetzt */
+function kielGeo(p){const N=140,b=Math.max(1,+p.breite||40)/2000,pts=[];
+ const dAt=u=>{const hm=+p.hoehe||0,hs=p.hoeheSteven==null?hm:+p.hoeheSteven,hh=p.hoeheHeck==null?hm:+p.hoeheHeck;return (u<0.2?hs+(hm-hs)*sstep(0,0.2,u):hm+(hh-hm)*sstep(0.85,1,u))/1000;};
+ for(let i=0;i<=N;i++){const u=i/N;pts.push([zOf(u),hdims(u).Yk]);}
+ const pos=[],idx=[];
+ for(let i=0;i<=N;i++){const a=pts[Math.max(0,i-1)],c=pts[Math.min(N,i+1)];let tz=c[0]-a[0],ty=c[1]-a[1];const l=Math.hypot(tz,ty)||1;tz/=l;ty/=l;
+  const nz=ty,ny=-tz,d=dAt(i/N),[z,y]=pts[i];// Normale nach außen (unten bzw. vorn)
+  pos.push(-b,y+0.0005,z, b,y+0.0005,z, b,y+ny*d,z+nz*d, -b,y+ny*d,z+nz*d);}
+ for(let i=0;i<N;i++)for(let k=0;k<4;k++){const a=i*4+k,b2=i*4+(k+1)%4,c=a+4,e=b2+4;idx.push(a,c,b2,b2,c,e);}
+ for(const i of [0,N]){const o=i*4;idx.push(o,o+1,o+2,o,o+2,o+3);}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g;}
+const ankerVec=p=>V((p.anker[2]||0)/1000,(p.anker[1]||0)/1000,(p.anker[0]||0)/1000);
+
+/* Linien: Ebenen → 3D. seite: a=x,b=y,lage=s · oben: a=x,b=s,lage=y · spant: a=s,b=y,lage=x */
+function deckY(x,s){const d=hdims(x/P.rumpf.L),q=d.B>0?clamp(s/1000/d.B,-1,1):1;return (d.Ys+crown()*d.B*(1-q*q))*1000+1.5;}
+function to3(l,a,b){switch(l.ebene){case 'seite':return [a,b,+l.lage||0];case 'oben':return [a,l.aufDeck?deckY(a,b):(+l.lage||0),b];default:return [+l.lage||0,b,a];}}
+function sampleFree(pts,closed,smooth){const n=pts.length;if(n<2)return pts.slice();if(!smooth||n<3){const o=pts.slice();if(closed&&n>2)o.push(pts[0]);return o;}
+ const out=[],get=i=>closed?pts[(i+n)%n]:pts[clamp(i,0,n-1)],segs=closed?n:n-1;
+ for(let i=0;i<segs;i++){const p0=get(i-1),p1=get(i),p2=get(i+1),p3=get(i+2);for(let k=0;k<12;k++){const t=k/12,t2=t*t,t3=t2*t;out.push([0,1].map(j=>0.5*(2*p1[j]+(-p0[j]+p2[j])*t+(2*p0[j]-5*p1[j]+4*p2[j]-p3[j])*t2+(-p0[j]+3*p1[j]-3*p2[j]+p3[j])*t3)));}}
+ out.push(closed?pts[0]:pts[n-1]);return out;}
+let lineGrp=null,selLine=null,PB={},stGrp=null,focusSt=null;
+/* Messstationen im Modell: Ring am Querschnitt, Farbe nach Stand der Messung */
+const ST_COL={voll:'#7fd49b',teil:'#f2c230',leer:'#5f8796',fokus:'#ff7a55'};
+function stStatus(s){const n=['deck','kiel','breite'].filter(k=>isNum(s[k])).length;return n===3?'voll':n?'teil':'leer';}
+function buildStations(){stDots=[];if(!stGrp)return;disposeTree(stGrp);stGrp.clear();const R=P.rumpf,A=R.aufmass;if(!A)return;
+ {// Bezugsebene und Bezugspunkt
+  const yr=amY(A,0),xr=A.bezug.laengs==='heck'?R.L-(+A.bezug.versatz||0):(+A.bezug.versatz||0),hb=Math.max(50,hdims(clamp(R.Bpos/100,0.1,0.9)).B*1000)*1.6,k2=clamp(R.L/3400,0.22,2);
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(R.L*1.2/1000,hb*2/1000).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0x5fd0ff,transparent:true,opacity:0.08,side:THREE.DoubleSide,depthWrite:false}));pl.position.copy(posOf(R.L/2,yr,0));stGrp.add(pl);
+  const fr=[[-R.L*0.1,-hb],[R.L*1.1,-hb],[R.L*1.1,hb],[-R.L*0.1,hb],[-R.L*0.1,-hb]].map(([x,s2])=>posOf(x,yr,s2));stGrp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(fr),new THREE.LineBasicMaterial({color:0x5fd0ff,transparent:true,opacity:0.5})));
+  const c=R.L*0.04,ax=[[posOf(xr-c,yr,0),posOf(xr+c,yr,0)],[posOf(xr,yr-c,0),posOf(xr,yr+c,0)],[posOf(xr,yr,-c),posOf(xr,yr,c)]];for(const [a,b] of ax){const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:0x5fd0ff,depthTest:false}));l.renderOrder=15;stGrp.add(l);}
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTex('Bezug'),depthTest:false,transparent:true}));sp.scale.set(0.8*k2,0.24*k2,1);sp.position.copy(posOf(xr,yr-R.L*0.05,0));sp.renderOrder=15;stGrp.add(sp);}
+ // Sentenlinien längs durch die gemessenen Punkte
+ for(const se of A.senten||[]){const pts=A.stationen.filter(s=>isNum(s.pos)&&s.sv&&isNum(s.sv[se.id])).map(s=>{const [b,y]=sentePt(A,se,+s.sv[se.id]);return [amX(A,+s.pos),y,b];}).sort((a,b)=>a[0]-b[0]);
+  if(pts.length<2)continue;for(const sg of [1,-1]){const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(([x,y,b])=>posOf(x,y,b*sg))),new THREE.LineBasicMaterial({color:0xc39bff,depthTest:false,transparent:true,opacity:0.9}));l.renderOrder=12;stGrp.add(l);}}
+ if(!A.stationen.length)return;
+ const ex=0.5+0.5*clamp(R.boden/100,0,1),k=clamp(R.L/3400,0.22,2);
+ for(const s of A.stationen){if(!isNum(s.pos))continue;const x=amX(A,+s.pos),u=x/R.L;if(u<-0.001||u>1.001)continue;
+  const d=hdims(clamp(u,0,1)),f=secAt(clamp(u,0,1),d,ex),side=[];for(let j=0;j<=24;j++){const [sx,sy]=f(j/24);side.push([sx*1.012+0.0008,sy]);}
+  const ring=[...side.slice().reverse().map(([a,b])=>[-a,b]),...side].map(([a,b])=>posOf(x,b*1000,a*1000));ring.push(ring[0].clone());
+  const foc=s.id===focusSt,col=foc?ST_COL.fokus:ST_COL[stStatus(s)];
+  const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring),new THREE.LineBasicMaterial({color:col,depthTest:false,transparent:true,opacity:foc?1:0.75}));ln.renderOrder=foc?13:7;stGrp.add(ln);
+  // gemessene Punkte als Kugeln
+  const dot=(xx,yy,ss,info)=>{const hot=dragDot&&info&&dragDot.st===s.id&&dragDot.kind===info.kind&&dragDot.idx===info.idx;const m=new THREE.Mesh(new THREE.SphereGeometry(0.006*k*(hot?3.4:2.2),10,8),new THREE.MeshBasicMaterial({color:hot?0xf2c230:col,depthTest:false}));m.position.copy(posOf(xx,yy,ss));m.renderOrder=14;stGrp.add(m);if(info)stDots.push({m,st:s.id,x,...info});};
+  if(isNum(s.deck))dot(x,amY(A,+s.deck),0,{kind:'deck',idx:0});if(isNum(s.kiel))dot(x,amY(A,+s.kiel),0,{kind:'kiel',idx:0});if(isNum(s.breite)){const yb=isNum(s.deck)?amY(A,+s.deck):d.Ys*1000;dot(x,yb,+s.breite,{kind:'breite',idx:0});dot(x,yb,-s.breite,{kind:'breite',idx:0});}
+  (s.spant||[]).forEach((q,qi)=>{if(isNum(q[0])&&isNum(q[1])){const yy=amY(A,+q[0]);dot(x,yy,+q[1],{kind:'spant',idx:qi});dot(x,yy,-q[1],{kind:'spant',idx:qi});}});
+  for(const se of A.senten||[]){const v=s.sv&&s.sv[se.id];if(isNum(v)){const [bb,yy]=sentePt(A,se,+v);dot(x,yy,bb,{kind:'sente',idx:se.id});dot(x,yy,-bb,{kind:'sente',idx:se.id});}}
+  if(foc){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTex('St. '+fmtN(+s.pos)),depthTest:false,transparent:true}));sp.scale.set(1.0*k,0.3*k,1);sp.position.copy(posOf(x,d.Ys*1000+R.L*0.06,0));sp.renderOrder=15;stGrp.add(sp);}}}
+let built={},pickables=[],partMeshes={},hullGrp=null,linkGrp=null,dimGrp=null,linkObjs=[],ANG={},LEN={},M=null;
+function buildPart(p){const g=new THREE.Group(),rot=new THREE.Group();g.add(rot);const m=mat(p.farbe);const own=[];
+ const put=(geo,mt,par)=>{const o=new THREE.Mesh(geo,mt||m);o.castShadow=true;o.receiveShadow=true;o.userData.partId=p.id;(par||rot).add(o);own.push(o);pickables.push(o);return o;};
+ let piv=posOf(p.x,p.y,p.s);
+ switch(p.typ){
+  case 'profil':put(profilGeo(p));break;
+  case 'bombe':put(bombeGeo(p));break;
+  case 'rohr':put(tubeGeo(V(0,0,0),posOf(p.x2,p.y2,p.s2).sub(piv),Math.max(0.0005,p.durchm/2000)));break;
+  case 'kasten':put(new THREE.BoxGeometry(Math.max(1e-3,p.breite/1000),Math.max(1e-3,p.hoehe/1000),Math.max(1e-3,p.laenge/1000)));break;
+  case 'servo':{put(new THREE.BoxGeometry(p.breite/1000,p.hoehe/1000,p.laenge/1000),null,g);rot.position.y=p.hoehe/2000+0.002;
+   const arm=new THREE.BoxGeometry(p.arm/1000+0.006,0.003,0.008);arm.translate(p.arm/2000,0,0);put(arm,mat('#e8eef0'));put(new THREE.CylinderGeometry(0.005,0.005,0.006,12),mat('#e8eef0'));break;}
+  case 'segel':{// Segel dreht um sein Vorliek (Mast bzw. Vorstag), nicht um die Senkrechte
+   const tilt=new THREE.Group();tilt.rotation.x=p.fall*DEG;g.remove(rot);g.add(tilt);tilt.add(rot);
+   put(segelGeo(p),sailMat(p.farbe));if(p.baum){const w=Math.max(0.004,p.unterliek*0.000022);const b=new THREE.BoxGeometry(w,w*1.4,p.unterliek/1000);b.translate(0,-w,p.unterliek/2000);b.rotateX(-p.fall*DEG);put(b,mat('#1b2024'));}
+   if(+p.gaffel>0){const w=Math.max(0.004,p.gaffel*0.000018),{Th,Pk}=gaffPts(p);put(tubeGeo(V(0,Th[0]/1000,Th[1]/1000),V(0,Pk[0]/1000,Pk[1]/1000),w),mat('#c9a77c'));}break;}
+  case 'fuehler':{const L=p.laenge/1000,r=Math.max(0.0025,L*0.006);const c=new THREE.CylinderGeometry(r*0.7,r,L,8);c.translate(0,-L/2,0);put(c);const s=put(new THREE.SphereGeometry(r*2.6,10,8));s.position.y=-L;s.scale.set(0.6,1,1.8);break;}
+  case 'kiel':{piv=V(0,0,0);put(kielGeo(p));break;}
+  case 'platte':{const pts=(p.pts||[]).map(q=>posOf(q[0],q[1],q[2]));piv=pts.reduce((a,b)=>a.add(b),V(0,0,0)).multiplyScalar(1/Math.max(1,pts.length));
+   const g2=new THREE.BufferGeometry();g2.setAttribute('position',new THREE.Float32BufferAttribute(pts.flatMap(q=>[q.x-piv.x,q.y-piv.y,q.z-piv.z]),3));g2.setIndex([0,1,2,0,2,3]);g2.computeVertexNormals();put(g2);break;}
+ }
+ partMeshes[p.id]=own;return {g,rot,piv,p};}
+function createsCycle(p){let q=p,n=0;while(q&&q.parent&&n<60){if(q.parent===p.id)return true;q=P.teile.find(t=>t.id===q.parent);n++;}return n>=60;}
+
+function disposeTree(o){o.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.isSprite&&c.material)c.material.dispose();});}
+function rebuild(){if(P.rumpf.aufmassAktiv&&P.rumpf.aufmass)deriveAufmass();SHAPES=computeShapes();disposeTree(boat);boat.clear();built={};pickables=[];partMeshes={};
+ const L=Lm();hullMat.color.set(P.rumpf.farbe||'#f4f5f2');
+ hullGrp=new THREE.Group();boat.add(hullGrp);const hm=[];
+ for(const [g,m] of [[hullGeo(),hullMat],[capGeo(),hullMat],...(P.rumpf.offen?[]:[[deckGeo(),deckMat]])]){const o=new THREE.Mesh(g,m);o.castShadow=true;o.receiveShadow=true;o.userData.partId='rumpf';hullGrp.add(o);hm.push(o);pickables.push(o);}
+ partMeshes.rumpf=hm;
+ for(const p of P.teile)built[p.id]=buildPart(p);
+ for(const p of P.teile){const b=built[p.id];const par=p.parent&&built[p.parent]&&!createsCycle(p)?built[p.parent]:null;
+  if(par){const origin=par.piv.clone().add(par.rot.position);b.g.position.copy(b.piv).sub(origin);par.rot.add(b.g);}else{b.g.position.copy(b.piv);boat.add(b.g);}}
+ linkGrp=new THREE.Group();boat.add(linkGrp);linkObjs=[];
+ const rr=Math.max(0.0012,L*0.0013);
+ for(const v of P.verbindungen){let o;if(v.art==='stange'){const g=new THREE.CylinderGeometry(rr,rr,1,8);g.translate(0,0.5,0);o=new THREE.Mesh(g,linkMatStange);}else{o=new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0,0,0),V(0,0,0)]),linkMatSeil);}o.renderOrder=9;linkGrp.add(o);linkObjs.push({v,o});}
+ dimGrp=new THREE.Group();boat.add(dimGrp);dimKey='';
+ stGrp=new THREE.Group();boat.add(stGrp);buildStations();
+ // Konstruktionslinien
+ lineGrp=new THREE.Group();boat.add(lineGrp);
+ for(const l of P.linien){const pts=sampleFree(l.pts,l.geschlossen,l.glatt);if(pts.length<2)continue;
+  const variants=l.spiegel?[1,-1]:[1];for(const sg of variants){const v3=pts.map(([a,b])=>{const q=to3(l,a,b);return posOf(q[0],q[1],q[2]*sg);});
+   const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints(v3),new THREE.LineBasicMaterial({color:l.farbe||'#7fd4ff',transparent:true,opacity:sg>0?1:0.55}));ln.renderOrder=8;lineGrp.add(ln);
+   if(sg>0&&l.id===selLine){const pg=new THREE.BufferGeometry().setFromPoints(l.pts.map(([a,b])=>{const q=to3(l,a,b);return posOf(q[0],q[1],q[2]);}));lineGrp.add(new THREE.Points(pg,new THREE.PointsMaterial({color:0xf2c230,size:7,sizeAttenuation:false,depthTest:false})));}}}
+ // Raster, Licht, Nebel passend zur Bootsgröße
+ if(grid){scene.remove(grid);grid.geometry.dispose();}
+ const cell=L<2?0.1:0.25,size=cell*Math.ceil(L*2.6/cell);grid=new THREE.GridHelper(size,Math.round(size/cell),0x5f7f8c,0x2a4450);grid.material.transparent=true;grid.material.opacity=0.55;grid.position.y=0.001;grid.visible=$('tGrid').getAttribute('aria-pressed')==='true';scene.add(grid);
+ applyToggles();
+}
+
+/* ================= Antriebe (Mechanik) ================= */
+const tmpV=new THREE.Vector3();
+function srcVal(q,C,vis){const i=q.indexOf(':'),k=q.slice(0,i),v=q.slice(i+1);if(k==='steuer'){const s=P.steuer.find(x=>x.id===v);return s?s.wert:null;}if(k==='lage')return P.lage[v]!=null?+P.lage[v]:null;if(k==='teil')return built[v]?angleOf(v,C,vis):null;return null;}
+function angleOf(id,C,vis){if(id in C)return C[id];const b=built[id];if(!b)return 0;const p=b.p;if(vis.has(id))return +p.winkel||0;vis.add(id);let a=+p.winkel||0;
+ if(p.typ==='fuehler'&&p.auto){b.g.getWorldPosition(tmpV);a=Math.acos(clamp(tmpV.y*1000/Math.max(1,p.laenge),0,1))/DEG;}
+ else if(p.antrieb&&p.antrieb.quelle){const A=p.antrieb,s=srcVal(A.quelle,C,vis);if(s!=null)a=clamp((+A.versatz||0)+(+A.faktor||0)*s,+A.min,+A.max);}
+ vis.delete(id);C[id]=a;return a;}
+function anchorBoat(id){const b=built[id];if(!b)return null;const v=ankerVec(b.p);b.rot.localToWorld(v);return boat.worldToLocal(v);}
+const flipped=()=>!!(P.rumpf.aufmass&&P.rumpf.aufmass.bezug.kieloben);
+function applyDrives(){if(flipped()){// Boot liegt kieloben auf der Platte: Bezugsebene = Rasterboden
+  boat.position.y=-(+P.rumpf.aufmass.bezug.wl||0)/1000;boat.rotation.set(0,0,0);world.rotation.set(0,0,Math.PI);}
+ else{boat.position.y=(+P.lage.hoehe||0)/1000;boat.rotation.set((+P.lage.trimm||0)*DEG,0,0);world.rotation.set(0,0,(+P.lage.kraengung||0)*DEG);}
+ let C={};for(let pass=0;pass<3;pass++){world.updateMatrixWorld(true);C={};for(const id in built)angleOf(id,C,new Set());for(const id in built){const b=built[id];b.rot.rotation.set(0,0,0);b.rot.rotation[b.p.achse||'y']=C[id]*DEG;}}
+ world.updateMatrixWorld(true);ANG=C;LEN={};
+ for(const {v,o} of linkObjs){const a=anchorBoat(v.a),b=anchorBoat(v.b);o.visible=!!(a&&b);if(!a||!b)continue;const d=b.clone().sub(a),len=d.length();LEN[v.id]=len*1000;
+  if(v.art==='stange'){o.position.copy(a);o.quaternion.setFromUnitVectors(V(0,1,0),len>1e-6?d.clone().normalize():V(0,1,0));o.scale.set(1,Math.max(1e-5,len),1);}
+  else{const pa=o.geometry.attributes.position;pa.setXYZ(0,a.x,a.y,a.z);pa.setXYZ(1,b.x,b.y,b.z);pa.needsUpdate=true;o.geometry.computeBoundingSphere();o.computeLineDistances();}}}
+
+/* ================= Messen: Klassenmaße, Masse, Schwerpunkt ================= */
+function ownBox(id,box){for(const m of partMeshes[id]||[])box.expandByObject(m);return box;}
+function measure(){const bp=boat.position.clone(),br=boat.rotation.clone(),wr=world.rotation.clone();boat.position.set(0,0,0);boat.rotation.set(0,0,0);world.rotation.set(0,0,0);world.updateMatrixWorld(true);
+ const all=new THREE.Box3(),noSail=new THREE.Box3();ownBox('rumpf',all);ownBox('rumpf',noSail);
+ let masse=+P.rumpf.masse||0,segel=0;const mom=new THREE.Vector3();const hc=ownBox('rumpf',new THREE.Box3()).getCenter(new THREE.Vector3());mom.addScaledVector(hc,masse);
+ PB={};for(const id in built){const p=built[id].p,bx=ownBox(id,new THREE.Box3());if(bx.isEmpty())continue;PB[id]=bx;all.union(bx);if(p.typ==='segel')segel+=sailArea(p);else noSail.union(bx);
+  const m=p.typ==='bombe'&&p.blei?bombeMasse(p):(+p.masse||0);if(m>0){masse+=m;mom.addScaledVector(bx.getCenter(new THREE.Vector3()),m);}}
+ boat.position.copy(bp);boat.rotation.copy(br);world.rotation.copy(wr);world.updateMatrixWorld(true);
+ const cg=masse>0?mom.multiplyScalar(1/masse):V(0,0,0);const deckRef=hdims(0.5).Ys;
+ const hullBox=ownBox('rumpf',new THREE.Box3());M={hullBox,loa:+P.rumpf.L,breite:(noSail.max.x-noSail.min.x)*1000,tiefgang:Math.max(0,-all.min.y*1000),hoehe:(all.max.y-deckRef)*1000,segel,masse,cgx:cg.z*1000+P.rumpf.L/2,cgy:cg.y*1000,box:all,noSail,deckRef};}
+
+/* Maßlinien im Modell */
+const LBL=new Map();let dimKey='';
+function labelTex(txt){if(LBL.has(txt))return LBL.get(txt);const c=document.createElement('canvas');c.width=320;c.height=96;const x=c.getContext('2d');x.fillStyle='rgba(12,24,32,.85)';x.fillRect(0,14,320,68);x.fillStyle='#f2c230';x.font='600 46px "IBM Plex Mono", monospace';x.textAlign='center';x.textBaseline='middle';x.fillText(txt,160,50);const t=new THREE.CanvasTexture(c);LBL.set(txt,t);return t;}
+function updDims(){const key=[M.loa,M.breite,M.tiefgang,M.hoehe].map(Math.round).join('|');if(key===dimKey)return;dimKey=key;disposeTree(dimGrp);dimGrp.clear();
+ const L=Lm(),k=clamp(L/3.4,0.22,2),b=M.noSail,hb=hdims(P.rumpf.Bpos/100).B,dy=M.deckRef;
+ const line=(a,c,txt,off)=>{dimGrp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,c]),new THREE.LineBasicMaterial({color:0xf2c230,depthTest:false,transparent:true})));
+  for(const p of [a,c]){const t=new THREE.Mesh(new THREE.SphereGeometry(0.008*k*3,8,6),new THREE.MeshBasicMaterial({color:0xf2c230,depthTest:false}));t.position.copy(p);t.renderOrder=10;dimGrp.add(t);}
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTex(txt),depthTest:false,transparent:true}));s.scale.set(1.0*k,0.3*k,1);s.renderOrder=11;s.position.copy(a).add(c).multiplyScalar(0.5).add(off);dimGrp.add(s);};
+ const sx=hb+0.08*L;
+ line(V(sx,dy+0.02*L,-L/2),V(sx,dy+0.02*L,L/2),mm(M.loa),V(0.04*L,0.06*L,0));
+ if(M.breite>hb*2000+2)line(V(b.min.x,b.max.y+0.04*L,(b.min.z+b.max.z)/2),V(b.max.x,b.max.y+0.04*L,(b.min.z+b.max.z)/2),mm(M.breite),V(0,0.06*L,0));
+ line(V(-sx,0,(b.min.z+b.max.z)/2),V(-sx,M.box.min.y,(b.min.z+b.max.z)/2),mm(M.tiefgang),V(-0.12*L,0,0));
+ const mz=M.box.min.z-0.06*L;line(V(0,dy,mz),V(0,M.box.max.y,mz),mm(M.hoehe),V(0,0,-0.14*L));}
+
+/* ================= Anzeige-Schalter ================= */
+const isOn=id=>$(id).getAttribute('aria-pressed')==='true';
+let lastSee=null;
+function applyToggles(){const fl=flipped();for(const id in built)built[id].g.visible=!fl&&(built[id].p.typ!=='segel'||isOn('tSail'));if(linkGrp&&fl)linkGrp.visible=false;if(fl)water.visible=false;if(lineGrp)lineGrp.visible=isOn('tLines');if(stGrp)stGrp.visible=isOn('tLines');const see=isOn('tSee');if(see!==lastSee){lastSee=see;for(const m of [hullMat,deckMat]){m.transparent=see;m.opacity=see?0.28:1;m.depthWrite=!see;m.needsUpdate=true;}}if(linkGrp)linkGrp.visible=isOn('tMech')&&!fl;water.visible=isOn('tWater')&&!fl;if(dimGrp)dimGrp.visible=isOn('tDims');if(grid)grid.visible=isOn('tGrid');}
+const tog=(id,fn)=>$(id).addEventListener('click',()=>{const b=$(id),on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);fn(on);});
+['tSail','tMech','tWater','tDims','tGrid','tLines','tSee'].forEach(id=>tog(id,applyToggles));
+let anim=false,animT=0,animBase=0;
+tog('tAnim',on=>{anim=on;if(on)animBase=+P.lage.hoehe;else{P.lage.hoehe=animBase;needApply=true;renderLage();}});
+
+/* ================= Kamera & Ansichten ================= */
+function resize(){const w=stage.clientWidth,h=stage.clientHeight,a=w/Math.max(1,h);renderer.setSize(w,h,false);persp.aspect=a;ortho.left=-orthoH*a;ortho.right=orthoH*a;ortho.top=orthoH;ortho.bottom=-orthoH;
+ // Am Handy: Bild in den freien Bereich zwischen Werkzeugleiste und Bodenleiste rücken
+ let shift=0;if(typeof mobile==='function'&&mobile()){const sh=[$('card'),$('win')].find(x=>!x.hidden);const top=$('bar').getBoundingClientRect().bottom;const bot=sh?sh.getBoundingClientRect().top:h;shift=h/2-(top+bot)/2;}
+ for(const c of [persp,ortho]){if(shift)c.setViewOffset(w,h,0,shift,w,h);else c.clearViewOffset();c.updateProjectionMatrix();}}
+window.addEventListener('resize',resize);
+function setOrtho(on){const t=controls.target;if(on&&cam!==ortho){orthoH=persp.position.distanceTo(t)*Math.tan(persp.fov*DEG/2);ortho.position.copy(persp.position);ortho.zoom=1;cam=ortho;}
+ else if(!on&&cam!==persp){const d=orthoH/ortho.zoom/Math.tan(persp.fov*DEG/2);persp.position.copy(t).add(ortho.position.clone().sub(t).setLength(d));cam=persp;}
+ controls.object=cam;resize();controls.update();}
+tog('tOrtho',setOrtho);
+const VIEWDIR={side:[-1,0.04,0],bow:[0,0.12,-1],stern:[0,0.12,1],top:[0.002,1,0.03],under:[-0.75,-0.5,-0.65],free:[-1,0.6,-1.15]};
+let fly=null;
+function goView(name,instant){if(!M)return;world.updateMatrixWorld(true);const bx=(flipped()?M.hullBox:M.box).clone().applyMatrix4(boat.matrixWorld),c=bx.getCenter(V(0,0,0)),sz=bx.getSize(V(0,0,0));let S=Math.max(sz.x,sz.y,sz.z)/2;
+ if(name==='under'&&!flipped()){S=Math.max(sz.x,sz.z,-bx.min.y)/2;c.y=bx.min.y/2;}
+ if(name==='top')S=Math.max(sz.x,sz.z)/2;
+ S=Math.max(S,0.1);const dir=V(...VIEWDIR[name]).normalize();const t1=c,p1=c.clone().add(dir.multiplyScalar(cam===ortho?S*4:S*3.1));
+ if(cam===ortho){orthoH=S*1.12;ortho.zoom=1;resize();}
+ persp.near=S*0.005;persp.far=S*400;persp.updateProjectionMatrix();scene.fog.near=S*10;scene.fog.far=S*40;
+ const sc=sun.shadow.camera,R=S*1.4;sc.left=-R;sc.right=R;sc.top=R;sc.bottom=-R;sc.near=0.01;sc.far=S*12;sc.updateProjectionMatrix();sun.position.copy(c).add(V(-S*1.6,S*3.2,-S*1.3));sun.target.position.copy(c);
+ fly={p0:cam.position.clone(),t0:controls.target.clone(),p1,t1,k:instant?1:0};if(instant){cam.position.copy(p1);controls.target.copy(t1);fly=null;controls.update();}
+ document.querySelectorAll('#views .v').forEach(x=>x.setAttribute('aria-pressed',x.dataset.view===name));}
+document.querySelectorAll('#views .v').forEach(b=>b.addEventListener('click',()=>goView(b.dataset.view)));
+
+/* ================= Auswahl im 3D ================= */
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();let down=null,sel=null;
+/* Messpunkte im 3D ziehen: bewegt sich in der Spantebene ihrer Station, beide Seiten bleiben gespiegelt */
+let stDots=[],dragDot=null,punkteGesperrt=false;
+try{punkteGesperrt=localStorage.getItem('werftkoje-sperre')==='1';}catch(e){}
+function setLock(on){punkteGesperrt=on;const b=$('bLock');b.setAttribute('aria-pressed',on);b.textContent=on?'🔒':'🔓';b.title=on?'Messpunkte gesperrt – tippen zum Freigeben':'Messpunkte frei – tippen zum Sperren';try{localStorage.setItem('werftkoje-sperre',on?'1':'0');}catch(e){}}
+setLock(punkteGesperrt);$('bLock').onclick=()=>{setLock(!punkteGesperrt);toast(punkteGesperrt?'Messpunkte gesperrt':'Messpunkte frei verschiebbar');};
+function dotAt(e){if(punkteGesperrt||!stGrp||!stGrp.visible||!stDots.length)return null;const r=renderer.domElement.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;let best=null,bd=e.pointerType==='touch'?30:16;
+ for(const d of stDots){const v=d.m.getWorldPosition(new THREE.Vector3()).project(cam);if(v.z>1)continue;const sx=(v.x+1)/2*r.width,sy=(1-v.y)/2*r.height,dd=Math.hypot(sx-px,sy-py);if(dd<bd){bd=dd;best=d;}}return best;}
+function dragTo(e){const A=P.rumpf.aufmass,s=A&&A.stationen.find(q=>q.id===dragDot.st);if(!s)return;const r=renderer.domElement.getBoundingClientRect();
+ ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,cam);const hit=new THREE.Vector3();if(!ray.ray.intersectPlane(dragDot.plane,hit))return;
+ boat.worldToLocal(hit);const yy=hit.y*1000,bb=Math.max(0,Math.abs(hit.x*1000)),m=Math.round(A.bezug.kieloben?(+A.bezug.wl||0)-yy:yy+(+A.bezug.wl||0)),B=Math.round(bb);
+ switch(dragDot.kind){case 'deck':s.deck=m;break;case 'kiel':s.kiel=m;break;case 'breite':s.breite=B;s.deck=m;break;
+  case 'spant':{const q=s.spant[dragDot.idx];if(q){q[0]=m;q[1]=B;}break;}
+  case 'sente':{const se=(A.senten||[]).find(x=>x.id===dragDot.idx);if(se){const a=(+se.winkel||0)*DEG,y0=amY(A,+se.hoehe||0);s.sv[se.id]=Math.max(0,Math.round(bb*Math.cos(a)+(y0-yy)*Math.sin(a)));}break;}}
+ P.rumpf.aufmassAktiv=true;deriveAufmass();needRebuild=true;dragDot.moved=true;}
+renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==0)return;const d=dotAt(e);if(!d)return;e.stopImmediatePropagation();e.preventDefault();
+ const wp=d.m.getWorldPosition(new THREE.Vector3()),n=new THREE.Vector3(0,0,1).transformDirection(boat.matrixWorld);dragDot={st:d.st,kind:d.kind,idx:d.idx,plane:new THREE.Plane().setFromNormalAndCoplanarPoint(n,wp),moved:false};
+ focusSt=d.st;controls.enabled=false;renderer.domElement.setPointerCapture(e.pointerId);needRebuild=true;},{capture:true});
+renderer.domElement.addEventListener('pointermove',e=>{if(!dragDot)return;e.stopImmediatePropagation();dragTo(e);},{capture:true});
+const endDrag=e=>{if(!dragDot)return;e.stopImmediatePropagation();dragDot=null;controls.enabled=true;down=null;needRebuild=true;commitSoon();if(tab==='linien')renderWin();};
+renderer.domElement.addEventListener('pointerup',endDrag,{capture:true});renderer.domElement.addEventListener('pointercancel',endDrag,{capture:true});
+renderer.domElement.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,b:e.button};});
+renderer.domElement.addEventListener('pointerup',e=>{const d=down;down=null;if(!d||d.b!==0||Math.hypot(e.clientX-d.x,e.clientY-d.y)>5)return;
+ const r=renderer.domElement.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,cam);
+ const hit=ray.intersectObjects(pickables,false).find(h=>{let o=h.object;while(o){if(!o.visible)return false;o=o.parent;}return true;});
+ if(hit)select(hit.object.userData.partId);});
+function select(id){sel=id;tab=id==='rumpf'?'rumpf':'teile';showWin(true);renderWin();}
+
+/* ================= Werkstatt-Fenster ================= */
+let tab='teile';
+const mobile=()=>matchMedia('(max-width:720px)').matches;
+function showWin(on){$('win').hidden=!on;$('bWerk').setAttribute('aria-pressed',on);if(on&&mobile()){$('card').hidden=true;$('bModell').setAttribute('aria-pressed',false);}resize();}
+function showCard(on){$('card').hidden=!on;$('bModell').setAttribute('aria-pressed',on);if(on&&mobile()){$('win').hidden=true;$('bWerk').setAttribute('aria-pressed',false);}resize();}
+// Bodenleiste am Handy: ziehen = Höhe ändern, tippen = ein-/ausklappen (Höhe gilt für Modell und Werkstatt)
+const SH_KEY='werftkoje-leiste';let shOpen=null;
+function setSheet(px){const v=clamp(Math.round(px),56,innerHeight*0.88);document.documentElement.style.setProperty('--sh',v+'px');try{localStorage.setItem(SH_KEY,v);}catch(e){}resize();}
+try{const v=+localStorage.getItem(SH_KEY);if(v>0)document.documentElement.style.setProperty('--sh',v+'px');}catch(e){}
+for(const [hid,sid] of [['cardH','card'],['winH','win']]){const h=$(hid);let st=null;
+ h.addEventListener('pointerdown',e=>{if(!mobile())return;e.preventDefault();st={y:e.clientY,h:$(sid).getBoundingClientRect().height,moved:false};h.setPointerCapture(e.pointerId);});
+ h.addEventListener('pointermove',e=>{if(!st)return;const dy=e.clientY-st.y;if(Math.abs(dy)>4)st.moved=true;if(st.moved)setSheet(st.h-dy);});
+ h.addEventListener('pointerup',()=>{if(!st)return;const s=st;st=null;if(s.moved)return;if(s.h>90){shOpen=s.h;setSheet(56);}else setSheet(shOpen||innerHeight*0.42);});
+ h.addEventListener('pointercancel',()=>{st=null;});}
+// Desktop: Fenstergröße per Ecke rechts unten (CSS resize) – dabei Bild nicht verschieben
+if(window.ResizeObserver)new ResizeObserver(()=>{if(mobile())resize();}).observe($('card'));
+$('bWerk').onclick=()=>showWin($('win').hidden);$('bModell').onclick=()=>showCard($('card').hidden);
+$('bUndo').onclick=undo;$('bRedo').onclick=redo;
+/* ================= Speichern: Cloud (pro Person, alle Geräte) und Datei ================= */
+let DB=null,UID=null,DL=null,toastT=null;
+function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true;},2600);}
+(async()=>{try{if(!(window.claude&&window.claude.use))return;const [db,user,dl]=await Promise.all([claude.use('db'),claude.use('user'),claude.use('downloads')]);DL=dl;
+ const id=user?await user.id():null;if(db&&id){DB=db;UID=id;}if(tab==='projekt')renderWin();}catch(e){}})();
+const projCol=()=>DB.collection('data/users/'+UID);
+/* Ablage für gespeicherte Projekte: Konto (im Claude-Viewer) oder dieses Gerät (als eigenständige App) */
+const LOCAL_KEY='werftkoje-projekte';
+const localAll=()=>{try{return JSON.parse(localStorage.getItem(LOCAL_KEY)||'{}');}catch(e){return {};}};
+const localPut=all=>{localStorage.setItem(LOCAL_KEY,JSON.stringify(all));};
+const store={
+ async list(){if(DB){const qs=await projCol().orderBy('stand','desc').limit(100).get();return qs.docs.map(d=>({id:d.id,...(d.data()||{})}));}
+  const a=localAll();return Object.keys(a).map(id=>({id,...a[id]})).sort((x,y)=>String(y.stand).localeCompare(String(x.stand)));},
+ async put(id,v){if(DB)return projCol().doc(id).set(v);const a=localAll();a[id]=v;localPut(a);},
+ async del(id){if(DB)return projCol().doc(id).delete();const a=localAll();delete a[id];localPut(a);}};
+const ortName=()=>DB?'deinem Konto':'auf diesem Gerät';
+async function cloudSave(asNew){flush();
+ try{if(asNew||!P.cloudId)P.cloudId=uid();const json=JSON.stringify(P);await store.put(P.cloudId,{name:P.name,klasse:P.klasse,stand:new Date().toISOString(),json});commit();
+  toast('Gespeichert: '+P.name);if(tab==='projekt')renderWin();}catch(e){toast('Speichern ging nicht: '+((e&&(e.message||e.code))||'unbekannter Fehler'));}}
+async function fileSave(){const name=(P.name||'Projekt').replace(/[\\/:*?"<>|]+/g,' ').trim()||'Projekt',data=JSON.stringify(P,null,1);
+ if(!DL){try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download=name+'.werftkoje.json';document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);toast('Datei gespeichert');}catch(e){toast('Datei konnte nicht gespeichert werden');}return;}
+ try{await DL.save({filename:name+'.werftkoje.json',data});toast('Datei gespeichert');}
+ catch(e){if(e&&e.code!=='declined')toast('Datei konnte nicht gespeichert werden');}}
+function openProject(o,cloudId){flush();P=normalize(o);if(cloudId)P.cloudId=cloudId;sel=null;selLine=null;commit();needRebuild=true;renderAll();setTimeout(()=>goView('free'),50);toast('Geöffnet: '+P.name);}
+$('bSave').onclick=()=>cloudSave(false);
+window.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();cloudSave(false);}});
+window.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey))return;const t=e.target.tagName;if(t==='INPUT'||t==='TEXTAREA')return;const k=e.key.toLowerCase();if(k==='z'&&!e.shiftKey){e.preventDefault();undo();}else if(k==='y'||(k==='z'&&e.shiftKey)){e.preventDefault();redo();}});
+document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;renderWin();}));
+// Fenster verschieben (nur Desktop)
+{const h=$('winH'),w=$('win');let st=null;h.addEventListener('pointerdown',e=>{if(mobile())return;const r=w.getBoundingClientRect();st={dx:e.clientX-r.left,dy:e.clientY-r.top};h.setPointerCapture(e.pointerId);});
+ h.addEventListener('pointermove',e=>{if(!st)return;w.style.setProperty('--wx',clamp(e.clientX-st.dx,0,innerWidth-120)+'px');w.style.setProperty('--wy',clamp(e.clientY-st.dy,0,innerHeight-60)+'px');});
+ h.addEventListener('pointerup',()=>{st=null;});}
+
+/* Feld-Bausteine */
+function num(obj,key,label,min,max,step,unit,kind,idp,after){const id='f-'+idp+'-'+key,v=+obj[key]||0;
+ const n=el('input',{type:'number',id,min,max,step,value:v,inputmode:'decimal'});const r=el('input',{type:'range','aria-label':label,min,max,step,value:clamp(v,min,max)});
+ const set=(x,src)=>{if(!isFinite(x))return;obj[key]=x;if(src!==n)n.value=x;if(src!==r)r.value=clamp(x,min,max);changed(kind);if(after)after(x);};
+ n.addEventListener('input',()=>set(parseFloat(n.value),n));r.addEventListener('input',()=>set(parseFloat(r.value),r));
+ return el('div',{class:'fld'},el('label',{for:id,text:label}),n,el('span',{class:'u',text:unit||''}),r);}
+function txt(obj,key,label,idp,after){const id='f-'+idp+'-'+key;const i=el('input',{type:'text',id,value:obj[key]||''});i.addEventListener('input',()=>{obj[key]=i.value;changed('name');});i.addEventListener('change',()=>{if(after)after();});return el('div',{class:'fld2'},el('label',{for:id,text:label}),i);}
+function pick(obj,key,label,opts,idp,onch){const id='f-'+idp+'-'+key;const s=el('select',{id});for(const [v,t] of opts){const o=el('option',{value:v,text:t});if(String(obj[key]??'')===v)o.selected=true;s.append(o);}s.addEventListener('change',()=>onch(s.value));return el('div',{class:'fld2'},el('label',{for:id,text:label}),s);}
+function check(obj,key,label,kind,idp,after){const id='f-'+idp+'-'+key;const c=el('input',{type:'checkbox',id});c.checked=!!obj[key];c.addEventListener('change',()=>{obj[key]=c.checked;changed(kind);if(after)after();});return el('label',{class:'chk',for:id},c,label);}
+function twoStep(label,confirmLabel,fn,cls){const b=el('button',{class:'v '+(cls||''),type:'button',text:label});let armed=null;b.addEventListener('click',()=>{if(armed){clearTimeout(armed);armed=null;fn();return;}b.textContent=confirmLabel;b.classList.add('warn');armed=setTimeout(()=>{armed=null;b.textContent=label;b.classList.remove('warn');},3000);});return b;}
+const sub=t=>el('div',{class:'sub',text:t});
+const note=t=>el('p',{class:'note',text:t});
+const btn=(t,fn,cls)=>el('button',{class:'v '+(cls||''),type:'button',text:t,onclick:fn});
+
+function renderWin(){document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));const box=$('winB');const st=box.scrollTop;box.textContent='';
+ ({rumpf:renderRumpf,teile:renderTeile,linien:renderLinien,mechanik:renderMech,projekt:renderProjekt})[tab](box);box.scrollTop=st;}
+
+function renderRumpf(box){const R=P.rumpf,L=R.L,g='geo',i='rumpf';sel='rumpf';
+ if(R.aufmassAktiv)box.append(note('Die Rumpfform kommt aus den Messpunkten (grüne Punkte, Tab „Linien“). Die Formregler unten wirken erst wieder, wenn du daraus neue Messpunkte erzeugst.'),
+  el('div',{class:'row'},twoStep('Messpunkte aus Reglern neu erzeugen','Messwerte ersetzen?',()=>{R.aufmassAktiv=false;R.eigen=false;aufmassAusForm(R);changed('geo');renderWin();})));
+ box.append(sub('Hauptmaße'),
+  num(R,'L','Länge',100,8000,1,'mm',g,i),num(R,'B','Größte Breite',10,3000,1,'mm',g,i),num(R,'Bpos','Lage größte Breite',10,90,1,'%',g,i),
+  num(R,'H','Deckhöhe am Heck',0,Math.max(600,L*0.4),1,'mm',g,i),num(R,'sprung','Sprung zum Bug',0,Math.max(300,L*0.2),1,'mm',g,i),
+  num(R,'T','Rumpftiefgang',0,Math.max(400,L*0.25),1,'mm',g,i),num(R,'seite','Bordwand senkrecht',0,Math.max(400,L*0.3),1,'mm',g,i),
+  sub('Form'),
+  num(R,'bug','Bug (0 = senkrecht, 100 = Löffel)',0,100,1,'',g,i),check(R,'offen','Offenes Boot (ohne durchgehendes Deck)',g,i),num(R,'wolbung','Deckwölbung (Anteil der halben Breite)',0,30,0.5,'%',g,i),num(R,'spiegel','Spiegelbreite',2,100,1,'%',g,i),num(R,'boden','Boden (0 = rund, 100 = V)',0,100,1,'',g,i),
+  sub('Farbe & Gewicht'));
+ const sw=el('div',{class:'row'});for(const [c,n] of [['#f4f5f2','Weiß'],['#9aa3a8','Grau'],['#1f2a33','Anthrazit'],['#2f6db3','Blau'],['#c9322a','Rot'],['#f2c230','Gelb']])sw.append(el('button',{class:'v',type:'button',style:'width:30px;height:28px;padding:0;background:'+c,title:n,'aria-label':'Rumpffarbe '+n,onclick:()=>{R.farbe=c;cp.value=c;changed('geo');}}));
+ const cp=el('input',{type:'color',value:R.farbe||'#f4f5f2','aria-label':'Eigene Rumpffarbe'});cp.addEventListener('input',()=>{R.farbe=cp.value;changed('geo');});sw.append(cp);
+ box.append(sw,num(R,'masse','Rumpf leer (für Schwerpunkt)',0,Math.max(5000,L*15),1,'g','drive',i),
+  note('Alle Teile werden in mm ab Bug gemessen, Höhe ab Wasserlinie. Änderst du die Länge, bleiben die Teile an ihrer Stelle stehen.'));}
+
+function partOpts(excl){return P.teile.filter(t=>!excl||!excl(t)).map(t=>[t.id,t.name]);}
+function descendants(id){const out=new Set([id]);let grew=true;while(grew){grew=false;for(const t of P.teile)if(t.parent&&out.has(t.parent)&&!out.has(t.id)){out.add(t.id);grew=true;}}return out;}
+function renderTeile(box){if(sel==='rumpf')sel=null;
+ const ts=el('select',{id:'newTyp','aria-label':'Teiltyp'});for(const k in TYPEN)ts.append(el('option',{value:k,text:TYPEN[k]+' – '+TYPHILFE[k]}));
+ box.append(sub('Neues Teil'),el('div',{class:'row'},el('div',{style:'flex:1;min-width:0'},ts),btn('Anlegen',()=>{const p=typDefaults(ts.value,P.rumpf);p.name=TYPEN[ts.value]+' '+(P.teile.filter(t=>t.typ===ts.value).length+1);P.teile.push(p);sel=p.id;changed('geo');renderWin();},'pri')));
+ box.append(sub('Teile ('+P.teile.length+')'));
+ if(!P.teile.length)box.append(note('Noch keine Teile. Lege oben dein erstes an, zum Beispiel eine Kielflosse.'));
+ else{const list=el('div',{class:'plist',role:'list'});const order=[];const walk=(par,depth)=>{for(const t of P.teile)if((t.parent||null)===par&&!order.find(o=>o.t===t)){order.push({t,depth});walk(t.id,depth+1);}};walk(null,0);for(const t of P.teile)if(!order.find(o=>o.t===t))order.push({t,depth:0});
+  for(const {t,depth} of order)list.append(el('button',{type:'button',class:depth?'kid':'','aria-pressed':t.id===sel,onclick:()=>{sel=t.id;renderWin();}},(depth?'└ ':'')+t.name,el('span',{text:TYPEN[t.typ]})));box.append(list);}
+ const p=P.teile.find(t=>t.id===sel);if(!p){box.append(note('Teil in der Liste wählen oder im 3D-Fenster anklicken.'));return;}
+ const L=P.rumpf.L,i=p.id,g='geo',d='drive';
+ box.append(sub(p.name+' bearbeiten'),txt(p,'name','Name',i,()=>renderWin()));
+ const ex=descendants(p.id);box.append(pick(p,'parent','Hängt an',[['','Rumpf (fest)'],...partOpts(t=>ex.has(t.id))],i,v=>{p.parent=v||null;changed('geo');}));
+ if(p.typ!=='platte'&&p.typ!=='kiel'){box.append(sub(p.typ==='rohr'?'Anfangspunkt (Drehpunkt)':'Lage (Drehpunkt)'),num(p,'x','Abstand vom Bug',Math.round(-L*0.4),Math.round(L*1.5),1,'mm',g,i),num(p,'y','Höhe über Wasserlinie',Math.round(-L),Math.round(L*2.2),1,'mm',g,i),num(p,'s','Seitlich (+ = Steuerbord)',Math.round(-L),Math.round(L),1,'mm',g,i));}
+ box.append(sub('Form'));
+ const nf=(k,l,a,b,st,u)=>box.append(num(p,k,l,a,b,st||1,u||'mm',g,i));
+ switch(p.typ){
+  case 'profil':box.append(pick(p,'lage','Ausrichtung',[['senkrecht','senkrecht (Flosse, Ruder)'],['waagerecht','waagerecht (Tragflügel, Klappe)']],i,v=>{p.lage=v;changed('geo');}));
+   nf('spann','Spannweite / Tiefe',5,Math.round(L*1.2));nf('sehneWurzel','Sehne an der Wurzel',3,Math.round(L*0.3));nf('sehneSpitze','Sehne an der Spitze',3,Math.round(L*0.3));nf('dicke','Profildicke',2,25,0.5,'%');nf('pfeil','Pfeilung der Spitze',Math.round(-L*0.2),Math.round(L*0.2));nf('drehpunkt','Drehpunkt in der Sehne',0,100,1,'%');break;
+  case 'bombe':nf('laenge','Länge',10,Math.round(L*0.6));nf('durchm','Durchmesser',3,Math.round(L*0.15));box.append(check(p,'blei','Aus Blei (Gewicht wird berechnet)',d,i,()=>renderWin()));
+   if(p.blei){const o=el('p',{class:'note',text:'Gewicht aus Volumen: '+gram(bombeMasse(p))});box.append(o);}break;
+  case 'rohr':nf('durchm','Durchmesser',1,Math.round(L*0.05));box.append(sub('Endpunkt'));nf('x2','Abstand vom Bug',Math.round(-L*0.4),Math.round(L*1.5));nf('y2','Höhe über Wasserlinie',Math.round(-L),Math.round(L*2.2));nf('s2','Seitlich (+ = Steuerbord)',Math.round(-L),Math.round(L));
+   {const len=posOf(p.x,p.y,p.s).distanceTo(posOf(p.x2,p.y2,p.s2))*1000;box.append(note('Länge: '+mm(len)));}break;
+  case 'kasten':nf('laenge','Länge (längs)',1,Math.round(L*0.5));nf('breite','Breite (quer)',1,Math.round(L*0.5));nf('hoehe','Höhe',1,Math.round(L*0.5));break;
+  case 'servo':nf('laenge','Gehäuse Länge',5,200);nf('breite','Gehäuse Breite',5,200);nf('hoehe','Gehäuse Höhe',5,200);nf('arm','Hebelarm (Drehpunkt bis Loch)',3,250);box.append(note('Der Hebelarm zeigt bei 0° zur Seite. Setz den Anker unten auf die Armlänge, damit Stange oder Seil am Loch hängen.'));break;
+  case 'segel':nf('vorliek','Vorliek (am Mast)',50,Math.round(L*2.5));nf('unterliek','Unterliek (am Baum)',20,Math.round(L));nf('kopf','Kopfbreite (ohne Gaffel)',0,Math.round(L*0.3));nf('gaffel','Gaffel-Länge (0 = keine)',0,Math.round(L*1.2));nf('gaffelWinkel','Gaffel-Winkel zum Mast',0,90,0.5,'°');nf('rundung','Achterliek-Rundung',0,Math.round(L*0.3));nf('fall','Mastfall nach achtern',-15,30,0.5,'°');nf('woelbung','Wölbung',0,20,0.5,'%');
+   box.append(check(p,'baum','Mit Baum',g,i),note('Segelfläche: '+area(sailArea(p))));break;
+  case 'kiel':nf('breite','Breite',5,Math.round(L*0.1));nf('hoehe','Höhe unter dem Rumpf (Mitte)',0,Math.round(L*0.2));nf('hoeheSteven','Stärke am Vorsteven',0,Math.round(L*0.2));nf('hoeheHeck','Höhe am Heck',0,Math.round(L*0.2));box.append(note('Folgt automatisch der Kiellinie vom Heck bis hinauf zum Vorsteven.'));break;
+  case 'fuehler':nf('laenge','Länge',20,Math.round(L));box.append(check(p,'auto','Schleift automatisch auf dem Wasser',d,i,()=>renderWin()));break;
+  case 'platte':(p.pts||[]).forEach((q,k)=>{box.append(note('Ecke '+(k+1)));const o={x:q[0],y:q[1],s:q[2]};const wr=()=>{q[0]=o.x;q[1]=o.y;q[2]=o.s;};
+   for(const [kk,l,a,b] of [['x','vom Bug',-L*0.4,L*1.5],['y','Höhe',-L,L*2],['s','seitlich',-L,L]])box.append(num(o,kk,l,Math.round(a),Math.round(b),1,'mm',g,i+'-e'+k+kk,()=>{wr();}));});break;
+ }
+ box.append(sub('Bewegung'));
+ box.append(pick(p,'achse','Drehachse',[['y','Hochachse (wie ein Ruder)'],['x','Querachse (wie eine Klappe)'],['z','Längsachse (rollen)']],i,v=>{p.achse=v;changed('drive');}));
+ if(!(p.typ==='fuehler'&&p.auto)){
+  box.append(num(p,'winkel','Grundwinkel',-180,180,0.5,'°',d,i));
+  const srcOpts=[['','Kein Antrieb (fest)'],...P.steuer.map(s=>['steuer:'+s.id,'Steuerwert: '+s.name]),['lage:hoehe','Lage: Höhe über Wasser'],['lage:kraengung','Lage: Krängung'],['lage:trimm','Lage: Trimm'],...P.teile.filter(t=>t.id!==p.id).map(t=>['teil:'+t.id,'Winkel von: '+t.name])];
+  const holder={q:p.antrieb?p.antrieb.quelle:''};
+  box.append(pick(holder,'q','Angetrieben von',srcOpts,i,v=>{p.antrieb=v?Object.assign({faktor:1,versatz:0,min:-90,max:90},p.antrieb||{},{quelle:v}):null;changed('drive');renderWin();}));
+  if(p.antrieb){const A=p.antrieb;box.append(num(A,'faktor','Übersetzung (Faktor)',-5,5,0.01,'×',d,i+'-a'),num(A,'versatz','Versatz',-180,180,0.5,'°',d,i+'-a'),num(A,'min','Anschlag min',-180,180,1,'°',d,i+'-a'),num(A,'max','Anschlag max',-180,180,1,'°',d,i+'-a'),
+   note('Winkel = Versatz + Faktor × Quelle, begrenzt durch die Anschläge.'));}
+ }else box.append(note('Der Winkel ergibt sich aus der Höhe über Wasser. Andere Teile können sich mit „Winkel von: '+p.name+'“ daran hängen.'));
+ box.append(sub('Anker für Seile und Stangen'),note('Relativ zum Drehpunkt, dreht mit dem Teil.'));
+ for(const [k,l] of [[0,'längs (+ = nach achtern)'],[1,'hoch'],[2,'seitlich (+ = Stb.)']])box.append(num(p.anker,k,l,Math.round(-L*0.6),Math.round(L*0.6),1,'mm',d,i+'-k'));
+ box.append(sub('Aussehen & Gewicht'));
+ const cp=el('input',{type:'color',id:'f-'+i+'-farbe',value:p.farbe||'#d9dde0'});cp.addEventListener('input',()=>{p.farbe=cp.value;changed('geo');});box.append(el('div',{class:'fld2'},el('label',{for:'f-'+i+'-farbe',text:'Farbe'}),el('div',null,cp)));
+ if(!(p.typ==='bombe'&&p.blei))box.append(num(p,'masse','Gewicht',0,Math.max(1000,L*10),1,'g',d,i));
+ box.append(el('div',{class:'row'},
+  btn('Duplizieren',()=>{const c=JSON.parse(JSON.stringify(p));c.id=uid();c.name=p.name+' Kopie';P.teile.push(c);sel=c.id;changed('geo');renderWin();}),
+  btn('Spiegeln',()=>{const c=JSON.parse(JSON.stringify(p));c.id=uid();c.name=p.name+' gespiegelt';c.s=-c.s;if('s2' in c)c.s2=-c.s2;if(c.pts)c.pts.forEach(q=>q[2]=-q[2]);c.anker[2]=-c.anker[2];P.teile.push(c);sel=c.id;changed('geo');renderWin();}),
+  twoStep('Löschen','Wirklich löschen?',()=>{const id=p.id;P.teile=P.teile.filter(t=>t.id!==id);for(const t of P.teile){if(t.parent===id)t.parent=null;if(t.antrieb&&t.antrieb.quelle==='teil:'+id)t.antrieb=null;}P.verbindungen=P.verbindungen.filter(v=>v.a!==id&&v.b!==id);sel=null;changed('geo');renderWin();})));
+}
+
+/* ================= Linien-Editor (2D) ================= */
+const EBENEN={seite:{name:'Seitenriss',a:'vom Bug',b:'Höhe',lage:'Seitlich (+ = Stb.)'},oben:{name:'Draufsicht',a:'vom Bug',b:'Seitlich',lage:'Höhe über WL'},spant:{name:'Spantriss',a:'Seitlich',b:'Höhe',lage:'Abstand vom Bug'}};
+function hullSamples(n){const L=P.rumpf.L,o=[];for(let i=0;i<=n;i++){const u=i/n;o.push([u*L,hdims(u),u]);}return o;}
+function planeBounds(plane,lage){const L=P.rumpf.L;let maxB=0,minK=0,maxD=0;for(const [,d] of hullSamples(40)){maxB=Math.max(maxB,d.B*1000);minK=Math.min(minK,d.Yk*1000);maxD=Math.max(maxD,d.Ys*1000);}
+ if(plane==='seite')return [0,L,minK,maxD];if(plane==='oben')return [0,L,-maxB,maxB];
+ const d=hdims(clamp(lage/L,0,1));return [-maxB*1.15,maxB*1.15,Math.min(d.Yk*1000,0),d.Ys*1000+0.15*maxB];}
+function fnSample(pts){const n=pts.length;if(n<2)return pts.slice();const a0=pts[0][0],a1=pts[n-1][0],o=[];for(let k=0;k<=80;k++){const a=a0+(a1-a0)*k/80;o.push([a,mono(pts,a)]);}return o;}
+function drawBackdrop(ctx,T,plane,lage,W){const L=P.rumpf.L,hs=hullSamples(60);ctx.lineWidth=1;
+ if(plane!=='oben'){const y=T(0,0)[1];ctx.strokeStyle='rgba(90,170,210,.8)';ctx.setLineDash([6,4]);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();ctx.setLineDash([]);}
+ let poly=[];
+ if(plane==='seite')poly=[...hs.map(([x,d])=>[x,d.Ys*1000]),...hs.slice().reverse().map(([x,d])=>[x,d.Yk*1000])];
+ else if(plane==='oben')poly=[...hs.map(([x,d])=>[x,d.B*1000]),...hs.slice().reverse().map(([x,d])=>[x,-d.B*1000])];
+ else{const u=clamp(lage/L,0,1);if(lage>=0&&lage<=L){const d=hdims(u),ex=0.5+0.5*clamp(P.rumpf.boden/100,0,1),side=[];for(let k=0;k<=24;k++){const [s,y]=secAt(u,d,ex)(k/24);side.push([s*1000,y*1000]);}poly=[...side.slice().reverse().map(([s,y])=>[-s,y]),...side];}}
+ if(poly.length){ctx.beginPath();poly.forEach(([a,b],i)=>{const [x,y]=T(a,b);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.closePath();ctx.fillStyle='rgba(232,238,240,.07)';ctx.fill();ctx.strokeStyle='rgba(232,238,240,.5)';ctx.stroke();}
+ for(const id in PB){const p=built[id]&&built[id].p;if(!p||p.typ==='segel')continue;const b=PB[id];const X0=b.min.z*1000+L/2,X1=b.max.z*1000+L/2,Y0=b.min.y*1000,Y1=b.max.y*1000,S0=b.min.x*1000,S1=b.max.x*1000;let r;
+  if(plane==='seite')r=[X0,Y0,X1,Y1];else if(plane==='oben')r=[X0,S0,X1,S1];else{if(lage<X0||lage>X1)continue;r=[S0,Y0,S1,Y1];}
+  const [a,c]=T(r[0],r[1]),[e,f]=T(r[2],r[3]);ctx.strokeStyle=id===sel?'rgba(242,194,48,.9)':'rgba(157,178,187,.4)';ctx.strokeRect(Math.min(a,e),Math.min(c,f),Math.abs(e-a),Math.abs(f-c));}}
+function editor2D(cfg){const wrap=el('div',{class:'ed'}),cv=el('canvas',{class:'edc','aria-label':'Linien zeichnen: tippen setzt einen Punkt, Punkt ziehen formt, Fläche ziehen verschiebt'});const ctx=cv.getContext('2d');
+ const info=el('div',{class:'edi'});let W=0,H=0,dpr=1,view=null,selI=-1,drag=null;
+ const act=()=>cfg.curves.find(c=>c.active)||cfg.curves[0];const mi=cfg.plane==='spant'?0:1;
+ const T=(a,b)=>[(a-view.a)*view.k+W/2,H/2-(b-view.b)*view.k];
+ const Mm=(x,y)=>[(x-W/2)/view.k+view.a,(H/2-y)/view.k+view.b];
+ function fit(onLine){const pts=act().pts;let [a0,a1,b0,b1]=planeBounds(cfg.plane,+cfg.lage()||0);
+  if(onLine&&pts.length){a0=Math.min(...pts.map(p=>p[0]));a1=Math.max(...pts.map(p=>p[0]));b0=Math.min(...pts.map(p=>p[1]));b1=Math.max(...pts.map(p=>p[1]));}
+  else for(const p of pts){a0=Math.min(a0,p[0]);a1=Math.max(a1,p[0]);b0=Math.min(b0,p[1]);b1=Math.max(b1,p[1]);}
+  const pa=Math.max(10,(a1-a0)*0.08),pb=Math.max(10,(b1-b0)*0.18);a0-=pa;a1+=pa;b0-=pb;b1+=pb;view={a:(a0+a1)/2,b:(b0+b1)/2,k:Math.min(W/(a1-a0),H/(b1-b0))};}
+ function size(){const r=cv.getBoundingClientRect();if(r.width<10)return false;dpr=Math.min(2,devicePixelRatio||1);W=r.width;H=r.height;cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);return true;}
+ function draw(){if(!view)return;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+  const target=36/view.k,pw=Math.pow(10,Math.floor(Math.log10(target))),step=[1,2,5,10].map(m=>m*pw).find(s=>s>=target);
+  const [A0,B1]=Mm(0,0),[A1,B0]=Mm(W,H);ctx.lineWidth=1;
+  for(let a=Math.ceil(A0/step)*step;a<=A1;a+=step){const x=Math.round(T(a,0)[0])+.5;ctx.strokeStyle=Math.abs(a)<1e-9?'rgba(157,178,187,.55)':'rgba(157,178,187,.12)';ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let b=Math.ceil(B0/step)*step;b<=B1;b+=step){const y=Math.round(T(0,b)[1])+.5;ctx.strokeStyle=Math.abs(b)<1e-9?'rgba(157,178,187,.55)':'rgba(157,178,187,.12)';ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  drawBackdrop(ctx,T,cfg.plane,+cfg.lage()||0,W);
+  for(const c of cfg.curves){const sp=c.fn?fnSample(c.pts):sampleFree(c.pts,c.closed,c.smooth);ctx.strokeStyle=c.color;ctx.lineWidth=c.active?2:1.2;ctx.globalAlpha=c.active?1:0.55;
+   for(const sg of c.mirror?[1,-1]:[1]){ctx.setLineDash(sg<0?[4,4]:[]);ctx.beginPath();sp.forEach((p,i)=>{const q=p.slice();q[mi]*=sg;const [x,y]=T(q[0],q[1]);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();}ctx.setLineDash([]);ctx.globalAlpha=1;}
+  act().pts.forEach(([a,b],i)=>{const [x,y]=T(a,b);ctx.beginPath();ctx.arc(x,y,i===selI?6.5:4.5,0,7);ctx.fillStyle=i===selI?'#f2c230':'#0c1820';ctx.fill();ctx.strokeStyle='#f2c230';ctx.lineWidth=1.5;ctx.stroke();});
+  ctx.font='11px "IBM Plex Mono", monospace';ctx.fillStyle='rgba(157,178,187,.95)';ctx.fillText(EBENEN[cfg.plane].name+' · Raster '+fmtN(step)+' mm',8,H-8);}
+ function showInfo(){info.textContent='';const c=act();if(cfg.readonly){info.append(el('span',{class:'u',style:'grid-column:1/-1',text:cfg.readonly}));return;}if(selI<0||!c.pts[selI]){info.append(el('span',{class:'u',style:'grid-column:1/-1',text:'Tippen setzt einen Punkt · Punkt ziehen formt · Fläche ziehen verschiebt'}));return;}
+  const p=c.pts[selI],E=EBENEN[cfg.plane];const f=(k,l)=>{const id='ed-'+cfg.key+'-'+k;const n=el('input',{type:'number',id,value:p[k],step:1});n.addEventListener('change',()=>{const v=parseFloat(n.value);if(!isFinite(v))return;p[k]=v;if(c.fn){c.pts.sort((x,y)=>x[0]-y[0]);selI=c.pts.indexOf(p);}cfg.onChange();draw();});return el('label',{for:id},l+' (mm)',n);};
+  info.append(f(0,E.a),f(1,E.b),btn('Punkt löschen',()=>{if(c.pts.length<=2)return;c.pts.splice(selI,1);selI=-1;cfg.onChange();draw();showInfo();},c.pts.length<=2?'':'warn'));}
+ const loc=e=>{const r=cv.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];};
+ cv.addEventListener('pointerdown',e=>{if(!view)return;const [px,py]=loc(e),c=act();let hit=-1,best=18;c.pts.forEach((p,i)=>{const [x,y]=T(p[0],p[1]),d=Math.hypot(x-px,y-py);if(d<best){best=d;hit=i;}});
+  if(cfg.readonly)hit=-1;drag={x:px,y:py,ref:hit>=0?c.pts[hit]:null,moved:false,va:view.a,vb:view.b};if(hit>=0){selI=hit;showInfo();}cv.setPointerCapture(e.pointerId);draw();});
+ cv.addEventListener('pointermove',e=>{if(!drag)return;const [px,py]=loc(e),c=act();if(!drag.moved&&Math.hypot(px-drag.x,py-drag.y)<4)return;drag.moved=true;
+  if(drag.ref){const [a,b]=Mm(px,py);drag.ref[0]=Math.round(a);drag.ref[1]=Math.round(b);if(c.fn)c.pts.sort((x,y)=>x[0]-y[0]);selI=c.pts.indexOf(drag.ref);cfg.onChange();showInfo();}
+  else{view.a=drag.va-(px-drag.x)/view.k;view.b=drag.vb+(py-drag.y)/view.k;}draw();});
+ cv.addEventListener('pointerup',()=>{const d=drag;drag=null;if(!d||d.moved||d.ref||cfg.readonly)return;const c=act(),[a,b]=Mm(d.x,d.y).map(Math.round),np=[a,b];
+  if(c.fn||c.pts.length<2){c.pts.push(np);if(c.fn)c.pts.sort((x,y)=>x[0]-y[0]);}
+  else{const n=c.pts.length,segs=c.closed?n:n-1;let bi=n-1,bd=Infinity;for(let i=0;i<segs;i++){const p=c.pts[i],q=c.pts[(i+1)%n],dx=q[0]-p[0],dy=q[1]-p[1],L2=dx*dx+dy*dy||1,t=clamp(((a-p[0])*dx+(b-p[1])*dy)/L2,0,1),dd=Math.hypot(p[0]+t*dx-a,p[1]+t*dy-b);if(dd<bd){bd=dd;bi=i;}}
+   const endD=Math.hypot(c.pts[n-1][0]-a,c.pts[n-1][1]-b),startD=Math.hypot(c.pts[0][0]-a,c.pts[0][1]-b);
+   if(!c.closed&&bd>Math.min(endD,startD)*0.6){if(endD<=startD)c.pts.push(np);else c.pts.unshift(np);}else c.pts.splice(bi+1,0,np);}
+  selI=c.pts.indexOf(np);cfg.onChange();draw();showInfo();});
+ cv.addEventListener('pointercancel',()=>{drag=null;});
+ cv.addEventListener('wheel',e=>{if(!view)return;e.preventDefault();const [px,py]=loc(e),[a,b]=Mm(px,py),f=e.deltaY>0?0.85:1/0.85;view.k*=f;const [a2,b2]=Mm(px,py);view.a+=a-a2;view.b+=b-b2;draw();},{passive:false});
+ const zoom=f=>{if(!view)return;view.k*=f;draw();};
+ wrap.append(cv,el('div',{class:'row'},btn('−',()=>zoom(0.75),'ic'),btn('+',()=>zoom(1/0.75),'ic'),btn('Boot einpassen',()=>{fit(false);draw();}),btn('Linie einpassen',()=>{fit(true);draw();})),info);
+ const ro=window.ResizeObserver?new ResizeObserver(()=>{if(size()){if(!view)fit(false);draw();}}):null;if(ro)ro.observe(cv);else requestAnimationFrame(()=>{if(size()){fit(false);draw();}});
+ showInfo();wrap.redraw=()=>draw();wrap.cfg=cfg;return wrap;}
+
+let selSt=null;
+function renderAufmass(box){const R=P.rumpf,L=R.L;if(!R.aufmass)R.aufmass={bezug:{laengs:'bug',versatz:0,wl:0,kieloben:false},stationen:[]};const A=R.aufmass,B=A.bezug;
+ const live=()=>{if(!R.aufmassAktiv&&A.stationen.some(s=>['deck','kiel','breite'].some(k=>isNum(s[k])))){R.aufmassAktiv=true;const cb=document.getElementById('f-am-aufmassAktiv');if(cb)cb.checked=true;}
+  if(R.aufmassAktiv&&deriveAufmass()&&hullEdW){for(const c of hullEdW.cfg.curves)c.pts=R.linien[c.key];hullEdW.redraw();}changed('geo');stat.textContent=statusText();};
+ const statusText=()=>{const S=A.stationen,c=k=>S.filter(s=>isNum(s.pos)&&isNum(s[k])).length,sp=S.filter(s=>stationSecPts(A,s).length).length;
+  const miss=['deck','kiel','breite'].filter(k=>c(k)<1).map(k=>({deck:'Deck',kiel:'Kiel',breite:'½ Breite'})[k]);
+  return S.length+' Stationen · '+sp+' mit Querschnitt'+(miss.length?' · noch ohne Messwert: '+miss.join(', ')+' (dort gilt vorerst die Parameterform)':'');};
+ box.append(sub('Aufmaß vom echten Boot'),note('Trag hier deine Messwerte ein, gemessen von deinem Bezugspunkt (im Modell hellblau). Deck, Kiel und Breite bauen die Linien, Spantpunkte und Senten die Querschnittsform.'));
+ const akt=check(R,'aufmassAktiv','Rumpf aus Aufmaß bauen','geo','am',()=>{if(R.aufmassAktiv)deriveAufmass();renderWin();});box.append(akt);
+ box.append(pick(B,'laengs','Längsmaße gemessen ab',[['bug','Bug (nach achtern +)'],['heck','Spiegel (nach vorn +)']],'am',v=>{B.laengs=v;live();}),
+  num(B,'versatz','Bezugspunkt liegt vom Bug/Spiegel',Math.round(-L*0.5),Math.round(L*0.5),1,'mm','am','am',()=>live()),
+  num(B,'wl','Wasserlinie über Bezugsebene',-2000,2000,1,'mm','am','am',()=>live()),
+  check(B,'kieloben','Boot liegt kieloben – Höhen von der Platte nach oben gemessen (Modell dreht sich mit)','am','am',()=>{live();setTimeout(()=>goView('side'),30);}));
+ const stat=el('p',{class:'note',role:'status'});stat.textContent=statusText();
+ // Tabelle
+ const tbl=el('div',{class:'amt'});tbl.append(...['Station','Deck','Kiel','½ Breite',''].map(t=>el('span',{class:'amh',text:t})));
+ const cell=(o,k,id)=>{const n=el('input',{type:'number',id,step:'any',inputmode:'decimal','aria-label':id,'data-st':o.id,class:o.id===focusSt?'foc':null,value:isNum(o[k])?o[k]:''});n.addEventListener('focus',()=>{focusSt=o.id;document.querySelectorAll('.amt input[data-st]').forEach(x=>x.classList.toggle('foc',x.dataset.st===o.id));buildStations();applyToggles();});n.addEventListener('input',()=>{o[k]=n.value===''?null:parseFloat(n.value);live();});return n;};
+ A.stationen.forEach((s,k)=>{const i='am-'+s.id;tbl.append(cell(s,'pos',i+'-pos'),cell(s,'deck',i+'-deck'),cell(s,'kiel',i+'-kiel'),cell(s,'breite',i+'-breite'),
+  el('div',{class:'row',style:'gap:4px;flex-wrap:nowrap'},el('button',{class:'v ic',type:'button',title:'Spantpunkte dieser Station','aria-pressed':selSt===s.id,onclick:()=>{selSt=selSt===s.id?null:s.id;focusSt=s.id;buildStations();applyToggles();renderWin();}},'⌒'+((s.spant||[]).length||'')),
+   el('button',{class:'v ic',type:'button',title:'Station löschen','aria-label':'Station löschen',onclick:()=>{A.stationen.splice(A.stationen.indexOf(s),1);live();renderWin();}},'✕')));});
+ const leg=el('p',{class:'note'});leg.innerHTML='Im Modell: <span style="color:'+ST_COL.voll+'">■ vollständig</span> · <span style="color:'+ST_COL.teil+'">■ teilweise</span> · <span style="color:'+ST_COL.leer+'">■ offen</span> · <span style="color:'+ST_COL.fokus+'">■ gerade bearbeitet</span>';
+ box.append(tbl,stat,leg);
+ const gen={schritt:100};
+ box.append(el('div',{class:'row'},btn('+ Station',()=>{const last=A.stationen.reduce((m,s)=>isNum(s.pos)?Math.max(m,+s.pos):m,-100);A.stationen.push({id:uid(),pos:last+100,deck:null,kiel:null,breite:null,spant:[]});changed('am');renderWin();})),
+  num(gen,'schritt','Messplan: Station alle',10,500,5,'mm','am','gen'),
+  el('div',{class:'row'},twoStep('Stationen über die ganze Länge anlegen',A.stationen.length?'Fehlende ergänzen?':'Anlegen?',()=>{const have=new Set(A.stationen.map(s=>+s.pos));for(let x=0;x<=L+0.5;x+=gen.schritt){const p=Math.round(x);if(!have.has(p))A.stationen.push({id:uid(),pos:p,deck:null,kiel:null,breite:null,spant:[]});}A.stationen.sort((a,b)=>(+a.pos)-(+b.pos));changed('am');renderWin();}),
+   btn('Sortieren',()=>{A.stationen.sort((a,b)=>(+a.pos)-(+b.pos));renderWin();})));
+ // Spantpunkte der gewählten Station
+ const s=A.stationen.find(x=>x.id===selSt);
+ if(s){if(!Array.isArray(s.spant))s.spant=[];box.append(sub('Spantpunkte Station '+(isNum(s.pos)?fmtN(s.pos):'?')+' mm'),note('Je Punkt: Höhe (gleiche Bezugsebene wie oben) und halbe Breite ab Mittellinie. Am besten alle 10–20 mm Höhe von Kiel bis Deck.'));
+  const t2=el('div',{class:'amt amt3'});t2.append(...['Höhe','½ Breite',''].map(t=>el('span',{class:'amh',text:t})));
+  s.spant.forEach((q,k)=>{const i='sp-'+s.id+'-'+k;const c=(j)=>{const n=el('input',{type:'number',id:i+'-'+j,step:'any',inputmode:'decimal','aria-label':(j?'halbe Breite':'Höhe')+' Punkt '+(k+1),value:isNum(q[j])?q[j]:''});n.addEventListener('input',()=>{q[j]=n.value===''?null:parseFloat(n.value);live();});return n;};
+   t2.append(c(0),c(1),el('button',{class:'v ic',type:'button','aria-label':'Punkt löschen',onclick:()=>{s.spant.splice(k,1);live();renderWin();}},'✕'));});
+  box.append(t2,el('div',{class:'row'},btn('+ Spantpunkt',()=>{s.spant.push([null,null]);changed('am');renderWin();})));
+  if((A.senten||[]).length){if(!s.sv)s.sv={};const t3=el('div',{class:'amt amt3'});t3.append(...['Sente','Abstand mm',''].map(t=>el('span',{class:'amh',text:t})));
+   for(const se of A.senten){const id='sv-'+s.id+'-'+se.id;const n=el('input',{type:'number',id,step:'any',inputmode:'decimal','aria-label':se.name+' Abstand',value:isNum(s.sv[se.id])?s.sv[se.id]:''});n.addEventListener('input',()=>{s.sv[se.id]=n.value===''?null:parseFloat(n.value);live();});
+    t3.append(el('label',{for:id,class:'amh',text:se.name+' ('+fmtN(se.winkel)+'°)'}),n,el('span'));}box.append(note('Sentenmaße dieser Station:'),t3);}
+  if(R.aufmassAktiv&&isNum(s.pos)){const x=amX(A,+s.pos);box.append(editor2D({key:'am-'+s.id,plane:'spant',lage:()=>x,curves:[{pts:stationSecPts(A,s).sort((a,b)=>a[0]-b[0]).map(p=>[Math.round(p[1]),Math.round(p[0])]),fn:false,smooth:true,closed:false,color:'#9fe6b8',active:true,mirror:true}],readonly:'Grün: deine Messpunkte · Hell: Querschnitt des Modells',onChange:()=>{}}));}}
+ // Senten definieren
+ if(!Array.isArray(A.senten))A.senten=[];
+ box.append(sub('Senten'),note('Eine Sente ist eine schräge Messlinie im Querschnitt: vom Ursprung auf der Mittellinie (Höhe im Bezugsmaß) unter einem Winkel zur Waagerechten Richtung Kiel. Pro Station misst du entlang dieser Linie den Abstand bis zur Bordwand und trägst ihn unter ⌒ ein. Im Modell violett.'));
+ for(const se of A.senten){const i='se-'+se.id,w=el('div',{class:'mrow'});const nm=el('input',{type:'text',id:i+'-n',value:se.name});nm.addEventListener('input',()=>{se.name=nm.value;changed('name');});
+  const nb=(k,l)=>{const n=el('input',{type:'number',id:i+'-'+k,step:'any',value:se[k]});n.addEventListener('input',()=>{const v=parseFloat(n.value);if(!isFinite(v))return;se[k]=v;live();});return el('label',{for:i+'-'+k},l,n);};
+  w.append(el('label',{class:'full',for:i+'-n'},'Name',nm),nb('hoehe','Ursprung Höhe mm'),nb('winkel','Winkel °'),el('div',null,btn('Entfernen',()=>{A.senten=A.senten.filter(x=>x!==se);live();renderWin();})));box.append(w);}
+ box.append(el('div',{class:'row'},btn('+ Sente',()=>{const n=A.senten.length;A.senten.push({id:uid(),name:'Sente '+String.fromCharCode(65+n),hoehe:Math.round((+B.wl||0)+(B.kieloben?-1:1)*hdims(0.5).Ys*1000),winkel:[30,50,70][n%3]});changed('geo');renderWin();})));}
+
+let hullAct='deck',hullEdW=null;
+function renderLinien(box){const R=P.rumpf,L=R.L,r=Math.round;if(sel==='rumpf')sel=null;hullEdW=null;renderAufmass(box);
+ box.append(sub('Rumpf von Hand formen'),note('Deckslinie, Kiellinie und halbe Breite als eigene Kurven. Das 3D-Modell folgt sofort.'));
+ if(!R.aufmassAktiv)box.append(check(R,'eigen','Rumpf folgt meinen Linien','geo','rumpf',()=>{if(R.eigen&&!R.linien)seedLines(R);renderWin();}));
+ if(R.eigen&&R.linien){const seg=el('div',{class:'seg'});for(const [k,t] of [['deck','Deckslinie'],['kiel','Kiellinie'],['breite','Halbe Breite']])seg.append(el('button',{class:'v',type:'button','aria-pressed':hullAct===k,onclick:()=>{hullAct=k;renderWin();}},t));box.append(seg);
+  const plane=hullAct==='breite'?'oben':'seite';
+  const curves=plane==='seite'?[{key:'deck',pts:R.linien.deck,fn:true,color:'#e8eef0',active:hullAct==='deck'},{key:'kiel',pts:R.linien.kiel,fn:true,color:'#7fd4ff',active:hullAct==='kiel'}]:[{key:'breite',pts:R.linien.breite,fn:true,color:'#e8eef0',active:true,mirror:true}];
+  hullEdW=editor2D({key:'rumpf-'+hullAct,plane,lage:()=>0,curves,readonly:R.aufmassAktiv?'Kommt aus dem Aufmaß – Werte oben in der Tabelle ändern':'',onChange:()=>changed('geo')});box.append(hullEdW,
+   note('Bordwandhöhe und Bodenform kommen weiter aus dem Rumpf-Tab. Kurven sind in mm ab Bug.'),
+   R.aufmassAktiv?null:el('div',{class:'row'},twoStep('Aus Parameterform neu holen','Überschreiben?',()=>{seedLines(R);changed('geo');renderWin();})));}
+
+ box.append(sub('Konstruktionslinien'),note('Hilfslinien und frei geformte Kurven, etwa für Spanten, Luken oder den Einbau der Technik. „Durchsicht“ in der Modell-Karte macht den Rumpf durchsichtig.'));
+ const add=o=>{const l=Object.assign({id:uid(),name:'Linie',ebene:'seite',lage:0,pts:[],geschlossen:false,glatt:false,spiegel:false,aufDeck:false,farbe:'#7fd4ff'},o);P.linien.push(l);selLine=l.id;changed('geo');renderWin();};
+ const dk=r(hdims(0.5).Ys*1000),hb=r(hdims(clamp(R.Bpos/100,0.1,0.9)).B*1000);
+ box.append(el('p',{class:'note',text:'Hilfslinie in Richtung:'}),el('div',{class:'row'},
+  btn('Länge',()=>add({name:'Hilfslinie Länge',pts:[[0,dk],[L,dk]]})),
+  btn('Breite',()=>add({name:'Hilfslinie Breite',ebene:'spant',lage:r(L/2),pts:[[-hb,dk],[hb,dk]]})),
+  btn('Höhe',()=>add({name:'Hilfslinie Höhe',pts:[[r(L/2),0],[r(L/2),r(dk+L*0.4)]]})),
+  btn('Tiefe',()=>add({name:'Hilfslinie Tiefe',pts:[[r(L/2),0],[r(L/2),r(-L*0.5)]]}))),
+ el('p',{class:'note',text:'Kurve oder Bauteil-Umriss:'}),el('div',{class:'row'},
+  btn('Seitlich',()=>add({name:'Kurve Seitenriss',glatt:true,farbe:'#b9a3ff',pts:[[r(L*0.2),dk],[r(L*0.5),r(dk*0.4)],[r(L*0.8),dk]]})),
+  btn('Von oben',()=>add({name:'Kurve Draufsicht',ebene:'oben',aufDeck:true,spiegel:true,glatt:true,farbe:'#b9a3ff',pts:[[r(L*0.2),r(hb*0.3)],[r(L*0.5),r(hb*0.6)],[r(L*0.8),r(hb*0.3)]]})),
+  btn('Spant',()=>{const x=r(L/2),d=hdims(0.5),ex=0.5+0.5*clamp(R.boden/100,0,1);const pts=[0,0.3,0.6,0.85,1].map(t=>{const [s,y]=sect(d,t,ex);return [r(s*1000),r(y*1000)];});add({name:'Spant '+(P.linien.filter(l=>l.ebene==='spant').length+1),ebene:'spant',lage:x,spiegel:true,glatt:true,farbe:'#9fe6b8',pts});}),
+  btn('Luke',()=>{const x=r(L*0.45),w=r(L*0.06),b=r(hb*0.45);add({name:'Luke '+(P.linien.filter(l=>/^Luke/.test(l.name)).length+1),ebene:'oben',aufDeck:true,geschlossen:true,farbe:'#f2c230',pts:[[x-w,-b],[x+w,-b],[x+w,b],[x-w,b]]});})));
+ if(P.linien.length){const list=el('div',{class:'plist'});for(const l of P.linien)list.append(el('button',{type:'button','aria-pressed':l.id===selLine,onclick:()=>{selLine=l.id;needRebuild=true;renderWin();}},l.name,el('span',{text:EBENEN[l.ebene].name})));box.append(list);}
+ const l=P.linien.find(x=>x.id===selLine);if(!l){if(P.linien.length)box.append(note('Linie in der Liste wählen.'));return;}
+ const i='ln-'+l.id;let ed=null;
+ box.append(sub(l.name),txt(l,'name','Name',i,()=>renderWin()),pick(l,'ebene','Ebene',Object.keys(EBENEN).map(k=>[k,EBENEN[k].name]),i,v=>{l.ebene=v;changed('geo');renderWin();}));
+ if(!(l.ebene==='oben'&&l.aufDeck))box.append(num(l,'lage',EBENEN[l.ebene].lage,r(-L),r(L*1.5),1,'mm','geo',i,()=>{if(ed)ed.redraw();}));
+ box.append(el('div',{class:'row'},check(l,'glatt','Glatt (Kurve)','geo',i,()=>renderWin()),check(l,'geschlossen','Geschlossen','geo',i,()=>renderWin())));
+ if(l.ebene!=='seite')box.append(check(l,'spiegel','Auch auf der anderen Seite','geo',i,()=>renderWin()));
+ if(l.ebene==='oben')box.append(check(l,'aufDeck','Liegt auf dem Deck','geo',i,()=>renderWin()));
+ ed=editor2D({key:l.id,plane:l.ebene,lage:()=>l.lage,curves:[{pts:l.pts,closed:l.geschlossen,smooth:l.glatt,color:l.farbe,active:true,mirror:l.spiegel&&l.ebene!=='seite'}],onChange:()=>changed('geo')});box.append(ed);
+ {const sp=sampleFree(l.pts,l.geschlossen,l.glatt);let len=0;for(let k=1;k<sp.length;k++)len+=Math.hypot(sp[k][0]-sp[k-1][0],sp[k][1]-sp[k-1][1]);let txtL='Länge '+mm(len);
+  if(l.geschlossen&&sp.length>3){let A=0;for(let k=0;k<sp.length-1;k++)A+=sp[k][0]*sp[k+1][1]-sp[k+1][0]*sp[k][1];txtL+=' · Fläche '+area(Math.abs(A)/200);}box.append(note(txtL+' (nach dem Formen neu wählen zum Aktualisieren)'));}
+ const cp=el('input',{type:'color',id:i+'-farbe',value:l.farbe||'#7fd4ff'});cp.addEventListener('input',()=>{l.farbe=cp.value;changed('geo');});box.append(el('div',{class:'fld2'},el('label',{for:i+'-farbe',text:'Farbe'}),el('div',null,cp)));
+ box.append(el('div',{class:'row'},
+  btn('Duplizieren',()=>{const c=JSON.parse(JSON.stringify(l));c.id=uid();c.name=l.name+' Kopie';P.linien.push(c);selLine=c.id;changed('geo');renderWin();}),
+  btn('Spiegeln',()=>{const c=JSON.parse(JSON.stringify(l));c.id=uid();c.name=l.name+' gespiegelt';if(l.ebene==='seite')c.lage=-c.lage;else c.pts.forEach(p=>p[l.ebene==='spant'?0:1]*=-1);P.linien.push(c);selLine=c.id;changed('geo');renderWin();}),
+  twoStep('Löschen','Wirklich löschen?',()=>{P.linien=P.linien.filter(x=>x!==l);selLine=null;changed('geo');renderWin();})));}
+
+function renderMech(box){
+ box.append(sub('Steuerwerte'),note('Erscheinen rechts in der Karte als Regler. Teile hängen sich unter „Bewegung“ daran.'));
+ for(const s of P.steuer){const i='st-'+s.id;const w=el('div',{class:'mrow'});
+  const nm=el('input',{type:'text',id:i+'-n',value:s.name});nm.addEventListener('input',()=>{s.name=nm.value;changed('name');});nm.addEventListener('change',renderSteuer);
+  const nb=(k,l)=>{const n=el('input',{type:'number',id:i+'-'+k,value:s[k],step:'any'});n.addEventListener('change',()=>{const v=parseFloat(n.value);if(!isFinite(v))return;s[k]=v;if(s.min>s.max)[s.min,s.max]=[s.max,s.min];s.wert=clamp(s.wert,s.min,s.max);changed('drive');renderSteuer();});return el('label',{for:i+'-'+k},l,n);};
+  const ei=el('input',{type:'text',id:i+'-e',value:s.einheit||''});ei.addEventListener('change',()=>{s.einheit=ei.value;changed('name');renderSteuer();});
+  w.append(el('label',{class:'full',for:i+'-n'},'Name',nm),nb('min','Von'),nb('max','Bis'),el('label',{for:i+'-e'},'Einheit',ei),el('div',{class:'full'},btn('Entfernen',()=>{P.steuer=P.steuer.filter(x=>x!==s);changed('drive');renderSteuer();renderWin();})));box.append(w);}
+ box.append(el('div',{class:'row'},btn('+ Steuerwert',()=>{P.steuer.push({id:uid(),name:'Kanal '+(P.steuer.length+1),min:-45,max:45,wert:0,einheit:'°'});changed('drive');renderSteuer();renderWin();})));
+
+ box.append(sub('Verbindungen'),note('Seil = biegsam, zeigt den nötigen Zugweg. Stange = starr, darf ihre Länge beim Bewegen nicht ändern.'));
+ const opts=[['','–'],...partOpts()];
+ for(const v of P.verbindungen){const i='vb-'+v.id,w=el('div',{class:'mrow'});
+  const nm=el('input',{type:'text',id:i+'-n',value:v.name});nm.addEventListener('input',()=>{v.name=nm.value;changed('name');});
+  const sl=(k,l,o)=>{const s=el('select',{id:i+'-'+k});for(const [a,b] of o){const op=el('option',{value:a,text:b});if((v[k]||'')===a)op.selected=true;s.append(op);}s.addEventListener('change',()=>{v[k]=s.value;changed('geo');});return el('label',{for:i+'-'+k},l,s);};
+  w.append(el('label',{class:'full',for:i+'-n'},'Name',nm),sl('a','Von',opts),sl('b','Nach',opts),sl('art','Art',[['seil','Seil'],['stange','Stange']]),
+   el('div',{class:'full row'},el('span',{class:'u',text:LEN[v.id]!=null?'jetzt '+mm(LEN[v.id]):'Anker fehlt'}),btn('Entfernen',()=>{P.verbindungen=P.verbindungen.filter(x=>x!==v);changed('geo');renderWin();})));box.append(w);}
+ box.append(el('div',{class:'row'},btn('+ Verbindung',()=>{if(P.teile.length<2)return;P.verbindungen.push({id:uid(),name:'Verbindung '+(P.verbindungen.length+1),a:P.teile[0].id,b:P.teile[1].id,art:'seil'});changed('geo');renderWin();},P.teile.length<2?'':'')));
+
+ box.append(sub('Antriebskette'));const chain=P.teile.filter(t=>(t.antrieb&&t.antrieb.quelle)||(t.typ==='fuehler'&&t.auto));
+ if(!chain.length)box.append(note('Noch nichts angetrieben.'));
+ else{const l=el('div',{class:'plist'});for(const t of chain){let src='Wasser';if(!(t.typ==='fuehler'&&t.auto)){const q=t.antrieb.quelle,[k,v]=[q.slice(0,q.indexOf(':')),q.slice(q.indexOf(':')+1)];src=k==='steuer'?((P.steuer.find(s=>s.id===v)||{}).name||'fehlt'):k==='teil'?((P.teile.find(s=>s.id===v)||{}).name||'fehlt'):'Lage '+v;src+=' × '+fmtN(t.antrieb.faktor,2);}
+  l.append(el('button',{type:'button',onclick:()=>{sel=t.id;tab='teile';renderWin();}},t.name,el('span',{text:'← '+src})));}box.append(l);}
+
+ box.append(sub('Prüfen'),note('Fährt jeden Steuerwert und die Höhe von Anschlag zu Anschlag und misst alle Verbindungen.'));
+ const res=el('div',{class:'res',id:'pruefRes'});box.append(el('div',{class:'row'},btn('Gestänge & Schotwege prüfen',()=>{res.innerHTML=pruefen();},'pri')),res);
+ box.append(sub('Grenzen für die Höhe'),num(P.lage,'hMin','Höhe min',-2000,0,1,'mm','drive','lage',renderLage),num(P.lage,'hMax','Höhe max',0,3000,1,'mm','drive','lage',renderLage));}
+
+function pruefen(){if(!P.verbindungen.length)return 'Keine Verbindungen angelegt.';
+ const R=P.verbindungen.map(v=>({v,min:Infinity,max:-Infinity}));const keep=P.steuer.map(s=>s.wert),kh=P.lage.hoehe;
+ const sweep=(set,lo,hi)=>{for(let k=0;k<=30;k++){set(lo+(hi-lo)*k/30);applyDrives();for(const r of R){const L=LEN[r.v.id];if(L!=null){r.min=Math.min(r.min,L);r.max=Math.max(r.max,L);}}}};
+ P.steuer.forEach((s,i)=>{sweep(x=>s.wert=x,s.min,s.max);s.wert=keep[i];});sweep(x=>P.lage.hoehe=x,+P.lage.hMin,+P.lage.hMax);P.lage.hoehe=kh;applyDrives();needApply=true;
+ return R.map(r=>{if(!isFinite(r.min))return esc(r.v.name)+': Anker fehlt';const dl=r.max-r.min;
+  if(r.v.art==='stange'){const c=dl<0.5?'ok':'bad';const t=dl<0.5?'✓ bleibt gleich lang':dl<2?'△ ändert sich leicht':'✗ klemmt';return esc(r.v.name)+': '+mm((r.min+r.max)/2)+' · Δ '+fmtN(dl,1)+' mm <span class="'+c+'">'+t+'</span>';}
+  return esc(r.v.name)+': '+mm(r.min)+' bis '+mm(r.max)+' · Zugweg '+mm(dl);}).join('<br>');}
+
+function renderProjekt(box){const i='prj';
+ box.append(sub('Projekt'),txt(P,'name','Name',i,()=>renderCard()),pick(P,'klasse','Klasse',Object.keys(KLASSEN).map(k=>[k,KLASSEN[k].name]),i,v=>{P.klasse=v;changed('drive');renderCard();}));
+ const K=KLASSEN[P.klasse];if(Object.keys(K.regeln).length)box.append(note('Grenzen dieser Klasse sind fest hinterlegt. Vor dem Bau mit der aktuellen Klassenregel abgleichen.'));
+ box.append(sub('Vorlage laden'),note('Ersetzt das aktuelle Projekt. Mit ↶ kommst du zurück.'),el('div',{class:'row'},
+  twoStep('Marblehead','Ersetzen?',()=>loadTpl('marblehead')),twoStep('Foiling Moth','Ersetzen?',()=>loadTpl('moth')),twoStep('Kutter K6','Ersetzen?',()=>loadTpl('k6')),twoStep('ZK 10','Ersetzen?',()=>loadTpl('zk10')),twoStep('Nur Rumpf','Ersetzen?',()=>loadTpl('leer'))));
+ box.append(sub('Speichern'));
+ {box.append(note(P.cloudId?'Dieses Projekt ist '+ortName()+' gespeichert. „Speichern“ oben überschreibt es'+(DB?', auf allen deinen Geräten.':'.'):'Noch nicht gespeichert. „Speichern“ oben legt es '+ortName()+' an.'),
+   el('div',{class:'row'},btn('Speichern',()=>cloudSave(false),'pri'),btn('Als Kopie speichern',()=>{P.name=P.name+' Kopie';cloudSave(true);}),btn('Als Datei (.json)',fileSave)));
+  const list=el('div',{class:'grp',id:'cloudList'},note('Lade gespeicherte Projekte …'));box.append(sub('Meine Projekte'),list);
+  store.list().then(docs=>{list.textContent='';if(!docs.length){list.append(note('Noch keine gespeicherten Projekte.'));return;}
+   for(const v of docs){const d={id:v.id};const t=v.stand?new Date(v.stand).toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'}):'';
+    list.append(el('div',{class:'prow'},el('div',null,el('b',{text:v.name||'Ohne Namen'}),el('span',{text:(KLASSEN[v.klasse]?KLASSEN[v.klasse].name.split(' (')[0]+' · ':'')+t+(d.id===P.cloudId?' · offen':'')})),
+     btn('Öffnen',()=>{try{openProject(JSON.parse(v.json),d.id);}catch(e){toast('Projekt ist beschädigt');}}),
+     twoStep('Löschen','Sicher?',async()=>{try{await store.del(d.id);if(P.cloudId===d.id){delete P.cloudId;commit();}renderWin();toast('Gelöscht');}catch(e){toast('Löschen ging nicht');}})));}})
+   .catch(()=>{list.textContent='';list.append(note('Gespeicherte Projekte konnten nicht geladen werden.'));});}
+
+ box.append(sub('Weitergeben'),note('Projekttext kopieren, um ihn woanders einzufügen.'));
+ const ta=el('textarea',{id:'expTxt',readonly:true,'aria-label':'Projekttext'});ta.value=JSON.stringify(P);const st=el('span',{class:'u',role:'status'});
+ box.append(ta,el('div',{class:'row'},btn('Kopieren',()=>{const done=()=>{st.textContent='Kopiert';};try{navigator.clipboard.writeText(ta.value).then(done,()=>{ta.select();st.textContent='Markiert – jetzt Strg+C';});}catch(e){ta.select();st.textContent='Markiert – jetzt Strg+C';}}),st));
+ const fi=el('input',{type:'file',id:'impFile',accept:'.json,application/json,text/plain'});const ti=el('textarea',{id:'impTxt',placeholder:'Projekttext hier einfügen …','aria-label':'Projekttext einfügen'});const im=el('span',{class:'u',role:'status'});
+ const doImport=s=>{try{const o=normalize(JSON.parse(s));P=o;sel=null;flush();commit();needRebuild=true;renderAll();setTimeout(()=>goView('free'),50);}catch(e){im.textContent='Das ist kein gültiger Projekttext.';}};
+ fi.addEventListener('change',()=>{const f=fi.files&&fi.files[0];if(!f)return;const r=new FileReader();r.onload=()=>doImport(r.result);r.readAsText(f);});
+ box.append(sub('Öffnen'),el('label',{class:'note',for:'impFile'},'Projektdatei (.json) wählen'),fi,ti,el('div',{class:'row'},btn('Eingefügtes laden',()=>doImport(ti.value)),im));}
+function loadTpl(k){flush();P=normalize(TEMPLATES[k]());sel=null;commit();needRebuild=true;renderAll();setTimeout(()=>goView('free'),50);}
+
+/* ================= Modell-Karte ================= */
+const MESS=[['loa','Länge über alles'],['breite','Breite'],['tiefgang','Tiefgang'],['hoehe','Höhe über Deck'],['segel','Segelfläche']];
+function renderRegeln(){const K=KLASSEN[P.klasse],box=$('regeln');box.textContent='';
+ for(const [k,lab] of MESS){const lim=K.regeln[k],v=M[k];const ok=lim==null||v<=lim+0.5;const f=x=>k==='segel'?area(x):mm(x);
+  box.append(el('dt',{text:lab}),el('dd',{class:lim==null?'':(ok?'ok':'bad'),text:f(v)+(lim!=null?' / '+f(lim)+(ok?' ✓':' ✗'):'')}));}}
+function renderLive(){const out=[];
+ for(const id in built){const p=built[id].p;if((p.typ==='fuehler'&&p.auto)||(p.antrieb&&p.antrieb.quelle))out.push(esc(p.name)+' '+deg(ANG[id]||0));}
+ for(const v of P.verbindungen)if(LEN[v.id]!=null)out.push(esc(v.name)+' '+mm(LEN[v.id]));
+ out.push('Gewicht '+gram(M.masse)+(M.masse>0?' · Schwerpunkt '+mm(M.cgx)+' ab Bug, '+mm(Math.abs(M.cgy))+(M.cgy<0?' unter':' über')+' WL':''));
+ $('live').innerHTML=out.join('<br>');}
+const fmtSt=s=>fmtN(s.wert,Math.abs(s.max-s.min)<20?1:0)+' '+(s.einheit||'');
+function renderSteuer(){const box=$('steuerBox');box.textContent='';if(!P.steuer.length){box.append(note('Noch keine Steuerwerte. In der Werkstatt unter Mechanik anlegen.'));return;}
+ for(const s of P.steuer){const id='st-'+s.id;const o=el('output',{for:id,text:fmtSt(s)});const r=el('input',{type:'range',id,min:s.min,max:s.max,step:(s.max-s.min)/200||0.1,value:s.wert});
+  r.addEventListener('input',()=>{s.wert=+r.value;o.textContent=fmtSt(s);changed('drive');});box.append(el('label',{class:'sl',for:id},s.name+' ',o,r));}}
+function renderLage(){const l=P.lage,h=$('lHoehe');h.min=l.hMin;h.max=l.hMax;h.step=Math.max(1,Math.round((l.hMax-l.hMin)/200));h.value=l.hoehe;$('lHoeheO').textContent=mm(l.hoehe);$('lHeel').value=l.kraengung;$('lHeelO').textContent=fmtN(l.kraengung,0)+'°';$('lTrim').value=l.trimm;$('lTrimO').textContent=deg(+l.trimm);}
+$('lHoehe').addEventListener('input',e=>{P.lage.hoehe=+e.target.value;animBase=P.lage.hoehe;$('lHoeheO').textContent=mm(P.lage.hoehe);changed('drive');});
+$('lHeel').addEventListener('input',e=>{P.lage.kraengung=+e.target.value;$('lHeelO').textContent=fmtN(P.lage.kraengung,0)+'°';changed('drive');});
+$('lTrim').addEventListener('input',e=>{P.lage.trimm=+e.target.value;$('lTrimO').textContent=deg(P.lage.trimm);changed('drive');});
+function renderCard(){$('pName').firstChild.textContent=P.name;$('pSub').textContent=KLASSEN[P.klasse].name+' · Rumpf '+mm(P.rumpf.L);renderLage();renderSteuer();}
+function renderAll(){renderCard();renderWin();}
+
+/* ================= Start & Schleife ================= */
+if(mobile()){$('win').hidden=true;$('bWerk').setAttribute('aria-pressed',false);}
+resize();renderAll();updUndo();
+let first=true,last=performance.now();
+const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+(function loop(now){requestAnimationFrame(loop);const dt=Math.min(0.05,(now-last)/1000);last=now;
+ if(anim&&!reduce){animT+=dt;const amp=(P.lage.hMax-P.lage.hMin)*0.08;P.lage.hoehe=clamp(animBase+amp*Math.sin(animT*1.3)+amp*0.45*Math.sin(animT*3.1),P.lage.hMin,P.lage.hMax);needApply=true;}
+ if(needRebuild){needRebuild=false;rebuild();needApply=true;}
+ if(needApply){needApply=false;applyDrives();measure();updDims();applyToggles();renderRegeln();renderLive();if(first){first=false;goView('free',true);}}
+ if(fly){fly.k=Math.min(1,fly.k+dt*(reduce?10:1.6));const e=fly.k<0.5?2*fly.k*fly.k:1-Math.pow(-2*fly.k+2,2)/2;cam.position.lerpVectors(fly.p0,fly.p1,e);controls.target.lerpVectors(fly.t0,fly.t1,e);if(fly.k>=1)fly=null;}
+ if(sel&&partMeshes[sel]){selBox.makeEmpty();for(const m of partMeshes[sel])selBox.expandByObject(m);selHelper.visible=!selBox.isEmpty();}else selHelper.visible=false;
+ controls.update();renderer.render(scene,cam);})(last);
+</script>
+
+<script>
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>

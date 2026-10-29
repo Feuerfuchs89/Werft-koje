@@ -1,0 +1,30 @@
+WERFTKOJE – Boots-CAD
+=====================
+
+Inhalt (alles in einer Ebene, keine Unterordner):
+  index.html              die App
+  manifest.webmanifest    App-Beschreibung für "Zum Startbildschirm hinzufügen"
+  sw.js                   Offline-Speicher
+  icon-*.png, apple-touch-icon.png, favicon-32.png   App-Icons
+  LIESMICH.txt            diese Datei
+
+Starten
+-------
+1. Einfach: index.html im Browser öffnen. Funktioniert sofort,
+   braucht beim ersten Start Internet (three.js und Schriften).
+2. Als installierbare App (empfohlen): alle Dateien auf einen Webspace
+   legen, z. B. ein GitHub-Repository mit GitHub Pages. Dann die Seite
+   am Handy öffnen und "Zum Startbildschirm hinzufügen" wählen. Danach
+   läuft die Werftkoje auch ohne Netz.
+   (Installieren und Offline klappen nur über https, nicht direkt von der Festplatte.)
+
+Speichern
+---------
+- "Speichern" oben legt das Projekt auf diesem Gerät ab
+  (Projekt-Tab -> "Meine Projekte").
+- "Als Datei (.json)" erzeugt eine Sicherung zum Mitnehmen auf ein
+  anderes Gerät; dort im Projekt-Tab unter "Öffnen" laden.
+- Zusätzlich wird der aktuelle Stand automatisch zwischengespeichert.
+
+Vorlagen: Marblehead, Foiling Moth, Kutter K6, ZK 10, leerer Rumpf.
+Klassengrenzen und rekonstruierte Risse vor dem Bau am Original prüfen.
