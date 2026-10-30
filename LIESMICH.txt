@@ -26,5 +26,24 @@ Speichern
   anderes Gerät; dort im Projekt-Tab unter "Öffnen" laden.
 - Zusätzlich wird der aktuelle Stand automatisch zwischengespeichert.
 
+Planung (aus dem NACA-Visualizer übernommen)
+--------------------------------------------
+- Tab "Rechnen": Schwimmlage, Verdrängung, Spantflächenkurve, Lateralplan,
+  Vorlauf + Rigg-Optimierung, Seitenriss, Rigg-Schnellmaße, Kielbombe, Laminat.
+- Flossen/Ruder: Stationen mit eigenem NACA-Code, Verjüngung, Neigung,
+  Schwertkasten, Profilbild (PNG/SVG).
+- PDF-Schablonen 1:1 (A4, gekachelt mit Kleberand und Passkreuzen):
+  Umriss, Profilschnitte, Kielbombe, Rumpfspanten, Seitenriss.
+- Projektdateien des NACA-Visualizers (.json) lassen sich unter Projekt -> Öffnen
+  laden und unter Export wieder für ihn speichern.
+
 Vorlagen: Marblehead, Foiling Moth, Kutter K6, ZK 10, leerer Rumpf.
 Klassengrenzen und rekonstruierte Risse vor dem Bau am Original prüfen.
+
+Neu: Auswahl und KI-Assistent
+- Mehrere Teile markieren: Shift- oder Strg-Klick (Liste oder 3D-Bild), oder ▭ in der
+  Leiste oben und einen Rahmen aufziehen. Esc hebt die Mehrfachauswahl auf.
+- ⇋ Symmetrie: Gespiegelte Paare laufen bei Änderungen mit.
+- Tab „KI“: In dieser App läuft der Assistent über Google Gemini mit deinem eigenen
+  API-Schlüssel (kostenlos in Google AI Studio). Der Schlüssel wird nur in diesem
+  Browser gespeichert. In der Werftkoje-Version innerhalb von Claude geht es ohne Schlüssel.

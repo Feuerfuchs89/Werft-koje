@@ -1,8 +1,8 @@
 /* Werftkoje – Offline-Speicher. App-Dateien werden beim Installieren abgelegt,
    three.js und Schriften beim ersten Laden aus dem Netz zwischengespeichert. */
-const VERSION = 'werftkoje-v1';
+const VERSION = 'werftkoje-v10';
 const APP = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon-32.png'];
-const CDN = ['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js'];
+const CDN = ['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(APP).then(() => Promise.all(CDN.map(u => c.add(new Request(u, { mode: 'no-cors' })).catch(() => {}))))));
