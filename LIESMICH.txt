@@ -47,3 +47,11 @@ Neu: Auswahl und KI-Assistent
 - Tab „KI“: In dieser App läuft der Assistent über Google Gemini mit deinem eigenen
   API-Schlüssel (kostenlos in Google AI Studio). Der Schlüssel wird nur in diesem
   Browser gespeichert. In der Werftkoje-Version innerhalb von Claude geht es ohne Schlüssel.
+
+Neu: RC-Bibliothek, Projekte, Geräte
+- Teile -> Neues Teil -> Vorlage: Gruppen RC-Elektronik, Servos & Winden, Beschläge, Rigg, Seilzüge.
+- Projekt -> Neues Projekt: Name und Startvorlage wählen, erscheint sofort unter „Meine Projekte“.
+- Projekt -> Sicherung speichern/einspielen: alle Projekte (optional mit KI-Schlüssel, PIN-geschützt)
+  auf ein anderes Gerät bringen.
+- KI -> Auf weiteres Gerät übertragen: Link mit PIN, auf dem anderen Gerät öffnen.
+- Gemini-Modell steht auf „Automatisch“ und nimmt das neueste Flash-Modell deines Schlüssels.

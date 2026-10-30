@@ -214,8 +214,8 @@ let uidN=0;const uid=()=>'t'+Date.now().toString(36).slice(-5)+(uidN++).toString
 
 /* ================= Datenmodell & Vorlagen ================= */
 /* Koordinaten in mm: x = Abstand vom Bug, y = Höhe über Wasserlinie, s = seitlich (+ = Steuerbord). Winkel in Grad. */
-const TYPEN={profil:'Profil',bombe:'Bombe / Körper',rohr:'Rohr / Stab',kasten:'Kasten',servo:'Servo / Winde',segel:'Segel',fuehler:'Fühler (Wand)',platte:'Platte / Netz',kiel:'Kiel / Steven',aufbau:'Aufbau (Kajüte, Süll)',ausschnitt:'Ausschnitt / Öffnung'};
-const TYPHILFE={profil:'Flosse, Ruder, Schwert, Tragflügel, Klappe',bombe:'Bleibombe oder stromlinienförmiger Körper',rohr:'Mast, Baum, Gestänge, Flügelrohr',kasten:'Akku, Empfänger, Halterung',servo:'Servo mit Hebelarm, Segelwinde',segel:'Großsegel, Fock',fuehler:'Pendel, das auf dem Wasser schleift',platte:'Trampolin, Deckel, Spant',aufbau:'Kajüte, Cockpitsüll, Lukendeckel auf dem Deck',ausschnitt:'Luke, Durchführung, Cockpit, Bullauge – schneidet ein echtes Loch in Deck oder Bordwand',kiel:'Balken unter dem Rumpf, folgt Kiellinie und Vorsteven'};
+const TYPEN={profil:'Profil',bombe:'Bombe / Körper',rohr:'Rohr / Stab',kasten:'Kasten',servo:'Servo / Winde',segel:'Segel',fuehler:'Fühler (Wand)',platte:'Platte / Netz',kiel:'Kiel / Steven',aufbau:'Aufbau (Kajüte, Süll)',ausschnitt:'Ausschnitt / Öffnung',beschlag:'Beschlag / Kleinteil'};
+const TYPHILFE={profil:'Flosse, Ruder, Schwert, Tragflügel, Klappe',bombe:'Bleibombe oder stromlinienförmiger Körper',rohr:'Mast, Baum, Gestänge, Flügelrohr',kasten:'Akku, Empfänger, Halterung',servo:'Servo mit Hebelarm, Segelwinde',segel:'Großsegel, Fock',fuehler:'Pendel, das auf dem Wasser schleift',platte:'Trampolin, Deckel, Spant',aufbau:'Kajüte, Cockpitsüll, Lukendeckel auf dem Deck',ausschnitt:'Luke, Durchführung, Cockpit, Bullauge – schneidet ein echtes Loch in Deck oder Bordwand',beschlag:'Rolle, Block, Öse, Deckdurchführung, Spanner, Mastfuß',kiel:'Balken unter dem Rumpf, folgt Kiellinie und Vorsteven'};
 const KLASSEN={
   marblehead:{name:'Marblehead (Klasse M)',regeln:{loa:1290,tiefgang:700,hoehe:2160,segel:5161}},
   moth:{name:'Internationale Moth',regeln:{loa:3355,breite:2250,segel:82500}},
@@ -293,6 +293,7 @@ function typDefaults(typ,R){const L=R.L,r=v=>Math.round(v);const d=base(typ,TYPE
   case 'fuehler':Object.assign(d,{laenge:r(L*0.35),auto:true,achse:'x',x:r(L*0.02),anker:[0,30,0],farbe:'#1b2024'});break;
   case 'kiel':Object.assign(d,{breite:Math.max(20,r(L*0.013)),hoehe:r(L*0.02),hoeheSteven:r(L*0.01),hoeheHeck:r(L*0.02),farbe:'#8a6a48'});break;
   case 'aufbau':Object.assign(d,{laenge:r(L*0.15),breite:r(L*0.08),hoehe:r(L*0.03),hoeheHinten:r(L*0.03),eck:40,neigung:8,woelbung:r(L*0.005),dach:true,farbe:'#c9cfd3'});break;
+  case 'beschlag':Object.assign(d,{art:'rolle',groesse:12,masse:1,farbe:'#d0d6da'});break;
   case 'ausschnitt':Object.assign(d,{form:'std',tiefe:0,bodenEben:false,ort:'deck',x:r(L*0.3),s:0,y:r(hdimsR(R,0.3).Ys*800),laenge:r(L*0.08),breite:r(L*0.08),eck:100,winkel:0,spiegel:false,seite:'stb',suell:0,dicke:Math.max(1.5,r(L*0.002)),doppler:0,deckel:false,farbe:'#c9cfd3'});break;
   case 'platte':{const x=d.x,y=d.y,a=r(L*0.1);Object.assign(d,{pts:[[x-a,y,-a],[x+a,y,-a],[x+a,y,a],[x-a,y,a]],farbe:'#3a4146'});break;}
  }
@@ -506,7 +507,8 @@ function buildPart(p){const g=new THREE.Group(),rot=new THREE.Group();g.add(rot)
   case 'ausschnitt':piv=V(0,0,0);for(const G of ausGeos(p))put(G.g,G.deckel?(p.ort==='seite'?glasMat:mat(p.farbe)):null);break;
   case 'kasten':put(new THREE.BoxGeometry(Math.max(1e-3,p.breite/1000),Math.max(1e-3,p.hoehe/1000),Math.max(1e-3,p.laenge/1000)));break;
   case 'servo':{put(new THREE.BoxGeometry(p.breite/1000,p.hoehe/1000,p.laenge/1000),null,g);rot.position.y=p.hoehe/2000+0.002;
-   const arm=new THREE.BoxGeometry(p.arm/1000+0.006,0.003,0.008);arm.translate(p.arm/2000,0,0);put(arm,mat('#e8eef0'));put(new THREE.CylinderGeometry(0.005,0.005,0.006,12),mat('#e8eef0'));break;}
+   if(+p.trommel>0){const tr=new THREE.CylinderGeometry(p.trommel/2000,p.trommel/2000,0.009,28);tr.translate(0,0.004,0);put(tr,mat('#e8eef0'));const mk=new THREE.BoxGeometry(0.002,0.0095,0.004);mk.translate(p.trommel/2000,0.004,0);put(mk,mat('#c9322a'));}else{const arm=new THREE.BoxGeometry(p.arm/1000+0.006,0.003,0.008);arm.translate(p.arm/2000,0,0);put(arm,mat('#e8eef0'));put(new THREE.CylinderGeometry(0.005,0.005,0.006,12),mat('#e8eef0'));}break;}
+  case 'beschlag':beschlagGeo(p,put,null);break;
   case 'segel':{// Segel dreht um sein Vorliek (Mast bzw. Vorstag), nicht um die Senkrechte
    const tilt=new THREE.Group();tilt.rotation.x=p.fall*DEG;g.remove(rot);g.add(tilt);tilt.add(rot);
    put(segelGeo(p),sailMat(p.farbe));if(p.baum){const w=Math.max(0.004,p.unterliek*0.000022);const b=new THREE.BoxGeometry(w,w*1.4,p.unterliek/1000);b.translate(0,-w,p.unterliek/2000);b.rotateX(-p.fall*DEG);put(b,mat('#1b2024'));}
@@ -761,7 +763,8 @@ function renderTeile(box){if(sel==='rumpf')sel=null;
   case 'aufbau':aufbauBereich(box,p,i);break;
   case 'ausschnitt':ausschnittBereich(box,p,i);break;
   case 'kasten':nf('laenge','Länge (längs)',1,Math.round(L*0.5));nf('breite','Breite (quer)',1,Math.round(L*0.5));nf('hoehe','Höhe',1,Math.round(L*0.5));break;
-  case 'servo':nf('laenge','Gehäuse Länge',5,200);nf('breite','Gehäuse Breite',5,200);nf('hoehe','Gehäuse Höhe',5,200);nf('arm','Hebelarm (Drehpunkt bis Loch)',3,250);box.append(note('Der Hebelarm zeigt bei 0° zur Seite. Setz den Anker unten auf die Armlänge, damit Stange oder Seil am Loch hängen.'));break;
+  case 'beschlag':beschlagBereich(box,p,i);break;
+  case 'servo':nf('laenge','Gehäuse Länge',5,200);nf('breite','Gehäuse Breite',5,200);nf('hoehe','Gehäuse Höhe',5,200);nf('trommel','Trommel-Ø (0 = Hebelarm)',0,80,0.5,'mm');if(!(+p.trommel>0))nf('arm','Hebelarm (Drehpunkt bis Loch)',3,250);box.append(note('Der Hebelarm zeigt bei 0° zur Seite. Setz den Anker unten auf die Armlänge, damit Stange oder Seil am Loch hängen.'));break;
   case 'segel':nf('vorliek','Vorliek (am Mast)',50,Math.round(L*2.5));nf('unterliek','Unterliek (am Baum)',20,Math.round(L));nf('kopf','Kopfbreite (ohne Gaffel)',0,Math.round(L*0.3));nf('gaffel','Gaffel-Länge (0 = keine)',0,Math.round(L*1.2));nf('gaffelWinkel','Gaffel-Winkel zum Mast',0,90,0.5,'°');nf('rundung','Achterliek-Rundung',0,Math.round(L*0.3));nf('fall','Mastfall nach achtern',-15,30,0.5,'°');nf('woelbung','Wölbung',0,20,0.5,'%');
    box.append(check(p,'baum','Mit Baum',g,i),note('Segelfläche: '+area(sailArea(p))));break;
   case 'kiel':nf('breite','Breite',5,Math.round(L*0.1));nf('hoehe','Höhe unter dem Rumpf (Mitte)',0,Math.round(L*0.2));nf('hoeheSteven','Stärke am Vorsteven',0,Math.round(L*0.2));nf('hoeheHeck','Höhe am Heck',0,Math.round(L*0.2));box.append(note('Folgt automatisch der Kiellinie vom Heck bis hinauf zum Vorsteven.'));break;
@@ -980,7 +983,8 @@ function pruefen(){if(!P.verbindungen.length)return 'Keine Verbindungen angelegt
 function renderProjekt(box){const i='prj';
  box.append(sub('Projekt'),txt(P,'name','Name',i,()=>renderCard()),pick(P,'klasse','Klasse',Object.keys(KLASSEN).map(k=>[k,KLASSEN[k].name]),i,v=>{P.klasse=v;changed('drive');renderCard();}));
  const K=KLASSEN[P.klasse];if(Object.keys(K.regeln).length)box.append(note('Grenzen dieser Klasse sind fest hinterlegt. Vor dem Bau mit der aktuellen Klassenregel abgleichen.'));
- box.append(sub('Vorlage laden'),note('Ersetzt das aktuelle Projekt. Mit ↶ kommst du zurück.'),el('div',{class:'row'},
+ neuesProjektBereich(box);
+ box.append(sub('Vorlage ins aktuelle Projekt laden'),note('Ersetzt den Inhalt des aktuellen Projekts. Mit ↶ kommst du zurück. Für ein zusätzliches Projekt lieber „Neues Projekt“ oben.'),el('div',{class:'row'},
   twoStep('Marblehead','Ersetzen?',()=>loadTpl('marblehead')),twoStep('Foiling Moth','Ersetzen?',()=>loadTpl('moth')),twoStep('Kutter K6','Ersetzen?',()=>loadTpl('k6')),twoStep('ZK 10','Ersetzen?',()=>loadTpl('zk10')),twoStep('Nur Rumpf','Ersetzen?',()=>loadTpl('leer'))));
  box.append(sub('Speichern'));
  {box.append(note(P.cloudId?'Dieses Projekt ist '+ortName()+' gespeichert. „Speichern“ oben überschreibt es'+(DB?', auf allen deinen Geräten.':'.'):'Noch nicht gespeichert. „Speichern“ oben legt es '+ortName()+' an.'),
@@ -992,6 +996,7 @@ function renderProjekt(box){const i='prj';
      btn('Öffnen',()=>{try{openProject(JSON.parse(v.json),d.id);}catch(e){toast('Projekt ist beschädigt');}}),
      twoStep('Löschen','Sicher?',async()=>{try{await store.del(d.id);if(P.cloudId===d.id){delete P.cloudId;commit();}renderWin();toast('Gelöscht');}catch(e){toast('Löschen ging nicht');}})));}})
    .catch(()=>{list.textContent='';list.append(note('Gespeicherte Projekte konnten nicht geladen werden.'));});}
+ sicherungBereich(box);
 
  exportBereich(box);
  box.append(sub('Weitergeben'),note('Projekttext kopieren, um ihn woanders einzufügen.'));
@@ -1595,7 +1600,7 @@ const TEILVORLAGEN={
  schwertTrapez:{name:'Schwert / Flosse trapezförmig',gr:'Schwert'},schwertEllipse:{name:'Schwert elliptisch',gr:'Schwert'},flosseMH:{name:'Kielflosse gepfeilt (Marblehead)',gr:'Schwert'},schwertFoil:{name:'Schwert mit T-Foil',gr:'Schwert'},
  mastRund:{name:'Mast rund, verjüngt',gr:'Rigg'},mastOval:{name:'Mast oval',gr:'Rigg'},mastFluegel:{name:'Flügelmast',gr:'Rigg'},baum:{name:'Baum',gr:'Rigg'},bugspriet:{name:'Bugspriet',gr:'Rigg'},
  kajuete:{name:'Kajüte / Aufbau',gr:'Deck'},cockpit:{name:'Cockpitsüll (offen)',gr:'Deck'}};
-function teilAusVorlage(k){if(TEILVORLAGEN[k]&&TEILVORLAGEN[k].gr==='Ausschnitte')return ausVorlage(k);const R=P.rumpf,L=R.L,r=v=>Math.round(v),dk=x=>Math.round(deckAt(x)),kl=x=>Math.round(hdims(clamp(x/L,0,1)).Yk*1000),B=r(hdims(0.5).B*2000),hat=id=>P.steuer.some(s=>s.id===id),neu=[];
+function teilAusVorlage(k){if(typeof RC_VORLAGEN!=='undefined'&&RC_VORLAGEN[k])return rcVorlage(k);if(TEILVORLAGEN[k]&&TEILVORLAGEN[k].gr==='Ausschnitte')return ausVorlage(k);const R=P.rumpf,L=R.L,r=v=>Math.round(v),dk=x=>Math.round(deckAt(x)),kl=x=>Math.round(hdims(clamp(x/L,0,1)).Yk*1000),B=r(hdims(0.5).B*2000),hat=id=>P.steuer.some(s=>s.id===id),neu=[];
  const prof=(o,vl)=>{const p=Object.assign(typDefaults('profil',R),o);p.umriss={pts:umrissVorlage(vl,p),glatt:false,vorlage:vl};return p;};
  const ruder=vl=>prof({name:TEILVORLAGEN[k].name,x:r(L*0.93),y:kl(L*0.93),spann:r(L*0.17),sehneWurzel:r(L*0.05),sehneSpitze:r(L*0.035),drehpunkt:25,dicke:10,naca:'0010',antrieb:hat('ruder')?drv('steuer:ruder',1,0,-40,40):null,farbe:'#2b3135'},vl);
  const schwert=vl=>prof({name:TEILVORLAGEN[k].name,x:r(L*0.47),y:kl(L*0.47),spann:r(L*0.42),sehneWurzel:r(L*0.065),sehneSpitze:r(L*0.05),drehpunkt:0,dicke:9,naca:'0009',farbe:'#2b3135'},vl);
@@ -2014,7 +2019,9 @@ TEILE haben eine id, einen typ und Felder. Wichtige Felder je typ:
 - bombe: x,y = Mitte, laenge, durchm, blei (Gewicht aus Volumen).
 - rohr (Mast, Baum, Bugspriet, Stange): x,y,s = Anfang, x2,y2,s2 = Ende, durchm, querschnitt 'rund'|'oval'|'fluegel'|'rechteck', tiefe (%), spitze (% Durchmesser am Ende), verjAb (%), biegung (mm).
 - kasten (Akku, Empfänger): x,y,s = Mitte, laenge, breite, hoehe, masse (g).
-- servo: x,y,s, laenge, breite, hoehe, arm.
+- servo (auch Segelwinde): x,y,s, laenge, breite, hoehe, arm (Hebelarm) oder trommel (Ø mm, >0 = Trommelwinde).
+- beschlag: art 'rolle'|'block'|'oese'|'durchfuehrung'|'leitoese'|'klemme'|'spanner'|'mastfuss'|'gabelkopf'|'hebel', groesse (mm), x,y,s.
+Seile und Schubstangen sind Verbindungen zwischen zwei Teilen; für komplette Schotsysteme nutze die Vorlagen schotArm bzw. schotTrommel.
 - segel: x,y = Hals, vorliek, unterliek, kopf, gaffel, rundung, fall (°).
 - aufbau (Kajüte, Süll): x,s = Mitte, laenge, breite, eck (0 eckig … 100 rund), hoehe, hoeheHinten, neigung (°), woelbung, dach (bool).
 - ausschnitt (Luke, Loch, Absenkung): ort 'deck'|'seite', x = Mitte, s (Deck) bzw. y (Bordwand), laenge, breite, eck, winkel, spiegel (bool), form 'std'|'frei'|'rand', tiefe (mm, >0 = abgesenkte Fläche), suell, dicke, doppler, deckel (bool). Bei form 'rand': x0, x1, abstand, bisHeck.
@@ -2072,12 +2079,22 @@ async function kiFragen(text){const anb=kiAnbieter(),ctl=new AbortController();K
   if(ops.length){if(KI.sofort){const n=kiAnwenden(ops);antw.anzeige+='\n\n✓ '+n+' Änderung(en) übernommen – Rückgängig mit ↶.';antw.ops=ops;antw.erledigt=true;}else{antw.ops=ops;KI.vorschlag=antw;}}}
  catch(e){antw.denkt=false;const c=e&&e.code;antw.fehler=true;antw.anzeige=(e&&e.text?e.text+'\n\n':'')+(c==='cancelled'?'Abgebrochen.':c==='not_granted'?'Claude ist für diese Seite nicht freigegeben. Erlaube es beim nächsten Versuch oder wähle Gemini.':c==='rate_limited'?'Gerade zu viele Anfragen – bitte gleich nochmal versuchen.':c==='invalid_json'?'Die Antwort kam nicht im erwarteten Format. Bitte nochmal senden oder den Wunsch kürzer fassen.':c==='refused'?'Diese Anfrage wurde abgelehnt – bitte anders formulieren.':c==='gemini'?e.message:'Fehler: '+((e&&e.message)||c||e));}
  finally{KI.laeuft=null;if(tab==='ki')renderWin();}}
-async function kiGemini(turns,signal){const key=kiGet('werftkoje-gemini-key');if(!key)throw {code:'gemini',message:'Bitte zuerst deinen Gemini-Schlüssel eintragen (oben).'};const model=kiGet('werftkoje-gemini-model')||'gemini-2.5-flash';
+const kiModellNorm=m=>String(m||'').trim().replace(/^models\//,'').replace(/\s+/g,'');
+async function geminiModelle(key){const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',{headers:{'x-goog-api-key':key}});if(!r.ok){let m='';try{m=((await r.json()).error||{}).message||'';}catch(e){}throw {code:'gemini',message:'Modellliste nicht abrufbar ('+r.status+(r.status===400||r.status===403?', Schlüssel prüfen':'')+')'+(m?': '+m.slice(0,140):'')};}
+ const j=await r.json();return (j.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>String(m.name).replace(/^models\//,''));}
+function besteFlash(l){if(l.includes('gemini-flash-latest'))return 'gemini-flash-latest';const ver=n=>{const m=n.match(/gemini-(\d+(?:\.\d+)?)/);return m?+m[1]:0;},ok=n=>/^gemini-/.test(n)&&!/(image|tts|audio|live|embed|vision|robotics|computer|thinking|exp)/.test(n);
+ const stabil=l.filter(n=>ok(n)&&/flash/.test(n)&&!/(lite|preview)/.test(n)),vor=l.filter(n=>ok(n)&&/flash/.test(n)&&!/lite/.test(n)),pool=stabil.length?stabil:vor.length?vor:l.filter(ok);pool.sort((a,b)=>ver(b)-ver(a)||a.length-b.length);return pool[0]||null;}
+async function geminiModell(key,neu){const fest=kiModellNorm(kiGet('werftkoje-gemini-model'));if(fest&&fest!=='auto')return fest;let m=neu?'':kiGet('werftkoje-gemini-auto');if(!m){m=besteFlash(await geminiModelle(key));if(!m)throw {code:'gemini',message:'Für diesen Schlüssel ist kein passendes Gemini-Modell freigeschaltet.'};kiSet('werftkoje-gemini-auto',m);}return m;}
+async function kiGemini(turns,signal,zweiter){const key=kiGet('werftkoje-gemini-key').trim();if(!key)throw {code:'gemini',message:'Bitte zuerst deinen Gemini-Schlüssel eintragen (oben).'};let model;
+ try{model=await geminiModell(key,zweiter);}catch(e){if(e&&e.code)throw e;throw {code:'gemini',message:'Gemini ist nicht erreichbar. In der Claude-Version ist das Internet gesperrt – dort Claude verwenden; in der GitHub-App Internetverbindung prüfen.'};}
  const contents=[];for(const t of turns){const role=t.role==='assistant'?'model':'user';if(contents.length&&contents[contents.length-1].role===role)contents[contents.length-1].parts[0].text+='\n\n'+t.content;else contents.push({role,parts:[{text:t.content}]});}
  let r;try{r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{method:'POST',signal,headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({contents,generationConfig:{responseMimeType:'application/json',temperature:0.3}})});}
  catch(e){if(e&&e.name==='AbortError')throw {code:'cancelled'};throw {code:'gemini',message:'Gemini ist nicht erreichbar. In der Claude-Version ist das Internet gesperrt – dort Claude verwenden; in der GitHub-App Internetverbindung prüfen.'};}
- if(!r.ok){let m='';try{const j=await r.json();m=(j.error&&j.error.message)||'';}catch(e){}throw {code:'gemini',message:'Gemini meldet Fehler '+r.status+(r.status===400||r.status===403?' – Schlüssel prüfen.':'')+(m?' ('+m.slice(0,160)+')':'')};}
- const j=await r.json(),t=((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||'').join('');if(!t)throw {code:'gemini',message:'Gemini hat nichts geantwortet'+(j.promptFeedback&&j.promptFeedback.blockReason?' (blockiert: '+j.promptFeedback.blockReason+')':'')+'.'};return t;}
+ if(!r.ok){let m='';try{const j=await r.json();m=(j.error&&j.error.message)||'';}catch(e){}
+  const modellFehler=r.status===404||(r.status===400&&/model/i.test(m));const fest=kiModellNorm(kiGet('werftkoje-gemini-model'));
+  if(modellFehler&&!zweiter){if(fest&&fest!=='auto'){kiSet('werftkoje-gemini-model','');toast('Modell „'+fest+'“ gibt es nicht – nehme automatisch das neueste');}kiSet('werftkoje-gemini-auto','');return kiGemini(turns,signal,true);}
+  throw {code:'gemini',message:(modellFehler?'Das Modell „'+model+'“ gibt es für deinen Schlüssel nicht. Stell oben „Automatisch“ ein oder lade die Modellliste.':'Gemini meldet Fehler '+r.status+(r.status===400||r.status===403?' – Schlüssel prüfen.':''))+(m?' ('+m.slice(0,160)+')':'')};}
+ const j=await r.json(),t=((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).filter(p=>!p.thought).map(p=>p.text||'').join('');if(!t)throw {code:'gemini',message:'Gemini hat nichts geantwortet'+(j.promptFeedback&&j.promptFeedback.blockReason?' (blockiert: '+j.promptFeedback.blockReason+')':'')+'.'};return t;}
 
 /* ---- Oberfläche ---- */
 let kiListe=null;
@@ -2097,12 +2114,16 @@ function renderKI(box){const anb=kiAnbieter();
  const opts=[['claude','Claude'+(KI.claude?'':KI.claude===undefined?' (wird geprüft…)':' (hier nicht verfügbar)')],['gemini','Gemini (eigener Schlüssel)']];
  const seg=el('div',{class:'seg'});for(const [k,t] of opts)seg.append(el('button',{class:'v',type:'button','aria-pressed':anb===k,onclick:()=>{kiSet('werftkoje-ki-anbieter',k);renderWin();}},t));box.append(seg);
  if(anb==='claude'){if(KI.claude===null)box.append(note('Claude steht nur in der Werftkoje innerhalb von Claude zur Verfügung. In der GitHub-App bitte Gemini wählen.'));else box.append(note('Läuft über dein Claude-Konto, kein Schlüssel nötig. Beim ersten Senden fragt Claude einmal um Erlaubnis.'),check(KI,'gruendlich','Gründlich nachdenken (langsamer, für knifflige Fragen)','name','ki'));}
- else{const v={k:kiGet('werftkoje-gemini-key'),m:kiGet('werftkoje-gemini-model')||'gemini-2.5-flash'};
-  const ki=el('input',{type:'password',id:'ki-key',value:v.k,autocomplete:'off',placeholder:'AIza…'}),km=el('input',{type:'text',id:'ki-model',value:v.m});
-  ki.addEventListener('change',()=>{kiSet('werftkoje-gemini-key',ki.value.trim());toast(ki.value.trim()?'Schlüssel gespeichert (nur auf diesem Gerät)':'Schlüssel gelöscht');});km.addEventListener('change',()=>kiSet('werftkoje-gemini-model',km.value.trim()));
-  box.append(el('div',{class:'fld2'},el('label',{for:'ki-key',text:'Gemini-API-Schlüssel'}),ki),el('div',{class:'fld2'},el('label',{for:'ki-model',text:'Modell'}),km),
-   note('Der Schlüssel bleibt nur in diesem Browser gespeichert und geht direkt an Google – nicht in Projekte, Dateien oder Freigaben. Einen Schlüssel bekommst du kostenlos in Google AI Studio.'),
-   v.k?el('div',{class:'row'},twoStep('Schlüssel löschen','Wirklich löschen?',()=>{kiSet('werftkoje-gemini-key','');renderWin();})):null);}
+ else{const v={k:kiGet('werftkoje-gemini-key')},fest=kiModellNorm(kiGet('werftkoje-gemini-model')),auto=kiGet('werftkoje-gemini-auto');
+  const ki=el('input',{type:'password',id:'ki-key',value:v.k,autocomplete:'off',placeholder:'AIza…'});
+  ki.addEventListener('change',()=>{kiSet('werftkoje-gemini-key',ki.value.trim());kiSet('werftkoje-gemini-auto','');toast(ki.value.trim()?'Schlüssel gespeichert':'Schlüssel gelöscht');renderWin();});
+  const ms=el('select',{id:'ki-model'}),liste=(()=>{try{return JSON.parse(kiGet('werftkoje-gemini-liste')||'[]');}catch(e){return [];}})();
+  ms.append(el('option',{value:'auto',text:'Automatisch – neuestes Flash'+(auto?' ('+auto+')':'')}));for(const m of [...new Set([...(fest&&fest!=='auto'?[fest]:[]),...liste])])ms.append(el('option',{value:m,text:m}));ms.value=fest&&fest!=='auto'?fest:'auto';
+  ms.addEventListener('change',()=>{kiSet('werftkoje-gemini-model',ms.value==='auto'?'':ms.value);renderWin();});
+  box.append(el('div',{class:'fld2'},el('label',{for:'ki-key',text:'Gemini-API-Schlüssel'}),ki),el('div',{class:'fld2'},el('label',{for:'ki-model',text:'Modell'}),ms),
+   el('div',{class:'row',style:'flex-wrap:wrap'},v.k?btn('Modelle laden',async()=>{try{const l=await geminiModelle(v.k);kiSet('werftkoje-gemini-liste',JSON.stringify(l.filter(n=>/^gemini-/.test(n))));kiSet('werftkoje-gemini-auto',besteFlash(l)||'');toast(l.length+' Modelle gefunden');renderWin();}catch(e){toast((e&&e.message)||'Geht gerade nicht');}}):null,
+    v.k?btn('Auf weiteres Gerät übertragen',schluesselLink):null,v.k?twoStep('Schlüssel löschen','Wirklich löschen?',()=>{kiSet('werftkoje-gemini-key','');kiSet('werftkoje-gemini-auto','');renderWin();}):null),
+   note('Der Schlüssel bleibt in diesem Browser und geht nur an Google. „Auf weiteres Gerät übertragen“ erzeugt einen mit PIN verschlüsselten Link: auf dem Handy oder Rechner öffnen, PIN eingeben – fertig. Einen Schlüssel gibt es kostenlos in Google AI Studio.'));}
  const mk=auswahlTeile().length?auswahlTeile():(P.teile.find(t=>t.id===sel)?[P.teile.find(t=>t.id===sel)]:[]);
  box.append(el('p',{class:'note',text:mk.length?'Bezug: '+mk.map(t=>t.name).join(', '):'Kein Teil markiert – der Assistent sieht das ganze Projekt.'}));
  kiListe=el('div',{class:'ki-l',role:'log','aria-live':'polite'});box.append(kiListe);kiVerlaufZeichnen();
@@ -2124,6 +2145,131 @@ window.addEventListener('keydown',e=>{if(e.key!=='k'&&e.key!=='K')return;if(e.ct
 setInterval(kiKnopf,500);
 rahmenStart();$('bRahmen').onclick=()=>rahmenSetzen(!rahmenModus);symSetzen(symAn);$('bSym').onclick=()=>{symSetzen(!symAn);toast(symAn?'Symmetrie an – Spiegelpaare (⇋) laufen mit':'Symmetrie aus');if(tab==='teile')renderWin();};
 window.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const t=e.target.tagName;if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT')return;if(rahmenModus){rahmenSetzen(false);return;}if(auswahl.size>1){auswahl=new Set(sel?[sel]:[]);renderWin();}});
+
+/* ================= RC-Bibliothek: Fernsteuerung, Winden, Beschläge, Rigg, Seilzüge ================= */
+/* Maße und Gewichte sind typische Richtwerte für Marblehead-Technik – mit dem eigenen Teil abgleichen. */
+const BESCHLAEGE={rolle:'Umlenkrolle',block:'Block mit Wirbel',oese:'Augbolzen / Öse',durchfuehrung:'Deckdurchführung',leitoese:'Leitöse (Fairlead)',klemme:'Spannschieber (Bowsie)',spanner:'Wantenspanner',mastfuss:'Mastfuß-Schiene',gabelkopf:'Gabelkopf',hebel:'Ruderhebel'};
+function beschlagGeo(p,put,mt){const G=Math.max(1,+p.groesse||10)/1000,m2=mat('#c9d1d6'),cyl=(r,h,n)=>new THREE.CylinderGeometry(r,r,h,n||16),box=(a,b,c)=>new THREE.BoxGeometry(a,b,c);
+ const ring=(r,t)=>{const g=THREE.TorusGeometry?new THREE.TorusGeometry(r,t,8,20):cyl(r,t*2,16);return g;};
+ switch(p.art){
+  case 'rolle':{const s=cyl(G/2,G*0.32,20);s.rotateZ(Math.PI/2);put(s,mt);for(const sx of [-1,1]){const w=box(G*0.08,G*1.15,G*1.15);w.translate(sx*G*0.22,G*0.05,0);put(w,m2);}const a=cyl(G*0.08,G*0.6,8);a.rotateZ(Math.PI/2);put(a,m2);break;}
+  case 'block':{const s=cyl(G/2,G*0.3,20);s.rotateZ(Math.PI/2);put(s,mt);for(const sx of [-1,1]){const w=box(G*0.1,G*1.25,G*1.1);w.translate(sx*G*0.22,G*0.08,0);put(w,m2);}const r=ring(G*0.22,G*0.06);r.translate(0,G*0.95,0);put(r,m2);break;}
+  case 'oese':{const pin=cyl(G*0.12,G*0.9,8);pin.translate(0,-G*0.45,0);put(pin,m2);const r=ring(G*0.35,G*0.08);r.rotateY(Math.PI/2);r.translate(0,G*0.4,0);put(r,m2);break;}
+  case 'durchfuehrung':{const t=cyl(G*0.35,G*2.2,12);t.translate(0,-G*0.9,0);put(t,m2);const f=cyl(G*0.75,G*0.12,16);f.translate(0,G*0.15,0);put(f,m2);break;}
+  case 'leitoese':{const b=box(G*1.4,G*0.15,G*0.6);put(b,m2);const r=ring(G*0.32,G*0.08);r.rotateY(Math.PI/2);r.translate(0,G*0.4,0);put(r,m2);break;}
+  case 'klemme':{put(box(G*0.45,G*0.25,G),mt);break;}
+  case 'spanner':{const b=cyl(G*0.18,G*2.2,10);put(b,m2);for(const sy of [-1,1]){const r=ring(G*0.2,G*0.05);r.translate(0,sy*G*1.25,0);put(r,m2);}break;}
+  case 'mastfuss':{put(box(G*0.2,G*0.08,G),mt);for(let i=-2;i<=2;i++){const h=cyl(G*0.04,G*0.1,8);h.translate(0,G*0.03,i*G*0.18);put(h,mat('#0c1820'));}break;}
+  case 'gabelkopf':{put(box(G*0.4,G*0.5,G*1.2),m2);break;}
+  case 'hebel':{const h=box(G*0.12,G*0.08,G);h.translate(0,0,G/2);put(h,mt);put(cyl(G*0.15,G*0.15,12),mt);break;}
+  default:put(new THREE.SphereGeometry(G/2,10,8),mt);}}
+function beschlagBereich(box,p,i){const g='geo',L=P.rumpf.L;box.append(pick(p,'art','Art',Object.keys(BESCHLAEGE).map(k=>[k,BESCHLAEGE[k]]),i,v=>{p.art=v;changed('geo');renderWin();}),num(p,'groesse','Größe (Rollendurchmesser bzw. Länge)',1,Math.round(Math.max(80,L*0.06)),0.5,'mm',g,i),
+ el('div',{class:'row'},btn('Aufs Deck setzen',()=>{const OFF={rolle:0.6,block:0.7,oese:0.4,leitoese:0.1,klemme:0.15,spanner:1.2,mastfuss:0.05,gabelkopf:0.3,hebel:0.05,durchfuehrung:0};p.y=Math.round(deckY(+p.x,+p.s||0)+(+p.groesse||10)*(OFF[p.art]??0.4));changed('geo');renderWin();})),note('Drehen über „Grundwinkel“ unter Bewegung. Seile hängst du im Tab Mechanik an (Verbindung „Seil“).'));}
+
+const RC_VORLAGEN={
+ // Elektronik
+ empfKlein:{name:'Empfänger 2,4 GHz klein',gr:'RC-Elektronik',k:[35,20,12,7,'#1b2024']},empfStd:{name:'Empfänger 2,4 GHz Standard',gr:'RC-Elektronik',k:[47,26,14,12,'#1b2024']},
+ akkuStange:{name:'Akku NiMH 4,8 V 2000 mAh (Stange, 4×AA)',gr:'RC-Elektronik',k:[200,15,15,110,'#2f6db3']},akkuBlock:{name:'Akku NiMH 4,8 V 2000 mAh (Block 2×2 AA)',gr:'RC-Elektronik',k:[50,29,29,110,'#2f6db3']},
+ akkuLife:{name:'Akku LiFePO4 6,6 V 1100 mAh',gr:'RC-Elektronik',k:[70,33,18,75,'#3a8f5a']},akkuLipo:{name:'Akku LiPo 7,4 V 1000 mAh (mit BEC)',gr:'RC-Elektronik',k:[70,34,14,55,'#c9322a']},
+ schalter:{name:'Schalterkabel',gr:'RC-Elektronik',k:[30,13,10,8,'#2b3135']},bec:{name:'Spannungsregler / BEC',gr:'RC-Elektronik',k:[35,18,8,12,'#2b3135']},
+ antenne:{name:'Antenne im Röhrchen',gr:'RC-Elektronik'},
+ // Servos & Winden
+ servoStd:{name:'Ruderservo Standard (40×20 mm)',gr:'Servos & Winden',s:[40,20,38,15,45]},servoMini:{name:'Ruderservo Mini',gr:'Servos & Winden',s:[29,13,30,12,20]},servoSlim:{name:'Ruderservo flach (10 mm)',gr:'Servos & Winden',s:[30,10,32,12,16]},
+ windeArm:{name:'Segelwinde mit Arm',gr:'Servos & Winden',s:[59,29,50,110,110]},windeTrommel:{name:'Segelwinde mit Trommel',gr:'Servos & Winden',s:[60,35,50,0,130],trommel:32},
+ // Beschläge
+ rolle10:{name:'Umlenkrolle Ø10 (Kugellager)',gr:'Beschläge',b:['rolle',10,1]},rolle16:{name:'Umlenkrolle Ø16',gr:'Beschläge',b:['rolle',16,2]},block12:{name:'Block mit Wirbel Ø12',gr:'Beschläge',b:['block',12,2]},
+ oese:{name:'Augbolzen / Öse',gr:'Beschläge',b:['oese',6,0.5]},durchf:{name:'Deckdurchführung Schot',gr:'Beschläge',b:['durchfuehrung',5,0.5]},leitoese:{name:'Leitöse (Fairlead)',gr:'Beschläge',b:['leitoese',8,0.5]},
+ bowsie:{name:'Spannschieber (Bowsie)',gr:'Beschläge',b:['klemme',8,0.3]},spanner:{name:'Wantenspanner',gr:'Beschläge',b:['spanner',10,2]},mastfuss:{name:'Mastfuß-Schiene (verstellbar)',gr:'Beschläge',b:['mastfuss',60,6]},
+ gabelkopf:{name:'Gabelkopf M2',gr:'Beschläge',b:['gabelkopf',8,1]},ruderhebel:{name:'Ruderhebel',gr:'Beschläge',b:['hebel',20,1]},ruderkoker:{name:'Ruderkoker (Messingrohr)',gr:'Beschläge'},
+ // Rigg
+ wanten:{name:'Wanten (Paar)',gr:'Rigg'},achterstag:{name:'Achterstag',gr:'Rigg'},
+ // Seilzüge
+ schotArm:{name:'Schotsystem Armwinde (Groß + Fock)',gr:'Seilzüge'},schotTrommel:{name:'Schotsystem Trommelwinde (Endlosschleife)',gr:'Seilzüge'},ruderAnl:{name:'Ruderanlenkung (Servo → Hebel)',gr:'Seilzüge'}};
+for(const k in RC_VORLAGEN)TEILVORLAGEN[k]={name:RC_VORLAGEN[k].name,gr:RC_VORLAGEN[k].gr};
+
+function rcVorlage(k){const V=RC_VORLAGEN[k],R=P.rumpf,L=R.L,r=v=>Math.round(v*10)/10,kl=x=>hdims(clamp(x/L,0,1)).Yk*1000,dk=x=>deckAt(x),neu=[],vb=[];
+ const innen=(x,h)=>r(Math.max(kl(x)+h/2+L*0.012,Math.min(dk(x)-h/2-L*0.01,(kl(x)+dk(x))/2-h/2)));
+ const finde=re=>P.teile.find(t=>re.test(t.name)||re.test(t.id));const rg=riggTeileFinden();
+ const besch=(art,gr,masse,o)=>Object.assign(typDefaults('beschlag',R),{name:V?V.name:BESCHLAEGE[art],art,groesse:gr,masse,farbe:'#d0d6da'},o||{});
+ const seil=(a,b,name)=>{if(a&&b)vb.push({id:uid(),name,a:a.id,b:b.id,art:'seil'});};
+ if(V&&V.k){const [l,b,h,m,f]=V.k,x=r(L*(k.startsWith('akku')?0.47:k.startsWith('empf')?0.4:0.43));neu.push(Object.assign(typDefaults('kasten',R),{name:V.name,x,y:innen(x,h),s:0,laenge:l,breite:b,hoehe:h,masse:m,farbe:f}));}
+ else if(V&&V.s){const [l,b,h,arm,m]=V.s,x=r(L*(k.startsWith('winde')?0.5:0.8)),y=innen(x,h);neu.push(Object.assign(typDefaults('servo',R),{name:V.name,x,y:r(y-h/2),s:0,laenge:l,breite:b,hoehe:h,arm:arm||22,trommel:V.trommel||0,masse:m,anker:V.trommel?[0,4,V.trommel/2]:[0,4,arm]}));}
+ else if(V&&V.b){const [art,gr,m]=V.b,OFF={rolle:0.6,block:0.7,oese:0.4,leitoese:0.1,klemme:0.15,spanner:1.2,mastfuss:0.05,gabelkopf:0.3,hebel:0.05,durchfuehrung:0},x=art==='mastfuss'&&rg.mast?r(+rg.mast.x):art==='hebel'?r(L*0.92):r(L*0.5);neu.push(besch(art,gr,m,{x,y:r(dk(x)+gr*(OFF[art]??0.4)),s:0}));}
+ else switch(k){
+  case 'antenne':{const e=finde(/empf/i),x=e?+e.x:r(L*0.4),y0=e?+e.y+(+e.hoehe||12)/2:innen(x,12);neu.push(Object.assign(typDefaults('rohr',R),{name:V.name,x,y:r(y0),s:0,x2:x,y2:r(Math.min(dk(x)-4,y0+150)),s2:0,durchm:3,masse:2,farbe:'#e8eef0'}));break;}
+  case 'ruderkoker':{const rd=finde(/ruderblatt|^ruder$/i),x=rd?+rd.x:r(L*0.9),y0=rd?+rd.y:kl(x);neu.push(Object.assign(typDefaults('rohr',R),{name:V.name,x,y:r(y0),s:0,x2:x,y2:r(dk(x)-1),s2:0,durchm:6,masse:4,farbe:'#c9a64a'}));break;}
+  case 'wanten':{const m=rg.mast;if(!m){toast('Kein Mast gefunden – erst einen Mast anlegen');return null;}const h=(+m.y2-+m.y)*0.78,top=[+m.x+(+m.x2-+m.x)*0.78,+m.y+h],x=+m.x,B=hdims(clamp(x/L,0,1)).B*1000*0.9;
+   const w=Object.assign(typDefaults('rohr',R),{name:'Want Stb.',x:r(x+L*0.01),y:r(dk(x)),s:r(B),x2:r(top[0]),y2:r(top[1]),s2:0,durchm:1,masse:3,farbe:'#c9d1d6'});neu.push(w);P.teile.push(w);const w2=spiegelKopie(w);w2.name='Want Bb.';P.teile.pop();P.teile.pop();neu.push(w2);break;}
+  case 'achterstag':{const m=rg.mast;if(!m){toast('Kein Mast gefunden – erst einen Mast anlegen');return null;}neu.push(Object.assign(typDefaults('rohr',R),{name:V.name,x:r(L*0.97),y:r(dk(L*0.97)),s:0,x2:r(+m.x2),y2:r(+m.y2),s2:0,durchm:1,masse:3,farbe:'#c9d1d6'}));break;}
+  case 'ruderAnl':{let sv=finde(/ruderservo/i),rd=finde(/ruderblatt|^ruder$/i);if(!rd){toast('Kein Ruder gefunden');return null;}
+   if(!sv){sv=Object.assign(typDefaults('servo',R),{name:'Ruderservo',x:r(+rd.x-L*0.08),y:r(innen(+rd.x-L*0.08,38)-19),s:0,laenge:40,breite:20,hoehe:38,arm:15,masse:45,anker:[0,4,15]});neu.push(sv);}
+   const hb=besch('hebel',20,1,{name:'Ruderhebel',parent:rd.id,x:+rd.x,y:r(dk(+rd.x)-L*0.012),s:0,anker:[0,0,-18]});neu.push(hb);vb.push({id:uid(),name:'Schubstange Ruder',a:sv.id,b:hb.id,art:'stange'});break;}
+  case 'schotArm':case 'schotTrommel':{const trom=k==='schotTrommel',x=r(L*0.5),w=Object.assign(typDefaults('servo',R),{name:trom?'Segelwinde (Trommel)':'Segelwinde (Arm)',x,y:r(innen(x,50)-25),s:0,laenge:trom?60:59,breite:trom?35:29,hoehe:50,arm:trom?0:110,trommel:trom?32:0,masse:trom?130:110,anker:trom?[0,4,16]:[0,4,110],antrieb:P.steuer.some(s=>s.id==='schot')?drv('steuer:schot',trom?6:-1.5,0,-720,720):null});neu.push(w);
+   const g=rg.gross,f=rg.fock,xg=g?r(+g.x+(+g.unterliek||200)*0.85):r(L*0.72),xf=f?r(+f.x+(+f.unterliek||150)*0.7):r(L*0.3);
+   const dg=besch('durchfuehrung',5,0.5,{name:'Durchführung Großschot',x:xg,y:r(dk(xg)),s:0}),df=besch('durchfuehrung',5,0.5,{name:'Durchführung Fockschot',x:xf,y:r(dk(xf)),s:0});neu.push(dg,df);
+   if(trom){const yv=r(innen(r(L*0.22),10)),yh=r(innen(r(L*0.8),10));const rv=besch('rolle',16,2,{name:'Umlenkrolle vorn',x:r(L*0.22),y:yv,s:0}),rh=besch('rolle',16,2,{name:'Umlenkrolle achtern',x:r(L*0.8),y:yh,s:0});neu.push(rv,rh);
+    seil(w,rv,'Schleife vorn');seil(rv,rh,'Schleife unten');seil(rh,w,'Schleife achtern');seil(rh,dg,'Großschot unter Deck');seil(rv,df,'Fockschot unter Deck');}
+   else{seil(w,dg,'Großschot unter Deck');seil(w,df,'Fockschot unter Deck');}
+   if(g)seil(dg,g,'Großschot');if(f)seil(df,f,'Fockschot');break;}
+  default:return null;}
+ for(const p of neu)if(!P.teile.includes(p))P.teile.push(p);P.verbindungen.push(...vb);
+ if(vb.length)toast(neu.length+' Teile und '+vb.length+' Seile/Stangen angelegt – Feinheiten im Tab Mechanik');
+ auswahlSetzen(neu.map(t=>t.id));return neu[neu.length-1]||null;}
+
+/* ================= Projekte anlegen, sichern, auf andere Geräte bringen ================= */
+const VORLAGEN_NAMEN={marblehead:'Marblehead',moth:'Foiling Moth',k6:'Kutter K6',zk10:'ZK 10',leer:'Nur Rumpf (leer)'};
+async function neuesProjekt(name,vorlage,vorherSichern){flush();if(vorherSichern)await cloudSave(false);
+ P=normalize(TEMPLATES[vorlage]());P.name=String(name||'').trim()||'Neues Projekt';delete P.cloudId;sel=null;auswahl=new Set();commit();needRebuild=true;renderAll();setTimeout(()=>goView('free'),50);
+ await cloudSave(true);tab='projekt';renderWin();}
+function neuesProjektBereich(box){const v={n:'',t:'marblehead',s:true};
+ box.append(sub('Neues Projekt'));const ni=el('input',{type:'text',id:'np-name',placeholder:'z. B. Meine Marblehead 2027'});ni.addEventListener('input',()=>{v.n=ni.value;});
+ const ts=el('select',{id:'np-vorlage'});for(const k in VORLAGEN_NAMEN)ts.append(el('option',{value:k,text:VORLAGEN_NAMEN[k]}));ts.addEventListener('change',()=>{v.t=ts.value;});
+ box.append(el('div',{class:'fld2'},el('label',{for:'np-name',text:'Name'}),ni),el('div',{class:'fld2'},el('label',{for:'np-vorlage',text:'Startet mit'}),ts),
+  check(v,'s','Aktuelles Projekt „'+P.name+'“ vorher speichern','name','np'),
+  el('div',{class:'row'},btn('Neues Projekt anlegen',()=>neuesProjekt(v.n,v.t,v.s),'pri')),note('Das neue Projekt erscheint sofort unter „Meine Projekte“ und wird mit „Speichern“ oben weiter gesichert.'));}
+
+/* ---- Verschlüsseln mit PIN (für Schlüssel-Übertragung und Sicherungen) ---- */
+const b64u={an:u=>btoa(String.fromCharCode(...u)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),von:s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))};
+async function pinSchluessel(pin,salt){const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}
+async function verschluesseln(text,pin){const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),k=await pinSchluessel(pin,salt),ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},k,new TextEncoder().encode(text)));const o=new Uint8Array(28+ct.length);o.set(salt);o.set(iv,16);o.set(ct,28);return b64u.an(o);}
+async function entschluesseln(s,pin){const u=b64u.von(s),k=await pinSchluessel(pin,u.slice(0,16));return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:u.slice(16,28)},k,u.slice(28)));}
+function pinDialog(titel,text,neu){return new Promise(res=>{const inp=el('input',{type:'password',inputmode:'numeric',autocomplete:neu?'new-password':'off',id:'pin-in','aria-label':'PIN',style:'font-size:18px;letter-spacing:4px;text-align:center'}),fehl=el('p',{class:'note',style:'color:#f2a03d;min-height:1em'});
+ const wrap=el('div',{style:'position:fixed;inset:0;z-index:50;background:rgba(5,10,14,.6);display:flex;align-items:center;justify-content:center;padding:16px'});
+ const fertig=v=>{wrap.remove();res(v);};const ok=()=>{const v=inp.value.trim();if(neu&&!/^\d{4,}$/.test(v)){fehl.textContent='Bitte mindestens 4 Ziffern.';return;}if(!v){fehl.textContent='Bitte PIN eingeben.';return;}fertig(v);};
+ inp.addEventListener('keydown',e=>{if(e.key==='Enter')ok();if(e.key==='Escape')fertig(null);});
+ wrap.append(el('div',{class:'panel',role:'dialog','aria-modal':'true','aria-labelledby':'pin-t',style:'width:min(360px,100%);padding:18px;border-radius:12px;display:flex;flex-direction:column;gap:10px'},el('div',{class:'sub',id:'pin-t',text:titel}),el('p',{class:'note',text}),inp,fehl,el('div',{class:'row'},btn('OK',ok,'pri'),btn('Abbrechen',()=>fertig(null)))));
+ document.body.append(wrap);setTimeout(()=>inp.focus(),30);});}
+const kiEinstellungen=()=>({gk:kiGet('werftkoje-gemini-key'),gm:kiGet('werftkoje-gemini-model'),anb:kiGet('werftkoje-ki-anbieter')||'gemini'});
+function kiEinstellungenSetzen(o){if(!o)return;if(o.gk)kiSet('werftkoje-gemini-key',o.gk);if(o.gm!=null)kiSet('werftkoje-gemini-model',o.gm);if(o.anb)kiSet('werftkoje-ki-anbieter',o.anb);kiSet('werftkoje-gemini-auto','');}
+const APP_URL='https://feuerfuchs89.github.io/Werft-koje/';
+async function schluesselLink(){const k=kiGet('werftkoje-gemini-key');if(!k){toast('Erst einen Schlüssel eintragen');return;}
+ const pin=await pinDialog('PIN festlegen','Der Link enthält deinen Schlüssel verschlüsselt. Diese PIN (mind. 4 Ziffern) gibst du auf dem anderen Gerät ein – schick sie nicht im selben Chat wie den Link.',true);if(!pin)return;
+ let url;try{url=(window.claude?APP_URL:location.origin+location.pathname)+'#wk='+await verschluesseln(JSON.stringify(kiEinstellungen()),pin);}catch(e){toast('Verschlüsseln geht in diesem Browser nicht');return;}
+ try{if(navigator.share){await navigator.share({title:'Werftkoje: KI-Schlüssel',text:'Auf dem anderen Gerät öffnen und die PIN eingeben.',url});toast('Link geteilt');return;}}catch(e){if(e&&e.name==='AbortError')return;}
+ try{await navigator.clipboard.writeText(url);toast('Link kopiert – auf dem anderen Gerät öffnen');}catch(e){const ta=el('textarea',{readonly:true,style:'width:100%'});ta.value=url;const b=$('winB');if(b){b.append(note('Diesen Link auf dem anderen Gerät öffnen:'),ta);ta.select();}}}
+async function linkPruefen(){const h=location.hash||'';if(!h.startsWith('#wk='))return;const daten=decodeURIComponent(h.slice(4));try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
+ for(let v=0;v<3;v++){const pin=await pinDialog('KI-Schlüssel übernehmen','Gib die PIN ein, die du beim Erstellen des Links festgelegt hast.');if(!pin)return;
+  try{const o=JSON.parse(await entschluesseln(daten,pin));kiEinstellungenSetzen(o);KI.claude=KI.claude===undefined?undefined:KI.claude;toast('Schlüssel übernommen – der Assistent ist bereit');tab='ki';showWin(true);renderWin();return;}catch(e){toast('PIN falsch – nochmal');}}}
+
+/* ---- Sicherung aller Projekte (und optional der KI-Einstellungen) als Datei ---- */
+async function sicherungSpeichern(mitKey){let docs;try{docs=await store.list();}catch(e){toast('Projekte konnten nicht gelesen werden');return;}
+ const o={werftkoje_sicherung:1,stand:new Date().toISOString(),projekte:docs.map(d=>({id:d.id,name:d.name,klasse:d.klasse,stand:d.stand,json:d.json}))};
+ if(mitKey){if(!kiGet('werftkoje-gemini-key')){toast('Kein Schlüssel gespeichert – Sicherung ohne Schlüssel');}else{const pin=await pinDialog('PIN für den Schlüssel','Der Schlüssel wird in der Datei mit dieser PIN verschlüsselt (mind. 4 Ziffern).',true);if(!pin)return;o.einstellungen=await verschluesseln(JSON.stringify(kiEinstellungen()),pin);}}
+ const d=new Date().toISOString().slice(0,10);await ausgeben('werftkoje-sicherung-'+d+'.json',JSON.stringify(o),'application/json');}
+async function sicherungLaden(text){let o;try{o=JSON.parse(text);}catch(e){toast('Keine gültige Sicherungsdatei');return;}if(!o||!o.werftkoje_sicherung){toast('Das ist keine Werftkoje-Sicherung');return;}
+ let alt={};try{for(const d of await store.list())alt[d.id]=d;}catch(e){}let n=0,ue=0;
+ for(const p of o.projekte||[]){if(!p||!p.id||!p.json)continue;const a=alt[p.id];if(a&&String(a.stand)>=String(p.stand)){ue++;continue;}try{await store.put(p.id,{name:p.name,klasse:p.klasse,stand:p.stand,json:p.json});n++;}catch(e){}}
+ toast(n+' Projekt(e) übernommen'+(ue?', '+ue+' waren hier schon aktuell':''));
+ if(o.einstellungen){for(let v=0;v<3;v++){const pin=await pinDialog('KI-Schlüssel aus der Sicherung','PIN der Sicherung eingeben (oder Abbrechen, um nur die Projekte zu übernehmen).');if(!pin)break;try{kiEinstellungenSetzen(JSON.parse(await entschluesseln(o.einstellungen,pin)));toast('KI-Schlüssel übernommen');break;}catch(e){toast('PIN falsch');}}}
+ renderWin();}
+function sicherungBereich(box){const v={k:false};box.append(sub('Auf andere Geräte bringen'),
+ note(DB?'Hier in Claude liegen deine Projekte in deinem Konto und sind auf allen Geräten da, auf denen du angemeldet bist. Für die GitHub-App: Sicherung speichern und dort einspielen.':'Diese App speichert auf diesem Gerät. Für ein anderes Gerät: Sicherung speichern, z. B. in Google Drive oder per Mail an dich, und dort einspielen. Neuere Stände werden dabei nicht überschrieben.'),
+ check(v,'k','KI-Schlüssel mit in die Sicherung (mit PIN verschlüsselt)','name','sich'),
+ el('div',{class:'row'},btn('Sicherung speichern',()=>sicherungSpeichern(v.k),'pri')));
+ const fi=el('input',{type:'file',id:'sichFile',accept:'.json,application/json'});fi.addEventListener('change',()=>{const f=fi.files&&fi.files[0];if(!f)return;const r=new FileReader();r.onload=()=>sicherungLaden(r.result);r.readAsText(f);});
+ box.append(el('label',{class:'note',for:'sichFile'},'Sicherung einspielen (.json)'),fi);}
+
+setTimeout(linkPruefen,600);
 
 /* ================= Modell-Karte ================= */
 const MESS=[['loa','Länge über alles'],['breite','Breite'],['tiefgang','Tiefgang'],['hoehe','Höhe über Deck'],['segel','Segelfläche']];
