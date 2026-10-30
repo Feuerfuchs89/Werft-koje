@@ -152,6 +152,7 @@ textarea{min-height:90px;resize:vertical}
   <button class="v ic" id="bRahmen" aria-pressed="false" title="Rahmenauswahl: im 3D-Bild einen Rahmen um mehrere Teile ziehen" aria-label="Rahmenauswahl">▭</button>
   <button class="v ic" id="bSym" aria-pressed="false" title="Symmetrie: Änderungen laufen auf dem gespiegelten Gegenstück mit" aria-label="Symmetrie">⇋</button>
   <button class="v pri" id="bSave" title="Speichern (Strg+S)">Speichern</button>
+  <button class="v" id="bSaveAs" title="Speichern unter … – Ordner und Dateinamen selbst wählen (Strg+Umschalt+S)" aria-label="Speichern unter">Speichern unter …</button>
   <button class="v ic" id="bRedo" title="Wiederholen (Strg+Y)" aria-label="Wiederholen">↷</button>
 </nav>
 <button class="kifab" id="bKI" type="button" aria-pressed="false" title="KI-Assistent öffnen (Taste K)" aria-label="KI-Assistent"><span class="kifab-i" aria-hidden="true">✦</span><span class="kifab-t">KI-Assistent</span><span class="kifab-s" id="bKIs"></span></button>
@@ -200,7 +201,7 @@ textarea{min-height:90px;resize:vertical}
 "use strict";
 /* ================= Grundlagen ================= */
 const DEG=Math.PI/180,clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
-const NS=80,NB=8,NT=4; // Rumpfauflösung: Stationen, Boden- und Seitenpunkte
+let NS=80,NB=8,NT=4; // Rumpfauflösung: Stationen, Boden- und Seitenpunkte (für den Spiele-Export zeitweise gröber)
 const $=id=>document.getElementById(id);
 const V=(x,y,z)=>new THREE.Vector3(x,y,z);
 function el(tag,attrs,...kids){const e=document.createElement(tag);if(attrs)for(const k in attrs){const v=attrs[k];if(v==null)continue;if(k.startsWith('aria-')){e.setAttribute(k,String(v));continue;}if(v===false)continue;if(k==='class')e.className=v;else if(k==='text')e.textContent=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else e.setAttribute(k,v===true?'':v);}for(const c of kids)if(c!=null)e.append(c);return e;}
@@ -570,12 +571,12 @@ function ownBox(id,box){for(const m of partMeshes[id]||[])box.expandByObject(m);
 function measure(){const bp=boat.position.clone(),br=boat.rotation.clone(),wr=world.rotation.clone();boat.position.set(0,0,0);boat.rotation.set(0,0,0);world.rotation.set(0,0,0);world.updateMatrixWorld(true);
  const all=new THREE.Box3(),noSail=new THREE.Box3();ownBox('rumpf',all);ownBox('rumpf',noSail);
  let masse=+P.rumpf.masse||0,segel=0,schale=null;const SA=P.rumpf.schale&&P.rumpf.schale.auto?P.rumpf.schale:null;
- if(SA){let ar=0,ad=0;for(const o of partMeshes.rumpf||[]){const a=geoFlaeche(o.geometry);if(o.userData.flaeche==='deck')ad+=a;else ar+=a;}schale={ar,ad,m:ar*(+SA.rumpf||0)+ad*(+SA.deck||0)};masse=schale.m;}const mom=new THREE.Vector3();const hc=ownBox('rumpf',new THREE.Box3()).getCenter(new THREE.Vector3());mom.addScaledVector(hc,masse);
+ if(SA){let ar=0,ad=0;for(const o of partMeshes.rumpf||[]){const a=geoFlaeche(o.geometry);if(o.userData.flaeche==='deck')ad+=a;else ar+=a;}schale={ar,ad,m:ar*(+SA.rumpf||0)+ad*(+SA.deck||0)};masse=schale.m;}const mom=new THREE.Vector3();const hc=ownBox('rumpf',new THREE.Box3()).getCenter(new THREE.Vector3());mom.addScaledVector(hc,masse);const TL=[{id:'rumpf',name:'Rumpf',m:masse,x:hc.z*1000+P.rumpf.L/2,y:hc.y*1000}];
  PB={};for(const id in built){const p=built[id].p,bx=ownBox(id,new THREE.Box3());if(bx.isEmpty())continue;PB[id]=bx;all.union(bx);if(p.typ==='segel')segel+=sailArea(p);else noSail.union(bx);
-  const m=p.typ==='bombe'&&p.blei?bombeMasse(p):(+p.masse||0)+(SA&&p.typ==='ausschnitt'?(partMeshes[id]||[]).reduce((a,o)=>a+geoFlaeche(o.geometry),0)*(+SA.deck||0):0);if(m>0){masse+=m;mom.addScaledVector(bx.getCenter(new THREE.Vector3()),m);}}
+  const m=p.typ==='bombe'&&p.blei?bombeMasse(p):(+p.masse||0)+(SA&&p.typ==='ausschnitt'?(partMeshes[id]||[]).reduce((a,o)=>a+geoFlaeche(o.geometry),0)*(+SA.deck||0):0);if(m>0){masse+=m;const bc=bx.getCenter(new THREE.Vector3());mom.addScaledVector(bc,m);TL.push({id,name:p.name,m,x:bc.z*1000+P.rumpf.L/2,y:bc.y*1000});}}
  boat.position.copy(bp);boat.rotation.copy(br);world.rotation.copy(wr);world.updateMatrixWorld(true);
  const cg=masse>0?mom.multiplyScalar(1/masse):V(0,0,0);const deckRef=hdims(0.5).Ys;
- const hullBox=ownBox('rumpf',new THREE.Box3());M={hullBox,loa:+P.rumpf.L,breite:(noSail.max.x-noSail.min.x)*1000,tiefgang:Math.max(0,-all.min.y*1000),hoehe:(all.max.y-deckRef)*1000,segel,masse,schale,cgx:cg.z*1000+P.rumpf.L/2,cgy:cg.y*1000,box:all,noSail,deckRef};}
+ const hullBox=ownBox('rumpf',new THREE.Box3());M={hullBox,loa:+P.rumpf.L,breite:(noSail.max.x-noSail.min.x)*1000,tiefgang:Math.max(0,-all.min.y*1000),hoehe:(all.max.y-deckRef)*1000,segel,masse,schale,cgx:cg.z*1000+P.rumpf.L/2,cgy:cg.y*1000,teile:TL,box:all,noSail,deckRef};}
 
 /* Maßlinien im Modell */
 const LBL=new Map();let dimKey='';
@@ -695,8 +696,22 @@ async function fileSave(){const name=(P.name||'Projekt').replace(/[\\/:*?"<>|]+/
  try{await DL.save({filename:name+'.werftkoje.json',data});toast('Datei gespeichert');}
  catch(e){if(e&&e.code!=='declined')toast('Datei konnte nicht gespeichert werden');}}
 function openProject(o,cloudId){flush();P=normalize(o);if(cloudId)P.cloudId=cloudId;sel=null;selLine=null;commit();needRebuild=true;renderAll();setTimeout(()=>goView('free'),50);toast('Geöffnet: '+P.name);}
-$('bSave').onclick=()=>cloudSave(false);
-window.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();cloudSave(false);}});
+/* Speichern unter …: Ordner und Dateiname frei wählbar (Chrome, Edge, Opera am Rechner/Android).
+   Andere Browser (Firefox, Safari) können keinen Ordner wählen und legen die Datei im Download-Ordner ab. */
+let FILE_H=null;
+async function schreibeHandle(h,data){const w=await h.createWritable();try{await w.write(data);}finally{await w.close();}}
+async function fileSaveAs(){flush();
+ if(DL||!window.showSaveFilePicker){if(!DL)toast('Dieser Browser kann keinen Ordner wählen – Datei kommt in den Download-Ordner');return fileSave();}
+ const name=dateiName(P.name||'Projekt');
+ try{const h=await showSaveFilePicker({suggestedName:name+'.werftkoje.json',types:[{description:'Werftkoje-Projekt',accept:{'application/json':['.json']}}]});
+  await schreibeHandle(h,JSON.stringify(P,null,1));FILE_H=h;toast('Gespeichert unter: '+h.name+' – Strg+S aktualisiert diese Datei');if(tab==='projekt')renderWin();}
+ catch(e){if(e&&e.name==='AbortError')return;if(e&&(e.name==='SecurityError'||e.name==='TypeError'))return fileSave();toast('Speichern unter ging nicht: '+((e&&(e.message||e.name))||'Fehler'));}}
+async function speichern(){await cloudSave(false);
+ if(FILE_H){try{await schreibeHandle(FILE_H,JSON.stringify(P,null,1));toast('Gespeichert: '+P.name+' und Datei '+FILE_H.name);}
+  catch(e){FILE_H=null;toast('Datei nicht mehr beschreibbar – bitte „Speichern unter …“ neu wählen');if(tab==='projekt')renderWin();}}}
+$('bSave').onclick=()=>speichern();
+$('bSaveAs').onclick=()=>fileSaveAs();
+window.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();if(e.shiftKey)fileSaveAs();else speichern();}});
 window.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey))return;const t=e.target.tagName;if(t==='INPUT'||t==='TEXTAREA')return;const k=e.key.toLowerCase();if(k==='z'&&!e.shiftKey){e.preventDefault();undo();}else if(k==='y'||(k==='z'&&e.shiftKey)){e.preventDefault();redo();}});
 document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;renderWin();}));
 // Fenster verschieben (nur Desktop)
@@ -905,7 +920,35 @@ function renderAufmass(box){const R=P.rumpf,L=R.L;if(!R.aufmass)R.aufmass={bezug
  box.append(el('div',{class:'row'},btn('+ Sente',()=>{const n=A.senten.length;A.senten.push({id:uid(),name:'Sente '+String.fromCharCode(65+n),hoehe:Math.round((+B.wl||0)+(B.kieloben?-1:1)*hdims(0.5).Ys*1000),winkel:[30,50,70][n%3]});changed('geo');renderWin();})));}
 
 let hullAct='deck',hullEdW=null;
-function renderLinien(box){const R=P.rumpf,L=R.L,r=Math.round;if(sel==='rumpf')sel=null;hullEdW=null;renderAufmass(box);
+/* ---- Foto-Vorlage: Foto/Scan der Seitenansicht maßstäblich hinter den Rumpf legen, zum Abpausen und Abgleichen ----
+   Einstellungen stehen im Projekt (P.foto); das Bild selbst merkt sich dieses Gerät (ein Foto, verkleinert). */
+const FOTO={grp:null,mesh:null,tex:null,w:1,h:1,key:'werftkoje-foto',versucht:false};
+const FOTO_DEF={an:true,breite:1400,x:-50,y:-100,alpha:0.55,spiegeln:false};
+const FT=()=>{if(!P.foto)P.foto={};for(const k in FOTO_DEF)if(P.foto[k]===undefined)P.foto[k]=FOTO_DEF[k];return P.foto;};
+function fotoUpdate(){const F=P.foto;
+ if(F&&F.an&&!FOTO.tex&&!FOTO.versucht){FOTO.versucht=true;try{const d=localStorage.getItem(FOTO.key);if(d)fotoLaden(d,false);}catch(e){}}
+ if(!F||!FOTO.tex){if(FOTO.grp)FOTO.grp.visible=false;return;}
+ const L=P.rumpf.L,w=(+F.breite||1000)/1000,h=w*FOTO.h/FOTO.w;
+ if(!FOTO.grp)FOTO.grp=new THREE.Group();if(FOTO.grp.parent!==boat)boat.add(FOTO.grp);
+ if(!FOTO.mesh){FOTO.mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:FOTO.tex,transparent:true,side:THREE.DoubleSide,depthWrite:false,fog:false,toneMapped:false}));FOTO.mesh.renderOrder=-5;FOTO.mesh.rotation.y=-Math.PI/2;FOTO.grp.add(FOTO.mesh);}
+ FOTO.mesh.material.opacity=clamp(+F.alpha||0.5,0.05,1);FOTO.mesh.scale.set(F.spiegeln?-w:w,h,1);
+ FOTO.mesh.position.set(0,(+F.y||0)/1000+h/2,-L/2000*1+(+F.x||0)/1000+w/2);FOTO.grp.visible=!!F.an;}
+function fotoLaden(src,speichern){const im=new Image();im.onload=()=>{const m=Math.max(im.width,im.height),k=m>1600?1600/m:1,c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+  if(FOTO.tex)FOTO.tex.dispose();const t=new THREE.CanvasTexture(c);t.encoding=renderer.outputEncoding;t.anisotropy=4;FOTO.tex=t;FOTO.w=c.width;FOTO.h=c.height;
+  if(FOTO.mesh){FOTO.mesh.material.map=t;FOTO.mesh.material.needsUpdate=true;}
+  if(speichern){try{localStorage.setItem(FOTO.key,c.toDataURL('image/jpeg',0.82));}catch(e){toast('Foto wird angezeigt, ließ sich aber nicht für den nächsten Start merken');}}
+  fotoUpdate();if(tab==='linien')renderWin();};
+ im.onerror=()=>toast('Das Bild konnte nicht gelesen werden');im.src=src;}
+function fotoBereich(box){const F=P.foto,i='foto';
+ box.append(sub('Foto-Vorlage (Original abpausen)'),note('Foto oder Scan der Seitenansicht mit dem Bug links laden (sonst „Foto spiegeln“). Breite = wie viele mm das ganze Foto zeigt, z. B. nach einem bekannten Maß am Boot. Dann Ansicht „Seite“ wählen und mit der Deckkraft abgleichen.'));
+ const fi=el('input',{type:'file',accept:'image/*',id:'fotoFile','aria-label':'Foto wählen'});
+ fi.addEventListener('change',()=>{const f=fi.files&&fi.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const G=FT();G.an=true;G.breite=Math.round(P.rumpf.L*1.15);fotoLaden(r.result,true);changed('name');};r.readAsDataURL(f);});
+ box.append(fi);
+ if(!F||!FOTO.tex){box.append(note('Noch kein Foto geladen.'));return;}
+ box.append(check(F,'an','Foto anzeigen','name',i,fotoUpdate),check(F,'spiegeln','Foto spiegeln','name',i,fotoUpdate),
+  num(F,'breite','Breite des Fotos',100,6000,1,'mm','name',i,fotoUpdate),num(F,'x','Lage längs (linke Fotokante ab Bug)',-2000,4000,1,'mm','name',i,fotoUpdate),num(F,'y','Lage Höhe (Unterkante des Fotos)',-1500,1500,1,'mm','name',i,fotoUpdate),num(F,'alpha','Deckkraft',0.05,1,0.05,'','name',i,fotoUpdate),
+  el('div',{class:'row'},btn('Foto entfernen',()=>{if(FOTO.tex)FOTO.tex.dispose();FOTO.tex=null;if(FOTO.mesh){FOTO.grp.remove(FOTO.mesh);FOTO.mesh.material.dispose();FOTO.mesh=null;}delete P.foto;try{localStorage.removeItem(FOTO.key);}catch(e){}fotoUpdate();changed('name');renderWin();})));}
+function renderLinien(box){const R=P.rumpf,L=R.L,r=Math.round;if(sel==='rumpf')sel=null;hullEdW=null;fotoBereich(box);renderAufmass(box);
  box.append(sub('Rumpf von Hand formen'),note('Deckslinie, Kiellinie und halbe Breite als eigene Kurven. Das 3D-Modell folgt sofort.'));
  if(!R.aufmassAktiv)box.append(check(R,'eigen','Rumpf folgt meinen Linien','geo','rumpf',()=>{if(R.eigen&&!R.linien)seedLines(R);renderWin();}));
  if(R.eigen&&R.linien){const seg=el('div',{class:'seg'});for(const [k,t] of [['deck','Deckslinie'],['kiel','Kiellinie'],['breite','Halbe Breite']])seg.append(el('button',{class:'v',type:'button','aria-pressed':hullAct===k,onclick:()=>{hullAct=k;renderWin();}},t));box.append(seg);
@@ -988,7 +1031,8 @@ function renderProjekt(box){const i='prj';
   twoStep('Marblehead','Ersetzen?',()=>loadTpl('marblehead')),twoStep('Foiling Moth','Ersetzen?',()=>loadTpl('moth')),twoStep('Kutter K6','Ersetzen?',()=>loadTpl('k6')),twoStep('ZK 10','Ersetzen?',()=>loadTpl('zk10')),twoStep('Nur Rumpf','Ersetzen?',()=>loadTpl('leer'))));
  box.append(sub('Speichern'));
  {box.append(note(P.cloudId?'Dieses Projekt ist '+ortName()+' gespeichert. „Speichern“ oben überschreibt es'+(DB?', auf allen deinen Geräten.':'.'):'Noch nicht gespeichert. „Speichern“ oben legt es '+ortName()+' an.'),
-   el('div',{class:'row'},btn('Speichern',()=>cloudSave(false),'pri'),btn('Als Kopie speichern',()=>{P.name=P.name+' Kopie';cloudSave(true);}),btn('Als Datei (.json)',fileSave)));
+   el('div',{class:'row'},btn('Speichern',()=>speichern(),'pri'),btn('Speichern unter …',fileSaveAs),btn('Als Kopie speichern',()=>{P.name=P.name+' Kopie';cloudSave(true);}),btn('Als Datei (.json)',fileSave)),
+   note(FILE_H?'Verknüpfte Datei: '+FILE_H.name+' – wird bei jedem „Speichern“ mit aktualisiert (gilt bis zum Schließen der App).':'„Speichern unter …“ lässt dich Ordner und Dateinamen frei wählen, z. B. deinen Projektordner oder eine Cloud-Ablage.'));
   const list=el('div',{class:'grp',id:'cloudList'},note('Lade gespeicherte Projekte …'));box.append(sub('Meine Projekte'),list);
   store.list().then(docs=>{list.textContent='';if(!docs.length){list.append(note('Noch keine gespeicherten Projekte.'));return;}
    for(const v of docs){const d={id:v.id};const t=v.stand?new Date(v.stand).toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'}):'';
@@ -1093,6 +1137,7 @@ const dateiName=s=>(String(s||'Werftkoje').replace(/[\\/:*?"<>|]+/g,' ').trim()|
 async function ausgeben(name,data,mime){const bytes=data instanceof Blob?new Uint8Array(await data.arrayBuffer()):typeof data==='string'?new TextEncoder().encode(data):data,ext=name.split('.').pop().toLowerCase();
  if(DL){const direkt=['svg','json','txt','csv','pdf','zip','html','png','md'].includes(ext);
   try{await DL.save(direkt?{filename:name,data:new Blob([bytes])}:{filename:name.replace(/\.[^.]+$/,'')+'.zip',data:zipStore([[name,bytes]])});toast(direkt?'Gespeichert: '+name:'Gespeichert als ZIP: '+name);}catch(e){if(e&&e.code!=='declined')toast('Speichern ging nicht');}return;}
+ if(window.showSaveFilePicker){try{const h=await showSaveFilePicker({suggestedName:name,types:[{description:ext.toUpperCase()+'-Datei',accept:{[mime||'application/octet-stream']:['.'+ext]}}]});await schreibeHandle(h,new Blob([bytes]));toast('Gespeichert: '+h.name);return;}catch(e){if(e&&e.name==='AbortError')return;}}
  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:mime||'application/octet-stream'}));a.download=name;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);toast('Gespeichert: '+name);}catch(e){toast('Speichern ging nicht');}}
 
 /* 3D-Netze in Bootskoordinaten (mm): X ab Bug nach achtern, Y nach Steuerbord, Z nach oben */
@@ -1104,7 +1149,13 @@ function netze(nurId){const bp=boat.position.clone(),br=boat.rotation.clone(),wr
   out.push({name:id==='rumpf'?'Rumpf':(built[id]?built[id].p.name:id),tris});}
  boat.position.copy(bp);boat.rotation.copy(br);world.rotation.copy(wr);world.updateMatrixWorld(true);return out;}
 /* ---- GLB (glTF 2.0, binär) für Spiele-Engines: Meter, Y oben, Bug in −Z; eine Masche je Teil und Material ---- */
-function glbBin(){const bp=boat.position.clone(),br=boat.rotation.clone(),wr=world.rotation.clone();boat.position.set(0,0,0);boat.rotation.set(0,0,0);world.rotation.set(0,0,0);world.updateMatrixWorld(true);
+/* Detailstufen für den Spiele-Export: Rumpfgitter gröber rechnen, exportieren, danach wieder auf volle Auflösung */
+const GLB_STUFEN={hoch:['Hoch (wie im Bild)',80,8,4],mittel:['Mittel',40,6,3],niedrig:['Niedrig (Handy/Massenspiel)',20,4,2],minimal:['Minimal (Ferne Boote)',10,3,2]};
+const GD={d:'hoch'};let glbTris=0;
+function glbMitDetail(stufe){const s=GLB_STUFEN[stufe]||GLB_STUFEN.hoch,alt=[NS,NB,NT];[,NS,NB,NT]=s;
+ try{rebuild();applyDrives();applyToggles();return glbBin();}
+ finally{[NS,NB,NT]=alt;needRebuild=true;}}
+function glbBin(){glbTris=0;const bp=boat.position.clone(),br=boat.rotation.clone(),wr=world.rotation.clone();boat.position.set(0,0,0);boat.rotation.set(0,0,0);world.rotation.set(0,0,0);world.updateMatrixWorld(true);
  const chunks=[],views=[],acc=[],meshes=[],nodes=[],mats=[],matIx=new Map();let off=0;const v=new THREE.Vector3(),nm=new THREE.Matrix3();
  const push=(arr,target)=>{const b=new Uint8Array(arr.buffer,arr.byteOffset,arr.byteLength),pad=(4-b.byteLength%4)%4;views.push({buffer:0,byteOffset:off,byteLength:b.byteLength,target});chunks.push(b);if(pad)chunks.push(new Uint8Array(pad));off+=b.byteLength+pad;return views.length-1;};
  const matOf=m=>{const c=m.color||new THREE.Color(1,1,1),op=m.transparent?(m.opacity??1):1,key=c.getHexString()+'|'+op.toFixed(2);if(matIx.has(key))return matIx.get(key);
@@ -1115,7 +1166,7 @@ function glbBin(){const bp=boat.position.clone(),br=boat.rotation.clone(),wr=wor
    const pos=new Float32Array(pa.count*3),nor=new Float32Array(pa.count*3),mn=[Infinity,Infinity,Infinity],mx=[-Infinity,-Infinity,-Infinity];
    for(let i=0;i<pa.count;i++){v.fromBufferAttribute(pa,i).applyMatrix4(m.matrixWorld);pos.set([v.x,v.y,v.z],i*3);mn[0]=Math.min(mn[0],v.x);mn[1]=Math.min(mn[1],v.y);mn[2]=Math.min(mn[2],v.z);mx[0]=Math.max(mx[0],v.x);mx[1]=Math.max(mx[1],v.y);mx[2]=Math.max(mx[2],v.z);
     if(na){v.fromBufferAttribute(na,i).applyMatrix3(nm).normalize();nor.set([v.x||0,v.y||0,v.z||0],i*3);}}
-   const ix=g.index?Uint32Array.from(g.index.array):Uint32Array.from({length:pa.count},(_,i)=>i);if(!ix.length)continue;
+   const ix=g.index?Uint32Array.from(g.index.array):Uint32Array.from({length:pa.count},(_,i)=>i);if(!ix.length)continue;glbTris+=ix.length/3;
    acc.push({bufferView:push(pos,34962),componentType:5126,count:pa.count,type:'VEC3',min:mn,max:mx});const ap=acc.length-1;
    acc.push({bufferView:push(nor,34962),componentType:5126,count:pa.count,type:'VEC3'});const an=acc.length-1;
    acc.push({bufferView:push(ix,34963),componentType:5125,count:ix.length,type:'SCALAR'});const ai=acc.length-1;
@@ -1175,6 +1226,26 @@ function sacBild(sac){const c=el('canvas',{class:'edc',style:'height:120px','ari
  const W=r.width,H=r.height,L=P.rumpf.L,amax=Math.max(1,...sac.map(q=>q[1]));x.strokeStyle='rgba(157,178,187,.3)';x.beginPath();x.moveTo(8,H-14);x.lineTo(W-8,H-14);x.stroke();
  x.beginPath();sac.forEach(([xx,a],i)=>{const px=8+(xx/L)*(W-16),py=H-14-(a/amax)*(H-28);i?x.lineTo(px,py):x.moveTo(px,py);});x.strokeStyle='#7fd49b';x.lineWidth=2;x.stroke();
  x.fillStyle='rgba(157,178,187,.9)';x.font='10px "IBM Plex Mono", monospace';x.fillText('Bug',8,H-2);x.textAlign='right';x.fillText('Heck',W-8,H-2);x.textAlign='left';x.fillText('max. '+fmtN(amax/100,0)+' cm²',8,11);});return c;}
+/* ---- Gewichtsliste & Trimmhilfe: Teile mit Gewicht und Lage, Schwerpunkt gegen Auftriebsschwerpunkt ---- */
+function gewichtsliste(box,h){const TL=(M.teile||[]).slice().sort((a,b)=>b.m-a.m),L=P.rumpf.L,tot=M.masse||0;
+ box.append(sub('Gewichtsliste & Trimmung'));
+ if(!tot){box.append(note('Noch keine Gewichte eingetragen.'));return;}
+ const th=s=>el('th',{style:'text-align:left;padding:2px 6px;font-weight:600',text:s}),td=(s,r)=>el('td',{style:'padding:2px 6px;'+(r?'text-align:right;font-variant-numeric:tabular-nums':''),text:s});
+ const tb=el('table',{style:'width:100%;border-collapse:collapse;font-size:12px'},el('tr',null,th('Teil'),th('Gewicht'),th('Anteil'),th('ab Bug')));
+ for(const t of TL)tb.append(el('tr',null,td(t.name),td(gram(t.m),1),td(fmtN(t.m/tot*100,1)+' %',1),td(mm(t.x),1)));
+ tb.append(el('tr',{style:'border-top:1px solid var(--rule);font-weight:600'},td('Summe'),td(gram(tot),1),td('100 %',1),td(mm(M.cgx),1)));
+ box.append(el('div',{class:'grp',style:'overflow-x:auto'},tb));
+ const lcb=h&&h.V>0?h.lcb:null;
+ if(lcb==null||!isFinite(lcb)){box.append(note('Schwerpunkt der Teile: '+mm(M.cgx)+' ab Bug. Für die Trimmhilfe muss das Boot schwimmen (Schwimmlage unter „Rechnen“ einstellen).'));}
+ else{const d=M.cgx-lcb;
+  box.append(note('Gewichtsschwerpunkt '+mm(M.cgx)+' · Auftriebsschwerpunkt '+mm(lcb)+' ab Bug. '+(Math.abs(d)<L*0.005?'Das Boot liegt ohne Trimm im Gleichgewicht (Abweichung unter 0,5 % der Länge).':'Differenz '+fmtN(Math.abs(d),0)+' mm – das Boot '+(d>0?'trimmt achtern tief (Bug hoch).':'trimmt vorn tief (Heck hoch).'))));
+  const R=RC(),T={x:Math.round(R.trimX??(d>0?L*0.1:L*0.9))},out=el('p',{class:'note',role:'status'});
+  const calc=()=>{const x=+T.x,den=x-lcb;if(!isFinite(x)||Math.abs(den)<1){out.textContent='Position darf nicht am Auftriebsschwerpunkt liegen.';return;}const m=tot*(lcb-M.cgx)/den;
+   out.textContent=m>0.5?'Trimmgewicht ca. '+gram(m)+' bei '+mm(x)+' ab Bug gleicht den Trimm aus (Gesamtgewicht dann '+gram(tot+m)+', Boot taucht etwas tiefer).':(m<-0.5?'An dieser Stelle hilft Gewicht nicht – Position auf der anderen Seite des Auftriebsschwerpunkts wählen.':'Kein Trimmgewicht nötig.');};
+  box.append(num(T,'x','Position des Trimmgewichts (mm ab Bug)',0,L,1,'mm','name','rc-trim',v=>{R.trimX=v;calc();}),out);calc();}
+ box.append(el('div',{class:'row'},btn('Gewichtsliste (CSV)',()=>{const q=s=>'"'+String(s).replace(/"/g,'""')+'"',f=x=>String(Math.round(x*10)/10).replace('.',',');
+  const rows=[['Teil','Gewicht g','Anteil %','Lage ab Bug mm','Hoehe mm'],...TL.map(t=>[t.name,f(t.m),f(t.m/tot*100),f(t.x),f(t.y)]),['Summe',f(tot),'100',f(M.cgx),f(M.cgy)]];
+  ausgeben(dateiName(P.name)+' Gewichtsliste.csv','﻿'+rows.map(r=>r.map(q).join(';')).join('\r\n'),'text/csv');})));}
 function renderRechnen(box){const R=RC(),E=rechnenAlles();if(!E){box.append(note('Modell wird noch aufgebaut …'));return;}const h=E.h;
  box.append(sub('Schwimmlage & Verdrängung'),pick(R,'wasser','Wasser',[['suess','Süßwasser (1,000 kg/l)'],['salz','Salzwasser (1,025 kg/l)']],'rc',v=>{R.wasser=v;changed('drive');renderWin();}));
  const ziel={kg:R.zielKg??+(M.masse/1000).toFixed(3)};
@@ -1182,6 +1253,7 @@ function renderRechnen(box){const R=RC(),E=rechnenAlles();if(!E){box.append(note
   el('div',{class:'row'},btn('Schwimmlage berechnen',()=>{const kg=+ziel.kg;if(!(kg>0)){toast('Bitte ein Gewicht eintragen');return;}R.zielKg=kg;const r=schwimmlage(kg);P.lage.hoehe=Math.round(-r.h.zw);changed('drive');renderLage();toast(r.warn||('Eintauchung für '+fmtN(kg,2)+' kg gesetzt'));renderWin();},'pri'),
    btn('Gewicht aus Teilen',()=>{R.zielKg=+(M.masse/1000).toFixed(3);renderWin();})),
   note('Teilgewichte trägst du bei jedem Teil ein; Bleibomben rechnen sich selbst aus dem Volumen. Aus Teilen: '+gram(M.masse)+'.'));
+ gewichtsliste(box,h);
  const tief=Math.max(0,E.zw-tiefsterPunkt()),dl=M.cgx-h.lcb;
  const res=el('div',{class:'res'});res.innerHTML=[
   'Verdrängung '+fmtN(h.V*1000,2)+' l = '+fmtN(h.kg,2)+' kg',
@@ -1247,7 +1319,8 @@ function renderRechnen(box){const R=RC(),E=rechnenAlles();if(!E){box.append(note
 /* ---- Export-Abschnitt (Projekt-Tab) ---- */
 function exportBereich(box){const n=dateiName(P.name),p=P.teile.find(t=>t.id===sel);
  box.append(sub('Export (3D-Druck, CNC, Schablonen)'),note('Maße in mm. 3D: X ab Bug, Y nach Steuerbord, Z nach oben. Ausgeblendete Teile (z. B. Segel) werden nicht mit exportiert.'+(DL?' Im Claude-Viewer kommen OBJ, STL und DXF als ZIP.':'')),
-  el('div',{class:'row'},btn('Ganzes Modell (OBJ)',()=>ausgeben(n+'.obj',objText(netze()),'text/plain')),btn('Ganzes Modell (STL)',()=>ausgeben(n+'.stl',stlBin(netze()),'model/stl')),btn('Ganzes Modell (GLB, für Spiele)',()=>ausgeben(n+'.glb',glbBin(),'model/gltf-binary'))),
+  el('div',{class:'row'},btn('Ganzes Modell (OBJ)',()=>ausgeben(n+'.obj',objText(netze()),'text/plain')),btn('Ganzes Modell (STL)',()=>ausgeben(n+'.stl',stlBin(netze()),'model/stl')),btn('Ganzes Modell (GLB, für Spiele)',async()=>{const b=glbMitDetail(GD.d);toast('GLB mit '+fmtN(glbTris)+' Dreiecken ('+GLB_STUFEN[GD.d][0].split(' (')[0]+')');await ausgeben(n+(GD.d==='hoch'?'':' '+GD.d)+'.glb',b,'model/gltf-binary');})),
+  pick(GD,'d','Detailstufe GLB',Object.entries(GLB_STUFEN).map(([k,v])=>[k,v[0]]),'glb',v=>{GD.d=v;}),
   el('div',{class:'row'},btn('Rumpfspanten (DXF)',()=>ausgeben(n+' Spanten.dxf',rumpfDXF(),'application/dxf')),btn('Rumpfspanten 1:1 (PDF)',()=>planPDF(planRumpf(),{name:n+' Rumpfspanten.pdf',titel:'1:1 Druckschablone – Rumpfspanten (Linienriss) '+P.name,massstab:pdfMassstab().schablone})),btn('als SVG',()=>ausgeben(n+' Spanten 1zu1.svg',planSVG(planStapel(planRumpf()),'Rumpfspanten '+P.name,1),'image/svg+xml'))),
   el('div',{class:'row'},btn('Seitenriss (PDF)',()=>planPDF(planSeitenriss(rechnenAlles()),{name:n+' Seitenriss.pdf',titel:P.name+' – Seitenriss mit Schwerpunkten',massstab:pdfMassstab().riss})),btn('Für NACA-Visualizer (.json)',()=>ausgeben(n+' NACA-Visualizer.json',JSON.stringify(zuNaca(),null,2),'application/json'))),
   num(pdfMassstab(),'schablone','Maßstab der Schablonen 1:',1,50,1,'','name','ex-ms'),note('PDFs sind A4 und werden bei Bedarf auf mehrere Seiten verteilt – mit Kleberand, Passkreuzen und 10-mm-Kontrollquadrat. Immer mit 100 % drucken.'));
@@ -2300,7 +2373,7 @@ const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').m
 (function loop(now){requestAnimationFrame(loop);const dt=Math.min(0.05,(now-last)/1000);last=now;
  if(anim&&!reduce){animT+=dt;const amp=(P.lage.hMax-P.lage.hMin)*0.08;P.lage.hoehe=clamp(animBase+amp*Math.sin(animT*1.3)+amp*0.45*Math.sin(animT*3.1),P.lage.hMin,P.lage.hMax);needApply=true;}
  if(needRebuild){needRebuild=false;rebuild();needApply=true;}
- if(needApply){needApply=false;applyDrives();measure();updDims();applyToggles();renderRegeln();renderLive();try{zeigeMarker(RC().marker?rechnenAlles():null);}catch(e){}if(first){first=false;goView('free',true);}}
+ if(needApply){needApply=false;applyDrives();measure();updDims();applyToggles();fotoUpdate();renderRegeln();renderLive();try{zeigeMarker(RC().marker?rechnenAlles():null);}catch(e){}if(first){first=false;goView('free',true);}}
  if(fly){fly.k=Math.min(1,fly.k+dt*(reduce?10:1.6));const e=fly.k<0.5?2*fly.k*fly.k:1-Math.pow(-2*fly.k+2,2)/2;cam.position.lerpVectors(fly.p0,fly.p1,e);controls.target.lerpVectors(fly.t0,fly.t1,e);if(fly.k>=1)fly=null;}
  if(sel&&partMeshes[sel]){selBox.makeEmpty();for(const m of partMeshes[sel])selBox.expandByObject(m);selHelper.visible=!selBox.isEmpty();}else selHelper.visible=false;
  try{auswahlZeichnen();}catch(e){}controls.update();wasserTakt();renderer.render(scene,cam);})(last);

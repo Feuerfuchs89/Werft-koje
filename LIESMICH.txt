@@ -25,6 +25,11 @@ Speichern
 - "Als Datei (.json)" erzeugt eine Sicherung zum Mitnehmen auf ein
   anderes Gerät; dort im Projekt-Tab unter "Öffnen" laden.
 - Zusätzlich wird der aktuelle Stand automatisch zwischengespeichert.
+- "Speichern unter …" (oben, Projekt-Tab oder Strg+Umschalt+S): Ordner und Dateiname
+  frei wählen. Danach aktualisiert jedes "Speichern" (Strg+S) zusätzlich diese Datei.
+  Auch alle Exporte (PDF, STL, SVG …) fragen nach dem Speicherort.
+  Funktioniert in Chrome, Edge und Opera. Firefox und Safari/iPhone können keinen
+  Ordner wählen und legen Dateien im Download-Ordner ab.
 
 Planung (aus dem NACA-Visualizer übernommen)
 --------------------------------------------
@@ -36,6 +41,17 @@ Planung (aus dem NACA-Visualizer übernommen)
   Umriss, Profilschnitte, Kielbombe, Rumpfspanten, Seitenriss.
 - Projektdateien des NACA-Visualizers (.json) lassen sich unter Projekt -> Öffnen
   laden und unter Export wieder für ihn speichern.
+
+- Tab "Rechnen" -> Gewichtsliste & Trimmung: alle Teile mit Gewicht, Anteil und Lage ab Bug,
+  Schwerpunkt gegen Auftriebsschwerpunkt, Trimmgewicht (Blei) für eine frei wählbare Position,
+  Export als CSV (Excel, Semikolon-getrennt).
+
+- Tab "Linien" -> Foto-Vorlage: Foto oder Scan der Seitenansicht (Bug links, sonst "Foto spiegeln")
+  maßstäblich hinter den Rumpf legen: Breite in mm, Lage längs/Höhe, Deckkraft. Ansicht "Seite"
+  wählen und die Rumpflinien über dem Original abgleichen. Die Einstellungen stehen im Projekt,
+  das Bild selbst merkt sich nur dieses Gerät (ein Foto, verkleinert) und fehlt in der .json-Datei.
+- Projekt -> Export -> "Detailstufe GLB": Hoch, Mittel, Niedrig, Minimal. Der Rumpf wird für den
+  Export gröber gerechnet (Dreieckszahl erscheint nach dem Export), das Projekt selbst bleibt unverändert.
 
 Vorlagen: Marblehead, Foiling Moth, Kutter K6, ZK 10, leerer Rumpf.
 Klassengrenzen und rekonstruierte Risse vor dem Bau am Original prüfen.
