@@ -71,3 +71,18 @@ Neu: RC-Bibliothek, Projekte, Geräte
   auf ein anderes Gerät bringen.
 - KI -> Auf weiteres Gerät übertragen: Link mit PIN, auf dem anderen Gerät öffnen.
 - Gemini-Modell steht auf „Automatisch“ und nimmt das neueste Flash-Modell deines Schlüssels.
+
+Neu: Skua V1 und Katamarane
+- Vorlage „Skua V1 (Katamaran)“ – ein Kat mit den Maßen des Topcat K2: Projekt -> Neues Projekt oder Vorlage laden.
+  Nachgebaut nach Herstellerangaben (LüA 5,17 m, Breite 2,44 m, Mast 8,20 m,
+  Groß 13,5 m², Fock 4,2 m², ca. 160 kg); Rumpflinien aus dem Seitenriss geschätzt.
+- Rumpf -> „Katamaran: Rumpfabstand Mitte–Mitte“ macht aus jedem Rumpf einen Kat (0 = ein Rumpf).
+- Farbstreifen: Segel -> „Farbstreifen (laufen über alle Segel)“, Rumpf -> „Zierstreifen am Rumpf“.
+  Der Topcat K2 hat die roten Streifen schon drin.
+- Segel -> „Beschriftung auf den Segeln“: Text, Lage, Größe, Drehung, Farbe, Schatten.
+  Schriftzug am Rumpf hat jetzt auch die Schriftart „Sportlich“ und Schatten.
+- ZK 10 und ZK 10 GFK haben jetzt Bug und Heck vom K6 (Stevenlinie, Spantformen, Breitenverlauf).
+  Ältere gespeicherte ZK-10-Projekte: Rumpf -> „Bug & Heck vom K6 übernehmen“.
+- Neuer Teiltyp „Seitenbank“: Sitzbrett innen an der Bordwand, gebogen nach dem Rumpf, ragt nie nach außen.
+- Kasten-Option „Quer bis an Seitenbank bzw. Bordwand“: Duchten enden bündig und passend geformt.
+- Neuer Teiltyp „Boden mit Seitenwänden“: Boden in fester Tiefe, Wände hoch zu den Seitenbänken, bleibt in der Bordwand.
