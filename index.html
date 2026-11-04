@@ -362,6 +362,7 @@ const TEMPLATES={
   lage:{hoehe:0,kraengung:0,trimm:0,hMin:-60,hMax:60},steuer:[],teile:[],verbindungen:[]})
 };
 
+TEMPLATES.scan=()=>{const t=TEMPLATES.leer();t.name='Rundum-Scan';t.klasse='frei';t.rumpf.scanLeer=true;return t;};
 function typDefaults(typ,R){const L=R.L,r=v=>Math.round(v);const d=base(typ,TYPEN[typ]||'Teil',{x:r(L/2),y:r(hdimsR(R,0.5).Ys*1000)});
  switch(typ){
   case 'profil':Object.assign(d,{lage:'senkrecht',spann:r(L*0.3),sehneWurzel:r(L*0.06),sehneSpitze:r(L*0.045),dicke:10,pfeil:0,drehpunkt:25,y:r(-R.T*0.6),farbe:'#d9dde0'});break;
@@ -769,7 +770,7 @@ function disposeTree(o){o.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.i
 function rebuild(){if(P.rumpf.aufmassAktiv&&P.rumpf.aufmass)deriveAufmass();SHAPES=computeShapes();disposeTree(boat);boat.clear();built={};pickables=[];partMeshes={};
  const L=Lm();hullMat.color.set(P.rumpf.farbe||'#f4f5f2');hullMatC.color.set(P.rumpf.farbe||'#f4f5f2');hullBot.set(P.rumpf.farbeUnten||P.rumpf.farbe||'#b5402c');hullIn.set(P.rumpf.farbeInnen||'#ffffff');hullInOn.value=P.rumpf.farbeInnen?1:0;deckMat.color.set(P.rumpf.deckFarbe||'#dfe3e5');try{segelTexte();}catch(e){}zierUpdate();const HM=(P.rumpf.farbeUnten||P.rumpf.farbeInnen||(P.rumpf.streifen&&P.rumpf.streifen.length))?hullMatC:hullMat;
  hullGrp=new THREE.Group();boat.add(hullGrp);const hm=[];
- for(const [g,m,fl] of [[hullGeo(),HM,'rumpf'],[capGeo(),HM,'rumpf'],...(P.rumpf.offen?[]:[[deckGeo(),deckMat,'deck']])]){const o=new THREE.Mesh(g,m);o.userData.flaeche=fl;o.castShadow=true;o.receiveShadow=true;o.userData.partId='rumpf';hullGrp.add(o);hm.push(o);pickables.push(o);}
+ for(const [g,m,fl] of (P.rumpf.scanLeer?[]:[[hullGeo(),HM,'rumpf'],[capGeo(),HM,'rumpf'],...(P.rumpf.offen?[]:[[deckGeo(),deckMat,'deck']])])){const o=new THREE.Mesh(g,m);o.userData.flaeche=fl;o.castShadow=true;o.receiveShadow=true;o.userData.partId='rumpf';hullGrp.add(o);hm.push(o);pickables.push(o);}
  if(katH()>0){hullGrp.position.x=katH()/1000;const g2=new THREE.Group();g2.position.x=-katH()/1000;g2.scale.x=-1;boat.add(g2);for(const o of hullGrp.children.slice()){const o2=new THREE.Mesh(o.geometry,o.material);Object.assign(o2.userData,o.userData);o2.castShadow=o2.receiveShadow=true;g2.add(o2);hm.push(o2);pickables.push(o2);}}
  partMeshes.rumpf=hm;try{wasserMaske();}catch(e){}
  for(const p of P.teile.filter(x=>x.typ!=='schriftzug').concat(P.teile.filter(x=>x.typ==='schriftzug')))built[p.id]=buildPart(p);
@@ -1564,8 +1565,8 @@ function renderAufmass(box){const R=P.rumpf,L=R.L;if(!R.aufmass)R.aufmass={bezug
 let hullAct='deck',hullEdW=null;
 /* ---- Foto-Vorlage: Foto/Scan der Seitenansicht maßstäblich hinter den Rumpf legen, zum Abpausen und Abgleichen ----
    Einstellungen stehen im Projekt (P.foto); das Bild selbst merkt sich dieses Gerät (ein Foto, verkleinert). */
-const FOTO={grp:null,mesh:null,tex:null,w:1,h:1,key:'werftkoje-foto',versucht:false};
-const FOTO_DEF={an:true,breite:1400,x:-50,y:-100,alpha:0.55,spiegeln:false};
+const FOTO={grp:null,mesh:null,tex:null,w:1,h:1,key:'werftkoje-foto',versucht:false,live:null,face:'environment'};
+const FOTO_DEF={an:true,breite:1400,x:-50,y:-100,alpha:0.55,spiegeln:false,schwelle:60};
 const FT=()=>{if(!P.foto)P.foto={};for(const k in FOTO_DEF)if(P.foto[k]===undefined)P.foto[k]=FOTO_DEF[k];return P.foto;};
 function fotoUpdate(){const F=P.foto;
  if(F&&F.an&&!FOTO.tex&&!FOTO.versucht){FOTO.versucht=true;try{const d=localStorage.getItem(FOTO.key);if(d)fotoLaden(d,false);}catch(e){}}
@@ -1581,16 +1582,266 @@ function fotoLaden(src,speichern){const im=new Image();im.onload=()=>{const m=Ma
   if(speichern){try{localStorage.setItem(FOTO.key,c.toDataURL('image/jpeg',0.82));}catch(e){toast('Foto wird angezeigt, ließ sich aber nicht für den nächsten Start merken');}}
   fotoUpdate();if(tab==='linien')renderWin();};
  im.onerror=()=>toast('Das Bild konnte nicht gelesen werden');im.src=src;}
+/* ---- Kamera live: Videobild statt Foto hinter den Rumpf legen (gleiche Lage-/Breite-/Deckkraft-Regler wie beim Foto) ---- */
+async function kameraStart(){
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('Kamera nicht verfügbar – Seite über HTTPS öffnen');return;}
+ try{
+  kameraStop(true);
+  const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:FOTO.face,width:{ideal:1920}},audio:false});
+  const v=document.createElement('video');v.playsInline=true;v.muted=true;v.setAttribute('playsinline','');v.srcObject=st;await v.play();
+  const G=FT(),neu=!FOTO.tex;if(neu)G.breite=Math.round(P.rumpf.L*1.15);G.an=true;
+  const t=new THREE.VideoTexture(v);t.encoding=renderer.outputEncoding;t.minFilter=THREE.LinearFilter;t.generateMipmaps=false;
+  if(FOTO.tex)FOTO.tex.dispose();
+  FOTO.live={v,st};FOTO.tex=t;FOTO.w=v.videoWidth||1280;FOTO.h=v.videoHeight||720;
+  if(FOTO.mesh){FOTO.mesh.material.map=t;FOTO.mesh.material.needsUpdate=true;}
+  fotoUpdate();changed('name');renderWin();toast('Kamera live – Regler „Breite“ und „Lage“ gleichen das Bild mit dem Modell ab');
+ }catch(e){FOTO.live=null;toast('Kamera nicht verfügbar ('+(e&&e.name||'Fehler')+') – Zugriff erlauben bzw. HTTPS nutzen');}}
+function kameraStop(still){
+ if(FOTO.live){try{FOTO.live.st.getTracks().forEach(t=>t.stop());}catch(e){}FOTO.live=null;}
+ if(still)return;
+ if(FOTO.tex){FOTO.tex.dispose();FOTO.tex=null;}if(FOTO.mesh)FOTO.mesh.material.map=null;
+ FOTO.versucht=false;fotoUpdate();renderWin();}
+function kameraEinfrieren(){
+ const L=FOTO.live;if(!L||!L.v.videoWidth)return;const v=L.v,m=Math.max(v.videoWidth,v.videoHeight),k=m>1600?1600/m:1,c=document.createElement('canvas');
+ c.width=Math.round(v.videoWidth*k);c.height=Math.round(v.videoHeight*k);c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+ const url=c.toDataURL('image/jpeg',0.9);kameraStop(true);fotoLaden(url,true);toast('Bild eingefroren und als Foto-Vorlage gemerkt');}
+window.addEventListener('pagehide',()=>kameraStop(true));
 function fotoBereich(box){const F=P.foto,i='foto';
  box.append(sub('Foto-Vorlage (Original abpausen)'),note('Foto oder Scan der Seitenansicht mit dem Bug links laden (sonst „Foto spiegeln“). Breite = wie viele mm das ganze Foto zeigt, z. B. nach einem bekannten Maß am Boot. Dann Ansicht „Seite“ wählen und mit der Deckkraft abgleichen.'));
  const fi=el('input',{type:'file',accept:'image/*',id:'fotoFile','aria-label':'Foto wählen'});
- fi.addEventListener('change',()=>{const f=fi.files&&fi.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const G=FT();G.an=true;G.breite=Math.round(P.rumpf.L*1.15);fotoLaden(r.result,true);changed('name');};r.readAsDataURL(f);});
- box.append(fi);
+ const onF=inp=>()=>{const f=inp.files&&inp.files[0];if(!f)return;kameraStop(true);const r=new FileReader();r.onload=()=>{const G=FT();G.an=true;G.breite=Math.round(P.rumpf.L*1.15);fotoLaden(r.result,true);changed('name');};r.readAsDataURL(f);};
+ fi.addEventListener('change',onF(fi));
+ const fc=el('input',{type:'file',accept:'image/*',capture:'environment',id:'fotoCam',hidden:true,'aria-label':'Mit Kamera-App fotografieren'});fc.addEventListener('change',onF(fc));
+ box.append(fi,fc);
+ box.append(el('div',{class:'row'},FOTO.live?btn('Kamera aus',()=>kameraStop()):btn('Kamera live',kameraStart),btn('Kamera-App',()=>fc.click()),FOTO.live?btn('Einfrieren',kameraEinfrieren):null,FOTO.live?btn('Front/Rück',()=>{FOTO.face=FOTO.face==='environment'?'user':'environment';kameraStart();}):null));
+ if(FOTO.live)box.append(note('Live: Handy fest aufstellen, Seitenansicht wählen, dann Breite, Lage und Deckkraft mit dem Rumpf abgleichen. „Einfrieren“ macht daraus die Foto-Vorlage.'));
  if(!F||!FOTO.tex){box.append(note('Noch kein Foto geladen.'));return;}
  box.append(check(F,'an','Foto anzeigen','name',i,fotoUpdate),check(F,'spiegeln','Foto spiegeln','name',i,fotoUpdate),
   num(F,'breite','Breite des Fotos',100,6000,1,'mm','name',i,fotoUpdate),num(F,'x','Lage längs (linke Fotokante ab Bug)',-2000,4000,1,'mm','name',i,fotoUpdate),num(F,'y','Lage Höhe (Unterkante des Fotos)',-1500,1500,1,'mm','name',i,fotoUpdate),num(F,'alpha','Deckkraft',0.05,1,0.05,'','name',i,fotoUpdate),
-  el('div',{class:'row'},btn('Foto entfernen',()=>{if(FOTO.tex)FOTO.tex.dispose();FOTO.tex=null;if(FOTO.mesh){FOTO.grp.remove(FOTO.mesh);FOTO.mesh.material.dispose();FOTO.mesh=null;}delete P.foto;try{localStorage.removeItem(FOTO.key);}catch(e){}fotoUpdate();changed('name');renderWin();})));}
-function renderLinien(box){const R=P.rumpf,L=R.L,r=Math.round;if(sel==='rumpf')sel=null;hullEdW=null;fotoBereich(box);strakBereich(box);renderAufmass(box);
+  el('div',{class:'row'},btn('Foto entfernen',()=>{kameraStop(true);if(FOTO.tex)FOTO.tex.dispose();FOTO.tex=null;if(FOTO.mesh){FOTO.grp.remove(FOTO.mesh);FOTO.mesh.material.dispose();FOTO.mesh=null;}delete P.foto;try{localStorage.removeItem(FOTO.key);}catch(e){}fotoUpdate();changed('name');renderWin();})));
+ konturBereich(box);}
+/* ---- Kontur aus Foto/Live-Bild: Silhouette erkennen und als Deckslinie/Kiellinie in die Rumpfkurven schreiben ---- */
+function konturQuelle(){
+ const s=FOTO.live?FOTO.live.v:(FOTO.tex&&FOTO.tex.image);if(!s)return null;
+ const W0=s.videoWidth||s.width,H0=s.videoHeight||s.height;if(!W0||!H0)return null;
+ const k=Math.min(1,400/W0),w=Math.round(W0*k),h=Math.round(H0*k),c=document.createElement('canvas');c.width=w;c.height=h;
+ const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(s,0,0,w,h);return{w,h,d:g.getImageData(0,0,w,h).data};}
+function konturUebernehmen(was){
+ const R=P.rumpf,F=FT();
+  const q=konturQuelle();if(!q){toast('Erst ein Foto laden oder die Kamera starten');return;}
+ const{w,h,d}=q,T=+F.schwelle||60,L=R.L;
+ let br=0,bg=0,bb=0,n=0;const add=(x,y)=>{const i=(y*w+x)*4;br+=d[i];bg+=d[i+1];bb+=d[i+2];n++;};
+ for(let x=0;x<w;x++){add(x,0);add(x,h-1);}for(let y=0;y<h;y++){add(0,y);add(w-1,y);}br/=n;bg/=n;bb/=n;
+ const fg=(x,y)=>{const i=(y*w+x)*4;return Math.abs(d[i]-br)+Math.abs(d[i+1]-bg)+Math.abs(d[i+2]-bb)>T;};
+ const top=[],bot=[];let xl=-1,xr=-1;
+ for(let x=0;x<w;x++){let t=-1,b=-1;for(let y=0;y<h-1;y++)if(fg(x,y)&&fg(x,y+1)){if(t<0)t=y;b=y+1;}top.push(t);bot.push(b);if(t>=0){if(xl<0)xl=x;xr=x;}}
+ if(xl<0||xr-xl<5){toast('Keine Silhouette erkannt – Schwelle senken oder Hintergrund ruhiger wählen');return;}
+ const med=(arr,c)=>{const v=[];for(let x=c-2;x<=c+2;x++)if(x>=xl&&x<=xr&&arr[x]>=0)v.push(arr[x]);if(!v.length)return null;v.sort((a,b)=>a-b);return v[v.length>>1];};
+ const N=17,deck=[],kiel=[],mmPx=F.breite/w;
+ for(let i=0;i<N;i++){const xm=L*i/(N-1),u=(xm-F.x)/F.breite,px=(F.spiegeln?1-u:u)*(w-1),col=clamp(Math.round(px),xl,xr);
+  const t=med(top,col),b=med(bot,col);if(t==null||b==null)continue;
+  const yd=F.y+(h-t)*mmPx,yk=F.y+(h-b)*mmPx;
+  deck.push([Math.round(xm),Math.round(Math.max(yd,yk+5))]);kiel.push([Math.round(xm),Math.round(yk)]);}
+ if(deck.length<3){toast('Kontur zu lückenhaft');return;}
+ if(R.aufmassAktiv&&!confirm('Die Kontur ersetzt die Rumpflinien. Das Aufmaß bleibt gespeichert, wird aber nicht mehr verwendet. Fortfahren?'))return;
+ R.aufmassAktiv=false;if(!R.linien)seedLines(R);R.eigen=true;
+ if(was!=='kiel')R.linien.deck=deck;if(was!=='deck')R.linien.kiel=kiel;
+ hullAct=was==='kiel'?'kiel':'deck';changed('geo');renderWin();
+ toast('Kontur übernommen ('+(was==='beide'?'Deck + Kiel':was==='deck'?'Deckslinie':'Kiellinie')+') – unter „Rumpf von Hand formen“ nachbessern');}
+function konturBereich(box){const F=FT();
+ box.append(sub('Kontur → Rumpflinien'),note('Erkennt die Silhouette im Foto oder Live-Bild (heller, ruhiger Hintergrund, nur der Rumpf, ohne Mast und Segel) und setzt daraus Deckslinie und Kiellinie. Voraussetzung: Breite und Lage des Fotos passen zum Maßstab. Bei zu viel oder zu wenig Rumpf die Schwelle ändern und neu erkennen.'),
+  num(F,'schwelle','Erkennungs-Schwelle',10,200,1,'','name','foto'),
+  el('div',{class:'row'},btn('Deck + Kiel',()=>konturUebernehmen('beide')),btn('Nur Deck',()=>konturUebernehmen('deck')),btn('Nur Kiel',()=>konturUebernehmen('kiel'))));}
+/* ---- Rundum-Scan, Rechenkern (ohne Oberfläche): Silhouetten -> Sichthülle -> Rumpflinien ---- */
+const SC={fov:75,dil:1,sek:24,minBilder:8,minSektoren:6};
+function scAxes(q){const x=q[0],y=q[1],z=q[2],w=q[3];
+ const m=v=>{const vx=v[0],vy=v[1],vz=v[2],tx=2*(y*vz-z*vy),ty=2*(z*vx-x*vz),tz=2*(x*vy-y*vx);
+  return[vx+w*tx+(y*tz-z*ty),vy+w*ty+(z*tx-x*tz),vz+w*tz+(x*ty-y*tx)];};
+ return{r:m([1,0,0]),u:m([0,1,0]),b:m([0,0,1])};}
+function scDilate(m,w,h,r){if(r<=0)return m;const t=new Uint8Array(w*h),o=new Uint8Array(w*h);
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){if(!m[y*w+x])continue;for(let k=Math.max(0,x-r);k<=Math.min(w-1,x+r);k++)t[y*w+k]=1;}
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){if(!t[y*w+x])continue;for(let k=Math.max(0,y-r);k<=Math.min(h-1,y+r);k++)o[k*w+x]=1;}
+ return o;}
+function scFocal(w,h){return 0.5*Math.hypot(w,h)/Math.tan(SC.fov*Math.PI/360);}
+/* Kamera steht im Abstand 1 vor dem Objekt; der Strahl durch den Silhouetten-Schwerpunkt geht durch den Objektmittelpunkt (Ursprung) */
+function scFrame(mask,w,h,ax){let n=0,sx=0,sy=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(mask[y*w+x]){n++;sx+=x;sy+=y;}
+ if(!n)return null;const f=scFocal(w,h),xc=sx/n+0.5,yc=sy/n+0.5,dx=(xc-w/2)/f,dy=-(yc-h/2)/f,l=Math.hypot(dx,dy,1),d=[dx/l,dy/l,-1/l];
+ const rw=[0,1,2].map(i=>ax.r[i]*d[0]+ax.u[i]*d[1]+ax.b[i]*d[2]);
+ return{w,h,f,m:scDilate(mask,w,h,SC.dil),ax,C:[-rw[0],-rw[1],-rw[2]]};}
+function scGrid0(w,h,dims){const A=0.575*w/scFocal(w,h),[nx,ny,nz]=dims||[64,64,64];
+ return{nx,ny,nz,a0:-A,da:2*A/nx,b0:-A,db:2*A/ny,c0:-A,dc:2*A/nz,th:0};}
+function scCarve(frs,G){const{nx,ny,nz,a0,da,b0,db,c0,dc,th}=G,ct=Math.cos(th),st=Math.sin(th),occ=new Uint8Array(nx*ny*nz).fill(1);
+ for(const F of frs){const{w,h,f,m,ax,C}=F,r=ax.r,u=ax.u,b=ax.b;
+  for(let k=0;k<nz;k++){const c=c0+(k+.5)*dc;for(let i=0;i<nx;i++){const a=a0+(i+.5)*da,X=a*ct-c*st-C[0],Z=a*st+c*ct-C[2];
+   for(let j=0;j<ny;j++){const id=(k*nx+i)*ny+j;if(!occ[id])continue;const Y=b0+(j+.5)*db-C[1],zc=X*b[0]+Y*b[1]+Z*b[2];
+    if(zc>-0.05){occ[id]=0;continue;}
+    const s=f/(-zc),px=Math.floor(w/2+s*(X*r[0]+Y*r[1]+Z*r[2])),py=Math.floor(h/2-s*(X*u[0]+Y*u[1]+Z*u[2]));
+    if(px<0||py<0||px>=w||py>=h||!m[py*w+px])occ[id]=0;}}}}
+ return occ;}
+/* Hauptachse (Länge) per Hauptkomponenten im Grundriss, Box im gedrehten Rahmen */
+function scNeuesGitter(occ,G,dims){const{nx,ny,nz,a0,da,b0,db,c0,dc,th}=G,ct=Math.cos(th),st=Math.sin(th);
+ let n=0,sx=0,sz=0,sxx=0,szz=0,sxz=0;const P=[];
+ for(let k=0;k<nz;k++){const c=c0+(k+.5)*dc;for(let i=0;i<nx;i++){const a=a0+(i+.5)*da,X=a*ct-c*st,Z=a*st+c*ct;
+  for(let j=0;j<ny;j++)if(occ[(k*nx+i)*ny+j]){n++;sx+=X;sz+=Z;sxx+=X*X;szz+=Z*Z;sxz+=X*Z;P.push(X,b0+(j+.5)*db,Z);}}}
+ if(n<20)return null;const mx=sx/n,mz=sz/n,cxx=sxx/n-mx*mx,czz=szz/n-mz*mz,cxz=sxz/n-mx*mz,t2=0.5*Math.atan2(2*cxz,cxx-czz),c2=Math.cos(t2),s2=Math.sin(t2);
+ let amin=1e9,amax=-1e9,cmin=1e9,cmax=-1e9,bmin=1e9,bmax=-1e9;
+ for(let p=0;p<P.length;p+=3){const X=P[p],Y=P[p+1],Z=P[p+2],a=X*c2+Z*s2,c=-X*s2+Z*c2;
+  if(a<amin)amin=a;if(a>amax)amax=a;if(c<cmin)cmin=c;if(c>cmax)cmax=c;if(Y<bmin)bmin=Y;if(Y>bmax)bmax=Y;}
+ const hx=0.5*da,hz=0.5*dc,hy=0.5*db;amin-=hx;amax+=hx;cmin-=hz;cmax+=hz;bmin-=hy;bmax+=hy;
+ const mg=v=>Math.max(0.06*v,1e-3);const ma=mg(amax-amin),mc=mg(cmax-cmin),mb=mg(bmax-bmin);amin-=ma;amax+=ma;cmin-=mc;cmax+=mc;bmin-=mb;bmax+=mb;
+ const[Nx,Ny,Nz]=dims;return{nx:Nx,ny:Ny,nz:Nz,a0:amin,da:(amax-amin)/Nx,b0:bmin,db:(bmax-bmin)/Ny,c0:cmin,dc:(cmax-cmin)/Nz,th:t2,vol:(amax-amin)*(cmax-cmin)*(bmax-bmin),n};}
+function scVol(G){return G.nx*G.da*G.ny*G.db*G.nz*G.dc;}
+function scRechnen(frs,G,dims,runden,erzwingen){let occ=scCarve(frs,G);
+ for(let r=0;r<(runden||2);r++){const N=scNeuesGitter(occ,G,dims);if(!N)break;
+  const dth=Math.abs(Math.atan2(Math.sin(N.th-G.th),Math.cos(N.th-G.th)));
+  if((erzwingen&&r===0)||N.vol<0.75*scVol(G)||dth>0.09){G=N;occ=scCarve(frs,G);}else break;}
+ return{G,occ};}
+function scLinien(occ,G,Lmm,flip,tiefgang,Bmm,Hmm){const{nx,ny,nz,b0,db,c0,dc,da}=G,sl=[];
+ for(let i=0;i<nx;i++){let j0=ny,j1=-1,k0=nz,k1=-1,n=0;
+  for(let k=0;k<nz;k++)for(let j=0;j<ny;j++)if(occ[(k*nx+i)*ny+j]){n++;if(j<j0)j0=j;if(j>j1)j1=j;if(k<k0)k0=k;if(k>k1)k1=k;}
+  sl.push(n>=1?{yk:b0+j0*db,yd:b0+(j1+1)*db,b:(k1+1-k0)*dc/2}:null);}
+ let i0=-1,i1=-1;for(let i=0;i<nx;i++)if(sl[i]){if(i0<0)i0=i;i1=i;}
+ if(i0<0||i1-i0<4)return null;const len=(i1+1-i0)*da,s=Lmm/len;let gmin=1e9,gmax=-1e9;
+ for(let i=i0;i<=i1;i++)if(sl[i]){gmin=Math.min(gmin,sl[i].yk);gmax=Math.max(gmax,sl[i].yd);}
+ const at=p=>{const lo=Math.floor(p),hi=Math.min(i1,lo+1),f=p-lo;let A=sl[lo],B=sl[hi];
+  if(!A){for(let d=1;d<nx&&!A;d++)A=sl[lo-d]||sl[lo+d];}if(!B){for(let d=1;d<nx&&!B;d++)B=sl[hi-d]||sl[hi+d];}
+  return{yk:A.yk+(B.yk-A.yk)*f,yd:A.yd+(B.yd-A.yd)*f,b:A.b+(B.b-A.b)*f};};
+ const N=17,raw=[];for(let t=0;t<N;t++)raw.push(at(i0+(t/(N-1))*(i1-i0)));
+ const w=a=>a.reduce((x,q)=>x+q.b,0)/a.length,q4=Math.max(2,Math.round(N*0.2));
+ let seq=raw;if(w(raw.slice(0,q4))>w(raw.slice(N-q4)))seq=raw.slice().reverse();if(flip)seq=seq.slice().reverse();
+ const sm=k=>{for(let p=0;p<2;p++){const c=seq.map(q=>q[k]);for(let t=1;t<N-1;t++)seq[t][k]=0.25*c[t-1]+0.5*c[t]+0.25*c[t+1];}};
+ seq=seq.map(q=>({yk:q.yk,yd:q.yd,b:q.b}));sm('yk');sm('yd');sm('b');
+ const bmax0=2*Math.max(...seq.map(q=>q.b))*s,kb=Bmm>0?Bmm/bmax0:1,kh=Hmm>0?Hmm/((gmax-gmin)*s):1,H=(gmax-gmin)*s*kh,off=-(tiefgang==null?0.35:tiefgang)*H,y=v=>Math.round((v-gmin)*s*kh+off);
+ const deck=[],kiel=[],breite=[];
+ for(let t=0;t<N;t++){const x=Math.round(Lmm*t/(N-1)),yk=y(seq[t].yk);deck.push([x,Math.max(y(seq[t].yd),yk+2)]);kiel.push([x,yk]);breite.push([x,Math.max(0,Math.round(seq[t].b*s*kb))]);}
+ return{deck,kiel,breite,hoehe:Math.round(H),breiteMax:Math.round(bmax0*kb)};}
+/* ---- Rundum-Scan, Oberfläche: Kamera + Lagesensor, Silhouette per Farbe, automatisches Aufnehmen beim Umrunden ---- */
+const SCS={on:false,scanning:false,fr:[],keys:new Set(),sek:new Set(),bands:new Set(),refs:[],tol:60,L:0,Bm:0,Hm:0,flip:false,G:null,occ:null,busy:false,again:false,applyT:0,q:null,qT:0,w:0,src:null,hasAbs:false,mask:null,valid:false,warn:'',tick:0,ersetzt:false,phi:null};
+function scMaske(d,w,h,refs,tol){const n=w*h,ok=new Uint8Array(n),t2=tol*tol;
+ for(let i=0;i<n;i++){const p=i*4,r=d[p],g=d[p+1],b=d[p+2];for(let c=0;c<refs.length;c++){const q=refs[c],dr=r-q[0],dg=g-q[1],db=b-q[2];if(dr*dr+dg*dg+db*db<=t2){ok[i]=1;break;}}}
+ const lab=new Int32Array(n),st=new Int32Array(n),x0=w*0.35|0,x1=w*0.65|0,y0=h*0.35|0,y1=h*0.65|0;let best=0,bs=-1,nl=0,bc=0;
+ for(let s=0;s<n;s++){if(!ok[s]||lab[s])continue;nl++;let sp=0,c=0,mc=0;st[sp++]=s;lab[s]=nl;
+  while(sp){const p=st[--sp];c++;const x=p%w,y=(p/w)|0;if(x>=x0&&x<x1&&y>=y0&&y<y1)mc++;
+   if(x>0&&ok[p-1]&&!lab[p-1]){lab[p-1]=nl;st[sp++]=p-1;}if(x<w-1&&ok[p+1]&&!lab[p+1]){lab[p+1]=nl;st[sp++]=p+1;}
+   if(y>0&&ok[p-w]&&!lab[p-w]){lab[p-w]=nl;st[sp++]=p-w;}if(y<h-1&&ok[p+w]&&!lab[p+w]){lab[p+w]=nl;st[sp++]=p+w;}}
+  const sc=(mc>0?1e9:0)+c;if(sc>bs){bs=sc;best=nl;bc=c;}}
+ const m=new Uint8Array(n);if(!best)return{mask:m,ok:false,warn:'Nichts erkannt – tippe auf das Objekt oder erhöhe die Toleranz'};
+ for(let i=0;i<n;i++)if(lab[i]===best)m[i]=1;
+ /* Löcher füllen: alles, was nicht vom Rand aus erreichbar ist, gehört zum Objekt */
+ const bg=new Uint8Array(n);let sp=0;const push=p=>{if(!m[p]&&!bg[p]){bg[p]=1;st[sp++]=p;}};
+ for(let x=0;x<w;x++){push(x);push((h-1)*w+x);}for(let y=0;y<h;y++){push(y*w);push(y*w+w-1);}
+ while(sp){const p=st[--sp],x=p%w,y=(p/w)|0;if(x>0)push(p-1);if(x<w-1)push(p+1);if(y>0)push(p-w);if(y<h-1)push(p+w);}
+ let area=0,edge=0;for(let i=0;i<n;i++){if(!bg[i]){m[i]=1;area++;}}
+ for(let x=0;x<w;x++){edge+=m[x]+m[(h-1)*w+x];}for(let y=0;y<h;y++){edge+=m[y*w]+m[y*w+w-1];}
+ const fr=area/n;let warn='',good=true;
+ if(fr<0.015){warn='Objekt zu klein im Bild – näher heran';good=false;}else if(fr>0.8){warn='Zu viel erkannt – Toleranz senken';good=false;}else if(edge>3){warn='Objekt ganz im Bild halten';good=false;}
+ return{mask:m,ok:good,warn};}
+function scOr(e){if(e.alpha==null||e.beta==null||e.gamma==null)return;const abs=e.type==='deviceorientationabsolute';if(abs)SCS.hasAbs=true;
+ const want=SCS.src||(SCS.hasAbs?'abs':'rel');if((abs?'abs':'rel')!==want)return;
+ const d=THREE.MathUtils.degToRad,o=(screen.orientation&&screen.orientation.angle)||window.orientation||0;
+ const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(d(e.beta),d(e.alpha),-d(e.gamma),'YXZ'));
+ q.multiply(new THREE.Quaternion(-Math.sqrt(0.5),0,0,Math.sqrt(0.5)));q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),-d(o)));
+ const t=performance.now();if(SCS.q){const dt=Math.max(0.005,(t-SCS.qT)/1000);SCS.w=0.7*SCS.w+0.3*SCS.q.angleTo(q)/dt;}SCS.q=q;SCS.qT=t;}
+function scInfo(){const i=document.getElementById('scInfo');if(!i)return;let t='Ansichten '+SCS.fr.length+' · Sektoren '+SCS.sek.size+'/'+SC.sek;
+ if(!SCS.refs.length)t+=' — Tippe aufs Objekt (mehrmals auf verschiedene Farben)';
+ else if(!SCS.scanning&&!SCS.fr.length)t+=' — Länge eintragen, dann „Scan starten“';
+ else if(SCS.warn&&!SCS.valid)t+=' — '+SCS.warn;
+ else if(SCS.scanning&&SCS.sek.size>=16&&!SCS.bands.has(1)&&!SCS.bands.has(2))t+=' — zweite Runde mit schräg nach unten gehaltener Kamera';
+ else if(SCS.scanning)t+=' — langsam und im gleichen Abstand um das Objekt gehen';
+ i.textContent=t;}
+function scFarbe(x,y){const I=SCS.img;if(!I)return;const w=I.width,d=I.data;let r=0,g=0,b=0,n=0;
+ for(let j=-3;j<=3;j++)for(let i=-3;i<=3;i++){const xx=x+i,yy=y+j;if(xx<0||yy<0||xx>=w||yy>=I.height)continue;const p=(yy*w+xx)*4;r+=d[p];g+=d[p+1];b+=d[p+2];n++;}
+ if(n){SCS.refs.push([r/n,g/n,b/n]);if(SCS.refs.length>6)SCS.refs.shift();}scMaskeNeu();scInfo();}
+function scMaskeNeu(){const v=SCS.v;if(!v||!v.videoWidth)return;const w=160,h=Math.round(160*v.videoHeight/v.videoWidth);
+ if(!SCS.sm||SCS.sm.width!==w||SCS.sm.height!==h){SCS.sm=el('canvas');SCS.sm.width=w;SCS.sm.height=h;SCS.smx=SCS.sm.getContext('2d',{willReadFrequently:true});SCS.mk=el('canvas');SCS.mk.width=w;SCS.mk.height=h;SCS.mkx=SCS.mk.getContext('2d');}
+ SCS.smx.drawImage(v,0,0,w,h);SCS.img=SCS.smx.getImageData(0,0,w,h);
+ if(!SCS.refs.length){SCS.mask=null;SCS.valid=false;SCS.mkx.clearRect(0,0,w,h);return;}
+ const m=scMaske(SCS.img.data,w,h,SCS.refs,SCS.tol);SCS.mask=m.mask;SCS.valid=m.ok;SCS.warn=m.warn;
+ const o=SCS.mkx.createImageData(w,h),d=o.data;for(let i=0;i<w*h;i++)if(m.mask[i]){d[i*4]=242;d[i*4+1]=194;d[i*4+2]=48;d[i*4+3]=115;}SCS.mkx.putImageData(o,0,0);}
+function scKeyframe(key,sec,band){const v=SCS.v,w=240,h=Math.round(240*v.videoHeight/v.videoWidth),c=el('canvas');c.width=w;c.height=h;
+ const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(v,0,0,w,h);
+ const m=scMaske(x.getImageData(0,0,w,h).data,w,h,SCS.refs,SCS.tol);if(!m.ok)return;
+ const q=SCS.q,F=scFrame(m.mask,w,h,scAxes([q.x,q.y,q.z,q.w]));if(!F)return;
+ SCS.fr.push(F);SCS.keys.add(key);SCS.sek.add(sec);SCS.bands.add(band);scInfo();scPlan();}
+function scAuto(){if(!SCS.scanning||!SCS.q||performance.now()-SCS.qT>400)return;
+ const f=new THREE.Vector3(0,0,-1).applyQuaternion(SCS.q);if(Math.abs(f.y)>0.94)return;
+ const phi=Math.atan2(-f.x,-f.z);SCS.phi=phi;
+ if(SCS.w>0.35||!SCS.valid||!SCS.mask||SCS.fr.length>=90)return;
+ const sec=((Math.floor((phi+Math.PI)/(2*Math.PI/SC.sek)))%SC.sek+SC.sek)%SC.sek,e=Math.asin(Math.max(-1,Math.min(1,-f.y))),band=e<0.26?0:e<0.61?1:2,key=sec*3+band;
+ if(SCS.keys.has(key))return;scKeyframe(key,sec,band);}
+function scPlan(fertig){clearTimeout(SCS.pT);SCS.pT=setTimeout(()=>scBerechnen(!!fertig),fertig?0:250);}
+function scBerechnen(fertig){if(SCS.busy){SCS.again=true;return false;}
+ if(SCS.fr.length<SC.minBilder||SCS.sek.size<SC.minSektoren)return false;SCS.busy=true;let ok=false;
+ try{const w=SCS.fr[0].w,h=SCS.fr[0].h,dims=fertig?[128,56,56]:[72,32,32],G=SCS.G||scGrid0(w,h,[64,64,64]);
+  const r=scRechnen(SCS.fr,G,dims,fertig?3:2,fertig);SCS.G=r.G;SCS.occ=r.occ;
+  const t=performance.now();if(fertig||t-SCS.applyT>900){SCS.applyT=t;ok=scAnwenden();}}
+ catch(e){console.error(e);toast('Scan-Berechnung fehlgeschlagen');}
+ SCS.busy=false;if(SCS.again){SCS.again=false;scPlan();}return ok;}
+function scAnwenden(){if(!SCS.occ||!SCS.G)return false;const res=scLinien(SCS.occ,SCS.G,SCS.L,SCS.flip,null,SCS.Bm,SCS.Hm);if(!res)return false;
+ const R=P.rumpf;R.L=Math.round(SCS.L);R.scanLeer=false;R.aufmassAktiv=false;R.eigen=true;R.B=Math.max(10,res.breiteMax);R.linien={breite:res.breite,deck:res.deck,kiel:res.kiel};changed('geo');return true;}
+function scZeichnen(){const v=SCS.v,cv=SCS.cv;if(!v.videoWidth)return;const cw=360,ch=Math.round(360*v.videoHeight/v.videoWidth);
+ if(cv.width!==cw||cv.height!==ch){cv.width=cw;cv.height=ch;}const x=cv.getContext('2d');x.drawImage(v,0,0,cw,ch);if(SCS.mk)x.drawImage(SCS.mk,0,0,cw,ch);
+ x.strokeStyle='rgba(255,255,255,.55)';x.lineWidth=1;x.beginPath();x.moveTo(cw/2-12,ch/2);x.lineTo(cw/2+12,ch/2);x.moveTo(cw/2,ch/2-12);x.lineTo(cw/2,ch/2+12);x.stroke();
+ const cx=cw-38,cy=38,r=28,da=2*Math.PI/SC.sek;x.lineWidth=7;
+ for(let s=0;s<SC.sek;s++){x.strokeStyle=SCS.sek.has(s)?'#f2c230':'rgba(255,255,255,.28)';x.beginPath();x.arc(cx,cy,r,-Math.PI+s*da+0.03,-Math.PI+(s+1)*da-0.03);x.stroke();}
+ if(SCS.phi!=null){x.fillStyle='#7fd49b';x.beginPath();x.arc(cx+(r-12)*Math.cos(SCS.phi),cy+(r-12)*Math.sin(SCS.phi),3.5,0,7);x.fill();}}
+function scLoop(){if(!SCS.on)return;SCS.raf=requestAnimationFrame(scLoop);if(!SCS.v.videoWidth)return;
+ if(++SCS.tick%2===0)scMaskeNeu();scZeichnen();scAuto();if(SCS.tick%15===0)scInfo();}
+function scStart(){const L=parseFloat(document.getElementById('scL').value);
+ if(SCS.scanning){SCS.scanning=false;document.getElementById('scGo').textContent='Weiter';scInfo();return;}
+ if(!(L>=10)){toast('Erst die Länge des Objekts in mm eintragen (Maßstab)');return;}
+ if(!SCS.refs.length&&SCS.img)scFarbe(SCS.img.width>>1,SCS.img.height>>1);
+ if(!SCS.refs.length){toast('Tippe aufs Objekt, damit die App seine Farbe kennt');return;}
+ if(!SCS.q||performance.now()-SCS.qT>1500){toast('Keine Lagesensor-Daten – Bewegungssensoren für den Browser freigeben');return;}
+ if(!SCS.ersetzt){if(!P.rumpf.scanLeer&&!confirm('Der Scan ersetzt die Rumpflinien dieses Projekts (ein Aufmaß bleibt gespeichert, wird aber nicht mehr verwendet). Fortfahren?'))return;SCS.ersetzt=true;}
+ SCS.L=L;SCS.Bm=parseFloat(document.getElementById('scB').value)||0;SCS.Hm=parseFloat(document.getElementById('scH').value)||0;
+ if(!SCS.fr.length){SCS.src=SCS.hasAbs?'abs':'rel';SCS.q=null;SCS.keys=new Set();SCS.sek=new Set();SCS.bands=new Set();SCS.G=null;SCS.occ=null;}
+ SCS.scanning=true;document.getElementById('scGo').textContent='Pause';
+ try{controls.autoRotate=true;controls.autoRotateSpeed=3;}catch(e){}scInfo();}
+function scFertig(){if(SCS.fr.length<SC.minBilder||SCS.sek.size<SC.minSektoren){toast('Noch zu wenig Ansichten ('+SCS.fr.length+' Bilder, '+SCS.sek.size+' Sektoren) – weiter um das Objekt gehen');return;}
+ SCS.L=parseFloat(document.getElementById('scL').value)||SCS.L;SCS.Bm=parseFloat(document.getElementById('scB').value)||0;SCS.Hm=parseFloat(document.getElementById('scH').value)||0;
+ SCS.scanning=false;toast('Rechne fein …');
+ setTimeout(()=>{SCS.busy=false;SCS.again=false;clearTimeout(SCS.pT);const ok=scBerechnen(true);scSchliessen();
+  if(ok){tab='linien';renderWin();try{goView('free');}catch(e){}toast('Rumpf aus dem Scan gebaut – Deck-, Kiel- und Breitenlinie unter „Rumpf von Hand formen“ nachbessern');}
+  else toast('Die Ansichten reichten nicht für einen Rumpf – bitte noch einmal ganz herumgehen');},40);}
+function scSchliessen(){if(!SCS.on)return;SCS.on=false;SCS.scanning=false;cancelAnimationFrame(SCS.raf);clearTimeout(SCS.pT);
+ try{SCS.st.getTracks().forEach(t=>t.stop());}catch(e){}
+ window.removeEventListener('deviceorientation',scOr);window.removeEventListener('deviceorientationabsolute',scOr);
+ const w=document.getElementById('scan');if(w)w.remove();document.body.classList.remove('scan');
+ try{controls.autoRotate=false;persp.clearViewOffset();persp.updateProjectionMatrix();}catch(e){}needApply=true;}
+async function scanOeffnen(){if(SCS.on)return;
+ const D=window.DeviceOrientationEvent;let sOk=true;
+ if(D&&typeof D.requestPermission==='function'){try{sOk=(await D.requestPermission())!=='denied';}catch(e){sOk=true;}}
+ if(!sOk){toast('Bewegungssensor abgelehnt – in den Browser-Einstellungen („Bewegungssensoren“) erlauben');return;}
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('Kamera nicht verfügbar – Seite über HTTPS öffnen');return;}
+ let st;try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280}},audio:false});}
+ catch(e){toast('Kamera nicht verfügbar ('+(e&&e.name||'Fehler')+') – Zugriff erlauben bzw. HTTPS nutzen');return;}
+ const v=document.createElement('video');v.playsInline=true;v.muted=true;v.setAttribute('playsinline','');v.srcObject=st;try{await v.play();}catch(e){}
+ Object.assign(SCS,{on:true,scanning:false,st,v,fr:[],keys:new Set(),sek:new Set(),bands:new Set(),refs:[],G:null,occ:null,busy:false,again:false,applyT:0,q:null,qT:0,w:0,src:null,hasAbs:false,mask:null,valid:false,warn:'',tick:0,ersetzt:false,phi:null,img:null,sm:null,mk:null,flip:false});
+ if(!document.getElementById('scStyle')){const s=document.createElement('style');s.id='scStyle';
+  s.textContent='body.scan .win,body.scan .card,body.scan .bar{display:none!important}#scan{position:fixed;z-index:40;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 16px));padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px}#scan .sch{display:flex;justify-content:space-between;align-items:center}#scCv{display:block;width:100%;height:34vh;object-fit:contain;background:#000;border-radius:8px;touch-action:manipulation}#scan .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}#scan label{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--dim)}#scan input[type=number]{width:74px;background:var(--field);color:var(--ink);border:1px solid var(--rule);border-radius:6px;padding:5px 6px;font:12px var(--f-mono)}#scan input[type=range]{flex:1;min-width:90px}';document.head.append(s);}
+ const cv=el('canvas',{id:'scCv','aria-label':'Kamerabild mit erkannter Silhouette. Tippen nimmt die Objektfarbe auf.'});SCS.cv=cv;
+ cv.addEventListener('click',e=>{if(!SCS.img)return;const r=cv.getBoundingClientRect(),ar=cv.width/cv.height,bw=Math.min(r.width,r.height*ar),bh=bw/ar,ox=(r.width-bw)/2,oy=(r.height-bh)/2,px=(e.clientX-r.left-ox)/bw,py=(e.clientY-r.top-oy)/bh;
+  if(px<0||py<0||px>1||py>1)return;scFarbe(Math.floor(px*SCS.img.width),Math.floor(py*SCS.img.height));});
+ const num2=(id,ph,lab)=>el('label',{for:id},lab,el('input',{type:'number',id,min:'0',step:'1',inputmode:'decimal',placeholder:ph}));
+ const tol=el('input',{type:'range',id:'scT',min:'15',max:'150',value:SCS.tol,'aria-label':'Farbtoleranz'});tol.addEventListener('input',()=>{SCS.tol=+tol.value;scMaskeNeu();});
+ const go=btn('Scan starten',scStart,'pri');go.id='scGo';
+ const wrap=el('div',{id:'scan',class:'panel',role:'dialog','aria-label':'Rundum-Scan'},
+  el('div',{class:'sch'},el('span',{class:'lbl',text:'Rundum-Scan'}),btn('Schließen',()=>scSchliessen())),
+  cv,el('p',{class:'note',id:'scInfo',style:'margin:0'}),
+  el('div',{class:'row'},num2('scL','mm','Länge *'),num2('scB','optional','Breite'),num2('scH','optional','Höhe')),
+  el('div',{class:'row'},el('label',{style:'flex:1'},'Farbtoleranz',tol)),
+  el('div',{class:'row'},go,btn('Farben löschen',()=>{SCS.refs=[];scMaskeNeu();scInfo();}),btn('Bug/Heck tauschen',()=>{SCS.flip=!SCS.flip;if(SCS.occ){SCS.L=parseFloat(document.getElementById('scL').value)||SCS.L;scAnwenden();toast('Bug und Heck getauscht');}}),btn('Fertig',scFertig,'pri')));
+ document.body.append(wrap);document.body.classList.add('scan');
+ try{persp.setViewOffset(innerWidth,innerHeight,0,-innerHeight*0.22,innerWidth,innerHeight);}catch(e){}
+ window.addEventListener('deviceorientationabsolute',scOr);window.addEventListener('deviceorientation',scOr);
+ scInfo();SCS.raf=requestAnimationFrame(scLoop);}
+function scanBereich(box){box.append(sub('Rundum-Scan (3D aus der Kamera)'),
+ note('Um das Objekt herumgehen: Die Kamera erkennt die Silhouette, der Lagesensor liefert die Blickrichtung, daraus baut sich der Rumpf von selbst auf. Du trägst die Länge als Maßstab ein, optional Breite und Höhe. Braucht HTTPS, Kamera- und Bewegungssensor-Freigabe. Das Ergebnis ist ein grober Rumpf (Hüllform), den du mit der Foto-Vorlage prüfst und von Hand nachformst.'),
+ el('div',{class:'row'},btn('Rundum-Scan starten',scanOeffnen,'pri')));}
+window.addEventListener('pagehide',()=>scSchliessen());
+
+function renderLinien(box){const R=P.rumpf,L=R.L,r=Math.round;if(sel==='rumpf')sel=null;hullEdW=null;scanBereich(box);fotoBereich(box);strakBereich(box);renderAufmass(box);
  box.append(sub('Rumpf von Hand formen'),note('Deckslinie, Kiellinie und halbe Breite als eigene Kurven. Das 3D-Modell folgt sofort.'));
  if(!R.aufmassAktiv)box.append(check(R,'eigen','Rumpf folgt meinen Linien','geo','rumpf',()=>{if(R.eigen&&!R.linien)seedLines(R);renderWin();}));
  if(R.eigen&&R.linien){const seg=el('div',{class:'seg'});for(const [k,t] of [['deck','Deckslinie'],['kiel','Kiellinie'],['breite','Halbe Breite']])seg.append(el('button',{class:'v',type:'button','aria-pressed':hullAct===k,onclick:()=>{hullAct=k;renderWin();}},t));box.append(seg);
@@ -2943,10 +3194,10 @@ function rcVorlage(k){const V=RC_VORLAGEN[k],R=P.rumpf,L=R.L,r=v=>Math.round(v*1
  auswahlSetzen(neu.map(t=>t.id));return neu[neu.length-1]||null;}
 
 /* ================= Projekte anlegen, sichern, auf andere Geräte bringen ================= */
-const VORLAGEN_NAMEN={marblehead:'Marblehead',moth:'Foiling Moth',k6:'Kutter K6',zk10:'ZK 10',zk10gfk:'ZK 10 GFK (Seesport Leipzig)',motordingi:'Motordingi Typ 401',topcatk2:'Skua V1 (Katamaran)',leer:'Nur Rumpf (leer)'};
+const VORLAGEN_NAMEN={marblehead:'Marblehead',moth:'Foiling Moth',k6:'Kutter K6',zk10:'ZK 10',zk10gfk:'ZK 10 GFK (Seesport Leipzig)',motordingi:'Motordingi Typ 401',topcatk2:'Skua V1 (Katamaran)',leer:'Nur Rumpf (leer)',scan:'Rundum-Scan (leer, baut sich beim Scannen auf)'};
 async function neuesProjekt(name,vorlage,vorherSichern){flush();if(vorherSichern)await cloudSave(false);
  P=normalize(TEMPLATES[vorlage]());P.name=String(name||'').trim()||'Neues Projekt';delete P.cloudId;sel=null;auswahl=new Set();commit();needRebuild=true;renderAll();setTimeout(()=>goView('free'),50);
- await cloudSave(true);tab='projekt';renderWin();}
+ await cloudSave(true);tab=vorlage==='scan'?'linien':'projekt';renderWin();if(vorlage==='scan')toast('Leeres Projekt – im Tab Linien „Rundum-Scan starten“ tippen');}
 function neuesProjektBereich(box){const v={n:'',t:'marblehead',s:true};
  box.append(sub('Neues Projekt'));const ni=el('input',{type:'text',id:'np-name',placeholder:'z. B. Meine Marblehead 2027'});ni.addEventListener('input',()=>{v.n=ni.value;});
  const ts=el('select',{id:'np-vorlage'});for(const k in VORLAGEN_NAMEN)ts.append(el('option',{value:k,text:VORLAGEN_NAMEN[k]}));ts.addEventListener('change',()=>{v.t=ts.value;});
@@ -3043,7 +3294,7 @@ const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').m
  if(fly){fly.k=Math.min(1,fly.k+dt*(reduce?10:1.6));const e=fly.k<0.5?2*fly.k*fly.k:1-Math.pow(-2*fly.k+2,2)/2;cam.position.lerpVectors(fly.p0,fly.p1,e);controls.target.lerpVectors(fly.t0,fly.t1,e);if(fly.k>=1)fly=null;}
  if(sel&&partMeshes[sel]){selBox.makeEmpty();for(const m of partMeshes[sel])selBox.expandByObject(m);selHelper.visible=!selBox.isEmpty();}else selHelper.visible=false;
  try{auswahlZeichnen();magPflege();}catch(e){}const moved=controls.update();wasserTakt();
- const ruhe=!moved&&!anim&&!fly&&now-lastAct>2500;
+ const ruhe=!moved&&!anim&&!fly&&!FOTO.live&&now-lastAct>2500;
  if(!ruhe||now-lastDraw>1000){lastDraw=now;renderer.render(scene,cam);}})(last);
 </script>
 
