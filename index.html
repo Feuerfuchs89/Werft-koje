@@ -53,6 +53,12 @@ h1 small{display:block;font-family:var(--f-body);font-weight:500;font-size:13px;
 .sub{font-family:var(--f-disp);font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);border-top:1px solid var(--rule);padding-top:10px;margin-top:4px}
 .sub:first-child{border-top:0;padding-top:0;margin-top:0}
 .grp{display:flex;flex-direction:column;gap:6px}
+details.klapp>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;padding-bottom:4px}
+details.klapp>summary::-webkit-details-marker{display:none}
+details.klapp>summary::before{content:'▸';font-size:11px;color:var(--dim);transition:transform .15s}
+details.klapp[open]>summary::before{transform:rotate(90deg)}
+details.klapp>.grp{padding:2px 0 8px}
+ol.schritte{margin:2px 0 4px 18px;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px;line-height:1.4}
 .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 button.v{font:600 13px var(--f-body);color:var(--ink);background:transparent;border:1px solid var(--rule);border-radius:7px;padding:5px 10px;cursor:pointer}
 button.v:hover{border-color:var(--dim)}
@@ -211,6 +217,7 @@ button.scanb{border-color:#f2c230;color:#f2c230}.scanb-k{display:none}@media (ma
     <button role="tab" data-tab="rumpf" aria-selected="false">Rumpf</button>
     <button role="tab" data-tab="teile" aria-selected="true">Teile</button>
     <button role="tab" data-tab="linien" aria-selected="false">Linien</button>
+    <button role="tab" data-tab="scan" aria-selected="false">Scan</button>
     <button role="tab" data-tab="rechnen" aria-selected="false">Rechnen</button>
     <button role="tab" data-tab="mechanik" aria-selected="false">Mechanik</button>
     <button role="tab" data-tab="projekt" aria-selected="false">Projekt</button>
@@ -919,10 +926,11 @@ function setStatus(){const e=document.getElementById('sState');if(!e)return;
  if(saveFail){e.textContent='⚠ nicht gesichert';e.className='sstate warn';e.title='Der Browser-Speicher ist voll oder gesperrt. Bitte „Speichern unter …“ nutzen.';}
  else if(dirty){e.textContent='● ungespeichert';e.className='sstate';e.title='Automatisch als Entwurf gesichert. „Speichern“ legt es im Projekt ab.';}
  else{e.textContent='✓ gespeichert';e.className='sstate ok';e.title='';}}
-function save(s){try{localStorage.setItem(KEY,s);if(saveFail){saveFail=false;try{toast('Sichern funktioniert wieder');}catch(e){}}setStatus();return true;}
- catch(e){if(!saveFail){saveFail=true;try{toast('⚠ Automatisches Sichern nicht möglich (Speicher voll?) – bitte „Speichern unter …“ nutzen');}catch(x){}}setStatus();return false;}}
+function save(s){try{localStorage.setItem(KEY,s);try{localStorage.removeItem(KEY+'-idb');}catch(e){}if(saveFail){saveFail=false;try{toast('Sichern funktioniert wieder');}catch(e){}}setStatus();return true;}
+ catch(e){/* zu groß für den kleinen Speicher: Entwurf in IndexedDB */try{localStorage.removeItem(KEY);localStorage.setItem(KEY+'-idb','1');}catch(x){}idbBereit().then(ok=>{if(!ok)throw new Error('kein IndexedDB');return IDB.put('meta','entwurf',s);}).then(()=>{if(saveFail){saveFail=false;setStatus();}}).catch(()=>{if(!saveFail){saveFail=true;try{toast('⚠ Automatisches Sichern nicht möglich (Speicher voll?) – bitte „Speichern unter …“ nutzen');}catch(x){}}setStatus();});return true;}}
 let P=null;try{P=loadSaved();localStorage.setItem('wk-achim-v4','1');}catch(e){}
 if(!P)P=normalize(TEMPLATES.motordingi());
+/* Entwurf lag wegen Größe in IndexedDB: nach dem Start nachladen */try{if(localStorage.getItem(KEY+'-idb')==='1')setTimeout(()=>{idbBereit().then(ok=>ok?IDB.get('meta','entwurf'):null).then(js=>{if(js){P=normalize(JSON.parse(js));hist=[js];hi=0;needRebuild=true;renderAll();}}).catch(()=>{});},300);}catch(e){}
 (function(){const v=P.teile.find(t=>t.typ==='verdeck');if(v&&v.scheibeIn==null){v.scheibeIn=true;v.xScheibeUnten=v.xScheibeUnten||1500;P.teile=P.teile.filter(t=>t.id!=='scheibe-stb'&&t.id!=='scheibe-bb');}})();
 let hist=[JSON.stringify(P)],hi=0,commitT=null;
 function commit(){commitT=null;const s=JSON.stringify(P);if(s!==hist[hi]){dirty=true;hist=hist.slice(0,hi+1);hist.push(s);if(hist.length>80)hist.shift();hi=hist.length-1;}save(s);updUndo();}
@@ -1172,7 +1180,7 @@ function buildPart(p){const g=new THREE.Group(),rot=new THREE.Group();g.add(rot)
    break;}
   case 'band':{const ob=Array.isArray(p.oben)?p.oben:[];const hmesh=hullGrp&&hullGrp.children[0];if(ob.length<2||!hmesh)break;
    const tmp=new THREE.Mesh(hmesh.geometry,new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));tmp.updateMatrixWorld(true);
-   const rc=new THREE.Raycaster();const hit=(x,y,sg)=>{rc.set(posOf(x,y,sg*3000),V(-sg,0,0));rc.near=0;rc.far=10;const h=rc.intersectObject(tmp,false);if(!h.length)return null;const pt=h[0].point.clone();let nn=h[0].face?h[0].face.normal.clone():V(sg,0,0);if(nn.x*sg<0)nn.negate();pt.nrm=nn;return pt;};
+   const qg=querGitter([tmp]);const hit=(x,y,sg)=>{const o=posOf(x,y,sg*3000),h=qg(o.y,o.z,sg,o.x*sg);if(!h)return null;const pt=h.point;let nn=h.normal;if(nn.x*sg<0)nn.negate();pt.nrm=nn;return pt;};
    const ob2=[];for(let i=0;i<ob.length-1;i++){const [x0,y0]=ob[i],[x1,y1]=ob[i+1],m=Math.max(1,Math.ceil((x1-x0)/20));for(let k=0;k<m;k++)ob2.push([x0+(x1-x0)*k/m,y0+(y1-y0)*k/m]);}ob2.push(ob[ob.length-1]);
    const po={polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1};
    const matA=new THREE.MeshStandardMaterial(Object.assign({color:p.farbe||'#15171b',roughness:0.42,metalness:0.12,side:p.farbeInnen?THREE.FrontSide:THREE.DoubleSide},po)),matI=p.farbeInnen?new THREE.MeshStandardMaterial(Object.assign({color:p.farbeInnen,roughness:0.5,metalness:0.05,side:THREE.BackSide},po)):null;const hh=+p.hoehe||300,vor0=+p.vor||0,t0=+p.taperStart||1e9,t1=Math.max(t0+1,+p.taperEnd||t0+1),mid=ob[Math.floor(ob.length/2)];piv=posOf(mid[0],mid[1]-hh/2,0);
@@ -1192,8 +1200,8 @@ function buildPart(p){const g=new THREE.Group(),rot=new THREE.Group();g.add(rot)
     /* Bänder (z. B. Schwarzband) zählen mit zur Außenhaut, der Schriftzug liegt dann darauf */
     for(const q of P.teile){if(q.typ!=='band'||q.parent||q.id===p.id||!built[q.id])continue;for(const o of built[q.id].rot.children){const bx=new THREE.Mesh(o.geometry,bm0);bx.position.copy(built[q.id].piv);tmp.add(bx);}}
     tmp.updateMatrixWorld(true);}
-   const rc=new THREE.Raycaster();const hit=(x,y,sg)=>{if(!tmp)return null;rc.set(posOf(x,y,sg*3000),V(-sg,0,0));rc.near=0;rc.far=10;const h=rc.intersectObject(tmp,true);if(!h.length)return null;
-    const q=h[0],pt=q.point.clone(),off=0.002+(+p.abst||0)/1000;if(q.face){const nn=q.face.normal.clone();if(nn.x*sg<0)nn.negate();pt.addScaledVector(nn,off);}else pt.x+=sg*off;return pt;};
+   const qg=tmp?querGitter(tmp.children):null;const hit=(x,y,sg)=>{if(!qg)return null;const o=posOf(x,y,sg*3000),q=qg(o.y,o.z,sg,o.x*sg);if(!q)return null;
+    const pt=q.point,off=0.002+(+p.abst||0)/1000;const nn=q.normal;if(nn.x*sg<0)nn.negate();pt.addScaledVector(nn,off);return pt;};
    const cw=1024,ch=Math.max(64,Math.round(cw*hh/Math.max(1,xb-xa)));const cv=document.createElement('canvas');cv.width=cw;cv.height=ch;const cx=cv.getContext('2d');
    let fs=ch*0.95;const sport=p.stil==='sport',fam=sport?"'Arial Black','Helvetica Neue','Arial',sans-serif":p.serif?"'Rockwell','Georgia','Times New Roman',serif":"'Brush Script MT','Segoe Script','Snell Roundhand','Lucida Handwriting',cursive",stl=sport?'italic 900 ':p.serif?'700 ':'italic 700 ';cx.font=stl+fs+'px '+fam;while(cx.measureText(p.text||'').width>cw*0.96&&fs>10){fs*=0.94;cx.font=stl+fs+'px '+fam;}
    cx.textAlign='center';cx.textBaseline='middle';if(p.schatten){const o=fs*0.07;cx.fillStyle=p.schatten;cx.fillText(p.text||'',cw/2+o,ch/2+o);}cx.fillStyle=p.farbe||'#ffffff';cx.fillText(p.text||'',cw/2,ch/2);
@@ -1213,7 +1221,8 @@ function buildPart(p){const g=new THREE.Group(),rot=new THREE.Group();g.add(rot)
 function createsCycle(p){let q=p,n=0;while(q&&q.parent&&n<60){if(q.parent===p.id)return true;q=P.teile.find(t=>t.id===q.parent);n++;}return n>=60;}
 
 function disposeTree(o){o.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.isSprite&&c.material)c.material.dispose();});}
-function rebuild(){if(P.rumpf.aufmassAktiv&&P.rumpf.aufmass)deriveAufmass();SHAPES=computeShapes();disposeTree(boat);boat.clear();built={};pickables=[];partMeshes={};
+function rebuild(){IHB=new Map();try{return rebuild0();}finally{IHB=null;}}
+function rebuild0(){if(P.rumpf.aufmassAktiv&&P.rumpf.aufmass)deriveAufmass();SHAPES=computeShapes();disposeTree(boat);boat.clear();built={};pickables=[];partMeshes={};
  const L=Lm();hullMat.color.set(P.rumpf.farbe||'#f4f5f2');hullMatC.color.set(P.rumpf.farbe||'#f4f5f2');hullBot.set(P.rumpf.farbeUnten||P.rumpf.farbe||'#b5402c');hullIn.set(P.rumpf.farbeInnen||'#ffffff');hullInOn.value=P.rumpf.farbeInnen?1:0;deckMat.color.set(P.rumpf.deckFarbe||'#dfe3e5');try{segelTexte();}catch(e){}zierUpdate();const HM=(P.rumpf.farbeUnten||P.rumpf.farbeInnen||(P.rumpf.streifen&&P.rumpf.streifen.length))?hullMatC:hullMat;
  hullGrp=new THREE.Group();boat.add(hullGrp);const hm=[];try{scNetzBauen();}catch(e){console.error(e);}
  for(const [g,m,fl] of (P.rumpf.scanLeer?[]:[[hullGeo(),HM,'rumpf'],[capGeo(),HM,'rumpf'],...(P.rumpf.offen?[]:[[deckGeo(),deckMat,'deck']])])){const o=new THREE.Mesh(g,m);o.userData.flaeche=fl;o.castShadow=true;o.receiveShadow=true;o.userData.partId='rumpf';hullGrp.add(o);hm.push(o);pickables.push(o);}
@@ -1449,6 +1458,17 @@ function gzSync(){if(!gzInit())return;tc.camera=cam;const p=gzPart(),b=p&&built[
  tc.showX=tc.showY=tc.showZ=true;
  if(gzProxy.parent!==boat)boat.add(gzProxy);if(tc.object!==gzProxy)tc.attach(gzProxy);gzLast.copy(gzProxy.position);gzAttached=p.id;}
 /* greifbare Punkte der selektierten Teile: profil-Umriss, freie Ausschnitte, Flächen */
+/* Schnelle Querstrahlen (Richtung ±X, quer zum Boot) über ein Raster in (z,y) statt Dreieck für Dreieck – spart beim Start viel Zeit */
+function querGitter(objs){const T=[];const v=new THREE.Vector3();let z0=1e9,z1=-1e9,y0=1e9,y1=-1e9;
+ for(const m of objs){m.updateMatrixWorld(true);const g=m.geometry,pa=g.attributes.position,ix=g.index,W=new Float64Array(pa.count*3);for(let i=0;i<pa.count;i++){v.fromBufferAttribute(pa,i).applyMatrix4(m.matrixWorld);W[3*i]=v.x;W[3*i+1]=v.y;W[3*i+2]=v.z;if(v.z<z0)z0=v.z;if(v.z>z1)z1=v.z;if(v.y<y0)y0=v.y;if(v.y>y1)y1=v.y;}
+  const n=ix?ix.count:pa.count;for(let t=0;t+2<n;t+=3){const a=ix?ix.getX(t):t,b=ix?ix.getX(t+1):t+1,c=ix?ix.getX(t+2):t+2;T.push(W[3*a],W[3*a+1],W[3*a+2],W[3*b],W[3*b+1],W[3*b+2],W[3*c],W[3*c+1],W[3*c+2]);}}
+ const NZ=96,NY=48,dz=(z1-z0)/NZ||1,dy=(y1-y0)/NY||1,Z=new Array(NZ*NY);const cz=z=>Math.max(0,Math.min(NZ-1,Math.floor((z-z0)/dz))),cy=y=>Math.max(0,Math.min(NY-1,Math.floor((y-y0)/dy)));
+ for(let t=0;t<T.length;t+=9){const za=Math.min(T[t+2],T[t+5],T[t+8]),zb=Math.max(T[t+2],T[t+5],T[t+8]),ya=Math.min(T[t+1],T[t+4],T[t+7]),yb=Math.max(T[t+1],T[t+4],T[t+7]);for(let i=cz(za);i<=cz(zb);i++)for(let j=cy(ya);j<=cy(yb);j++){const k=i*NY+j;(Z[k]||(Z[k]=[])).push(t);}}
+ /* liefert den äußersten Treffer von der Seite sg aus (wie Raycaster ab x=sg*xs Richtung -sg) */
+ return(y,z,sg,xs)=>{if(z<z0||z>z1||y<y0||y>y1)return null;const L=Z[cz(z)*NY+cy(y)];if(!L)return null;let best=null,bx=-1e9,bt=-1;
+  for(const t of L){const ay=T[t+1],az=T[t+2],by=T[t+4],bz=T[t+5],cy2=T[t+7],cz2=T[t+8];const d=(bz-az)*(cy2-ay)-(by-ay)*(cz2-az);if(Math.abs(d)<1e-14)continue;
+   const u=((z-az)*(cy2-ay)-(y-ay)*(cz2-az))/d,w=((bz-az)*(y-ay)-(by-ay)*(z-az))/d;if(u<-1e-9||w<-1e-9||u+w>1+1e-9)continue;const x=T[t]+u*(T[t+3]-T[t])+w*(T[t+6]-T[t]);const q=x*sg;if(q>xs||q<xs-10)continue;if(q>bx){bx=q;best=x;bt=t;}}
+  if(bt<0)return null;const e1=new THREE.Vector3(T[bt+3]-T[bt],T[bt+4]-T[bt+1],T[bt+5]-T[bt+2]),e2=new THREE.Vector3(T[bt+6]-T[bt],T[bt+7]-T[bt+1],T[bt+8]-T[bt+2]);const nn=e1.cross(e2).normalize();return{point:V(best,y,z),normal:nn};};}
 function hullHit(x,y,sg){const hm=hullGrp&&hullGrp.children[0];if(!hm)return null;const t=new THREE.Mesh(hm.geometry,new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));t.updateMatrixWorld(true);const rc=new THREE.Raycaster();rc.set(posOf(x,y,sg*3000),V(-sg,0,0));rc.near=0;rc.far=10;const h=rc.intersectObject(t,false);return h.length?h[0].point.clone():null;}
 function ptCollect(p){const out=[],Lh=P.rumpf.L;
  if(p.typ==='profil'&&p.umriss&&Array.isArray(p.umriss.pts)){const vert=p.lage!=='waagerecht';p.umriss.pts.forEach(q=>{out.push({pos:vert?posOf(p.x+q[0],p.y+q[1],+p.s||0):posOf(p.x+q[0],p.y,(+p.s||0)+q[1]),n:vert?'x':'y',set:(X,Y,S)=>{q[0]=gsn(X-p.x);q[1]=vert?gsn(Y-p.y):gsn(Math.abs(S-(+p.s||0)));umrissNeu(p);}});});}
@@ -1586,13 +1606,28 @@ function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTime
 const projCol=()=>DB.collection('data/users/'+UID);
 /* Ablage für gespeicherte Projekte: Konto (im Claude-Viewer) oder dieses Gerät (als eigenständige App) */
 const LOCAL_KEY='werftkoje-projekte';
+/* ---- IndexedDB: großer, dauerhafter Speicher für Projekte und Bauteile ---- */
+const IDB={db:null,kaputt:false,
+ open(){if(this.db)return Promise.resolve(this.db);if(this.kaputt||!window.indexedDB)return Promise.reject(new Error('kein IndexedDB'));
+  return new Promise((res,rej)=>{let r;try{r=indexedDB.open('werftkoje',1);}catch(e){this.kaputt=true;rej(e);return;}r.onupgradeneeded=()=>{const d=r.result;for(const n of ['projekte','bauteile','meta'])if(!d.objectStoreNames.contains(n))d.createObjectStore(n);};
+   r.onsuccess=()=>{this.db=r.result;res(this.db);};r.onerror=()=>{this.kaputt=true;rej(r.error||new Error('IndexedDB'));};r.onblocked=()=>rej(new Error('IndexedDB blockiert'));});},
+ async tx(st,mode,fn){const d=await this.open();return new Promise((res,rej)=>{const t=d.transaction(st,mode),o=t.objectStore(st);let out;const r=fn(o);if(r)r.onsuccess=()=>{out=r.result;};t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('abgebrochen'));});},
+ get(st,k){return this.tx(st,'readonly',o=>o.get(k));},put(st,k,v){return this.tx(st,'readwrite',o=>o.put(v,k));},del(st,k){return this.tx(st,'readwrite',o=>o.delete(k));},
+ async all(st){const d=await this.open();return new Promise((res,rej)=>{const out=[],t=d.transaction(st,'readonly'),c=t.objectStore(st).openCursor();c.onsuccess=()=>{const cu=c.result;if(cu){out.push(Object.assign({id:cu.key},cu.value));cu.continue();}};t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error);});}};
+let IDB_BEREIT=null;
+function idbBereit(){if(IDB_BEREIT)return IDB_BEREIT;IDB_BEREIT=(async()=>{try{await IDB.open();}catch(e){return false;}
+ /* einmalig: Projekte aus dem alten Speicher übernehmen */try{const alt=JSON.parse(localStorage.getItem(LOCAL_KEY)||'null');if(alt&&typeof alt==='object'){let n=0;for(const id in alt){const v=alt[id];if(!v)continue;const da=await IDB.get('projekte',id);if(!da||String(da.stand)<String(v.stand)){await IDB.put('projekte',id,v);}n++;}
+   const check=await IDB.all('projekte');if(check.length>=n){try{localStorage.setItem(LOCAL_KEY+'-sicherung-umzug',localStorage.getItem(LOCAL_KEY));}catch(e){}localStorage.removeItem(LOCAL_KEY);try{localStorage.removeItem(LOCAL_KEY+'-sicherung-umzug');}catch(e){}if(n)setTimeout(()=>toast(n+' Projekt(e) in den großen Speicher umgezogen'),1500);}}}catch(e){console.error(e);}
+ try{if(navigator.storage&&navigator.storage.persist&&!(await navigator.storage.persisted()))navigator.storage.persist();}catch(e){}return true;})();return IDB_BEREIT;}
+async function speicherStand(){try{const e=await navigator.storage.estimate();const p=navigator.storage.persisted?await navigator.storage.persisted():false;return{belegt:e.usage||0,frei:e.quota||0,dauerhaft:p};}catch(e){return null;}}
 const localAll=()=>{try{return JSON.parse(localStorage.getItem(LOCAL_KEY)||'{}');}catch(e){return {};}};
 const localPut=all=>{localStorage.setItem(LOCAL_KEY,JSON.stringify(all));};
 const store={
- async list(){if(DB){const qs=await projCol().orderBy('stand','desc').limit(100).get();return qs.docs.map(d=>({id:d.id,...(d.data()||{})}));}
+ async list(){if(!DB&&await idbBereit()){const a=await IDB.all('projekte');return a.sort((x,y)=>String(y.stand).localeCompare(String(x.stand)));}
+  if(DB){const qs=await projCol().orderBy('stand','desc').limit(100).get();return qs.docs.map(d=>({id:d.id,...(d.data()||{})}));}
   const a=localAll();return Object.keys(a).map(id=>({id,...a[id]})).sort((x,y)=>String(y.stand).localeCompare(String(x.stand)));},
- async put(id,v){if(DB)return projCol().doc(id).set(v);const a=localAll();a[id]=v;localPut(a);},
- async del(id){if(DB)return projCol().doc(id).delete();const a=localAll();delete a[id];localPut(a);}};
+ async put(id,v){if(DB)return projCol().doc(id).set(v);if(await idbBereit())return IDB.put('projekte',id,v);const a=localAll();a[id]=v;localPut(a);},
+ async del(id){if(DB)return projCol().doc(id).delete();if(await idbBereit())return IDB.del('projekte',id);const a=localAll();delete a[id];localPut(a);}};
 const ortName=()=>DB?'deinem Konto':'auf diesem Gerät';
 async function cloudSave(asNew){flush();
  try{if(asNew||!P.cloudId)P.cloudId=uid();const json=JSON.stringify(P);await store.put(P.cloudId,{name:P.name,klasse:P.klasse,stand:new Date().toISOString(),json});commit();dirty=false;setStatus();
@@ -1692,7 +1727,7 @@ const note=t=>el('p',{class:'note',text:t});
 const btn=(t,fn,cls)=>el('button',{class:'v '+(cls||''),type:'button',text:t,onclick:fn});
 
 function renderWin(){FXLIVE=[];document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));const box=$('winB');const st=box.scrollTop;box.textContent='';
- ({rumpf:renderRumpf,teile:renderTeile,linien:renderLinien,rechnen:renderRechnen,mechanik:renderMech,projekt:renderProjekt,ki:renderKI})[tab](box);box.scrollTop=st;}
+ ({rumpf:renderRumpf,teile:renderTeile,linien:renderLinien,scan:renderScan,rechnen:renderRechnen,mechanik:renderMech,projekt:renderProjekt,ki:renderKI})[tab](box);box.scrollTop=st;}
 
 
 /* Bug und Heck des K6 auf einen anderen Kutter übertragen (Formen relativ zu den Anschlussstationen) */
@@ -1715,7 +1750,9 @@ function bugHeckVonK6(){const A=P.rumpf.aufmass;if(!A||!Array.isArray(A.statione
  A.stationen=[...zone(0,1650,s6He,0,+zHe.pos,zHe),...SZ.filter(t=>t.pos>zHe.pos&&t.pos<zBu.pos),...zone(3850,L6,s6Bu,+zBu.pos,L,zBu)];P.rumpf.aufmassAktiv=true;deriveAufmass();return true;}
 
 /* ---- Seitenbank: Sitzbrett innen an der Bordwand, folgt der Rumpfform und bleibt immer innen ---- */
-function innenHB(x,y){const L=P.rumpf.L,u=clamp(x/L,0,1),d=hdims(u);if(y>=d.Ys*1000)y=d.Ys*1000-1;if(y<=d.Yk*1000)return 0;return secAt(u,d,exH())(tVonY(u,y))[0]*1000;}
+let IHB=null;/* Zwischenspeicher nur während rebuild() */
+function innenHB(x,y){if(IHB){const k=x+'|'+y;let v=IHB.get(k);if(v===undefined){v=innenHB0(x,y);IHB.set(k,v);}return v;}return innenHB0(x,y);}
+function innenHB0(x,y){const L=P.rumpf.L,u=clamp(x/L,0,1),d=hdims(u);if(y>=d.Ys*1000)y=d.Ys*1000-1;if(y<=d.Yk*1000)return 0;return secAt(u,d,exH())(tVonY(u,y))[0]*1000;}
 function bankKanten(p){const n=48,x0=+p.x0||0,x1=Math.max(x0+10,+p.x1||0),yo=+p.yOben||0,yu=yo-Math.max(1,+p.dicke||20),w=Math.max(0,+p.wand||0)+Math.max(0,+p.abstand||0),o=[];
  for(let i=0;i<=n;i++){const x=x0+(x1-x0)*i/n;let sa=Math.min(innenHB(x,yo),innenHB(x,yu))-w;sa=Math.max(sa,1);const si=Math.max(Math.min(sa*0.35,sa-5),sa-Math.max(10,+p.breite||200));o.push({x,sa,si,yo,yu});}return o;}
 function bankGeo(p){const K=bankKanten(p),sg=(+p.seite||1)<0?-1:1,pos=[],idx=[];
@@ -1835,7 +1872,7 @@ function descendants(id){const out=new Set([id]);let grew=true;while(grew){grew=
 function renderTeile(box){if(sel==='rumpf')sel=null;
  const ts=el('select',{id:'newTyp','aria-label':'Teiltyp'});for(const k in TYPEN){if(k==='netz')continue;ts.append(el('option',{value:k,text:TYPEN[k]+' – '+TYPHILFE[k]}));}
  box.append(sub('Neues Teil'));vorlagenAuswahl(box);box.append(el('div',{class:'row'},el('div',{style:'flex:1;min-width:0'},ts),btn('Anlegen',()=>{const p=typDefaults(ts.value,P.rumpf);p.name=TYPEN[ts.value]+' '+(P.teile.filter(t=>t.typ===ts.value).length+1);P.teile.push(p);sel=p.id;changed('geo');renderWin();},'pri')),el('div',{class:'row'},btn('Gescanntes Bauteil / Teile aus anderem Projekt einfügen …',()=>teileEinfuegenDialog()),btn('STL/OBJ einlesen …',()=>teileEinfuegenDialog())));
- box.append(sub('Teile ('+P.teile.length+')'));
+ bibBereich(box);box.append(sub('Teile ('+P.teile.length+')'));
  if(!P.teile.length)box.append(note('Noch keine Teile. Lege oben dein erstes an, zum Beispiel eine Kielflosse.'));
  else{const list=el('div',{class:'plist',role:'list'});const order=[];const walk=(par,depth)=>{for(const t of P.teile)if((t.parent||null)===par&&!order.find(o=>o.t===t)){order.push({t,depth});walk(t.id,depth+1);}};walk(null,0);for(const t of P.teile)if(!order.find(o=>o.t===t))order.push({t,depth:0});
   for(const {t,depth} of order)list.append(el('button',{type:'button',class:depth?'kid':'','aria-pressed':t.id===sel||auswahl.has(t.id),title:'Klick wählt · Shift/Strg-Klick nimmt dazu',onclick:ev=>{if(ev.shiftKey||ev.ctrlKey||ev.metaKey)auswahlUmschalten(t.id);else auswahlSetzen([t.id]);renderWin();}},(depth?'└ ':'')+(t.partner?'⇋ ':'')+t.name,el('span',{text:TYPEN[t.typ]})));box.append(list);}
@@ -2299,8 +2336,8 @@ function scBerechnen(fertig){if(SCS.busy){SCS.again=true;return false;}
   const t=performance.now();if(fertig||t-SCS.applyT>900){SCS.applyT=t;ok=scAnwenden();}}
  catch(e){console.error(e);toast('Scan-Berechnung fehlgeschlagen');}
  SCS.busy=false;if(SCS.again){SCS.again=false;scPlan();}return ok;}
-function scAnwenden(){if(!SCS.occ||!SCS.G)return false;const res=scLinien(SCS.occ,SCS.G,SCS.L,SCS.flip,null,SCS.Bm,SCS.Hm);if(!res)return false;
- if(P.rumpf.scanZiel==='objekt'){try{scVoxSpeichern(SCS.occ,SCS.G,res.map);Object.assign(P.rumpf.scanVox,{b0:SCS.G.b0,db:SCS.G.db,dc:SCS.G.dc});const M=scNetzGeo(P.rumpf.scanVox,false,true);netzTeilSetzen('scanobjekt','Gescanntes Bauteil',M.pos,M.idx);}catch(e){console.error(e);return false;}P.rumpf.scanLeer=true;changed('geo');return true;}
+function scAnwenden(){if(!SCS.occ||!SCS.G)return false;const res=scLinien(SCS.occ,SCS.G,SCS.L,SCS.flip,null,SCS.Bm,P.rumpf.scanZiel==='objekt'?0:SCS.Hm);if(!res)return false;
+ if(P.rumpf.scanZiel==='objekt'){try{scVoxSpeichern(SCS.occ,SCS.G,res.map);Object.assign(P.rumpf.scanVox,{b0:SCS.G.b0,db:SCS.G.db,dc:SCS.G.dc});let M=scNetzGeo(P.rumpf.scanVox,false,true);if(SCS.Hm>0){let ym=-1e9;for(let k=1;k<M.pos.length;k+=3)ym=Math.max(ym,M.pos[k]);M=netzSchneiden(M.pos,M.idx,[0,1,0],ym-SCS.Hm);P.rumpf.standInfo='Standfläche bei '+Math.round(SCS.Hm)+' mm unter der Oberkante abgeschnitten';}else P.rumpf.standInfo='Höhe des Bauteils nicht angegeben – unten ist die Form geschätzt. Unter Teile „Unten abschneiden“ nutzen oder beim nächsten Scan die Höhe eintragen.';if(M.idx.length/3>8000)M=netzVereinfachen(M.pos,M.idx,8000);netzTeilSetzen('scanobjekt','Gescanntes Bauteil',M.pos,M.idx);}catch(e){console.error(e);return false;}P.rumpf.scanLeer=true;changed('geo');return true;}
  const R=P.rumpf;R.L=Math.round(SCS.L);R.scanLeer=false;R.aufmassAktiv=false;R.eigen=true;R.B=Math.max(10,res.breiteMax);R.linien={breite:res.breite,deck:res.deck,kiel:res.kiel};try{scVoxSpeichern(SCS.occ,Object.assign({},SCS.G,{}),res.map);P.rumpf.scanVox.b0=SCS.G.b0;P.rumpf.scanVox.db=SCS.G.db;P.rumpf.scanVox.dc=SCS.G.dc;}catch(e){console.error(e);}changed('geo');return true;}
 function scZeichnen(){const v=SCS.v,cv=SCS.cv;if(!v.videoWidth)return;const cw=360,ch=Math.round(360*v.videoHeight/v.videoWidth);
  if(cv.width!==cw||cv.height!==ch){cv.width=cw;cv.height=ch;}const x=cv.getContext('2d');x.drawImage(v,0,0,cw,ch);if(SCS.mk)x.drawImage(SCS.mk,0,0,cw,ch);
@@ -2326,7 +2363,7 @@ function scFertig(){if(SCS.fr.length<SC.minBilder||SCS.sek.size<SC.minSektoren){
  SCS.L=parseFloat(document.getElementById('scL').value)||SCS.L;SCS.Bm=parseFloat(document.getElementById('scB').value)||0;SCS.Hm=parseFloat(document.getElementById('scH').value)||0;
  SCS.scanning=false;toast('Rechne fein …');
  setTimeout(()=>{SCS.busy=false;SCS.again=false;clearTimeout(SCS.pT);const ok=scBerechnen(true);scSchliessen();
-  if(ok){tab='linien';try{for(const id of ['tScan','tSee']){const b=$(id);if(b&&b.getAttribute('aria-pressed')!=='true')b.click();}}catch(e){}try{cloudSave(false);}catch(e){}renderWin();try{goView('free');}catch(e){}toast('Rumpf aus dem Scan gebaut – Deck-, Kiel- und Breitenlinie unter „Rumpf von Hand formen“ nachbessern');}
+  if(ok){tab='scan';try{for(const id of ['tScan','tSee']){const b=$(id);if(b&&b.getAttribute('aria-pressed')!=='true')b.click();}}catch(e){}try{cloudSave(false);}catch(e){}const obj=scanFertigMeldung();renderWin();try{goView('free');}catch(e){}if(!obj)toast('Rumpf aus dem Scan gebaut – Deck-, Kiel- und Breitenlinie unter „Rumpf von Hand formen“ nachbessern');}
   else toast('Die Ansichten reichten nicht für einen Rumpf – bitte noch einmal ganz herumgehen');},40);}
 function scSchliessen(){if(!SCS.on)return;SCS.on=false;SCS.scanning=false;cancelAnimationFrame(SCS.raf);clearTimeout(SCS.pT);
  try{SCS.st.getTracks().forEach(t=>t.stop());}catch(e){}
@@ -2338,7 +2375,7 @@ async function scanOeffnen(){if(SCS.on)return;
  if(D&&typeof D.requestPermission==='function'){try{sOk=(await D.requestPermission())!=='denied';}catch(e){sOk=true;}}
  if(!sOk){toast('Bewegungssensor abgelehnt – in den Browser-Einstellungen („Bewegungssensoren“) erlauben');return;}
  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast(window.isSecureContext===false?'Kamera geht nur über HTTPS – '+APP_URL+' öffnen':'Dieser Browser gibt keine Kamera frei');return;}
- let st;try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280}},audio:false});}
+ let st;try{st=await kameraStream(1280,720);}
  catch(e){const n=e&&e.name||'';toast(n==='NotAllowedError'?(scImRahmen()?'Kamera in dieser eingebetteten Ansicht gesperrt – Werftkoje direkt öffnen':'Kamera abgelehnt – im Browser für diese Seite erlauben'):n==='NotFoundError'?'Keine Kamera gefunden':n==='NotReadableError'?'Kamera wird gerade von einer anderen App benutzt':'Kamera nicht verfügbar ('+(n||'Fehler')+') – HTTPS nutzen');return;}
  const v=document.createElement('video');v.playsInline=true;v.muted=true;v.setAttribute('playsinline','');v.srcObject=st;try{await v.play();}catch(e){}
  Object.assign(SCS,{on:true,scanning:false,st,v,fr:[],keys:new Set(),sek:new Set(),bands:new Set(),refs:[],G:null,occ:null,busy:false,again:false,applyT:0,q:null,qT:0,w:0,src:null,hasAbs:false,mask:null,valid:false,warn:'',tick:0,ersetzt:false,phi:null,img:null,sm:null,mk:null,flip:false,hist:[],grund:'',openT:performance.now(),sensT:0});
@@ -2351,9 +2388,9 @@ async function scanOeffnen(){if(SCS.on)return;
  const tol=el('input',{type:'range',id:'scT',min:'15',max:'150',value:SCS.tol,'aria-label':'Farbtoleranz'});tol.addEventListener('input',()=>{SCS.tol=+tol.value;scMaskeNeu();});
  const go=btn('Scan starten',scStart,'pri');go.id='scGo';
  const wrap=el('div',{id:'scan',class:'panel',role:'dialog','aria-label':'Rundum-Scan'},
-  el('div',{class:'sch'},el('span',{class:'lbl',text:'Rundum-Scan'}),btn('Schließen',()=>scSchliessen())),
+  el('div',{class:'sch'},el('span',{class:'lbl',text:'Rundum-Scan (Umriss)'}),btn('Schließen',()=>scSchliessen())),scanZielSchalter(),el('div',{class:'row'},kameraWahl(SCS,1280,720)),
   cv,el('p',{class:'note',id:'scInfo',style:'margin:0'}),
-  el('div',{class:'row'},num2('scL','mm','Länge *'),num2('scB','optional','Breite'),num2('scH','optional','Höhe')),
+  el('div',{class:'row'},num2('scL','mm','Länge *'),num2('scB','optional','Breite'),num2('scH','optional','Höhe (Bauteil: Standfläche)')),
   el('div',{class:'row'},el('label',{style:'flex:1'},'Farbtoleranz',tol)),
   el('div',{class:'row'},go,btn('Farben löschen',()=>{SCS.refs=[];scMaskeNeu();scInfo();}),btn('Bug/Heck tauschen',()=>{SCS.flip=!SCS.flip;if(SCS.occ){SCS.L=parseFloat(document.getElementById('scL').value)||SCS.L;scAnwenden();toast('Bug und Heck getauscht');}}),btn('Fertig',scFertig,'pri')));
  document.body.append(wrap);document.body.classList.add('scan');
@@ -2368,6 +2405,29 @@ function scanProjektAnlegen(){try{flush();}catch(e){}if(P.cloudId){try{cloudSave
 function scanNeuesProjekt(){if(SCS.on)return;
  /* synchron bleiben: iPhone erlaubt Sensor/Kamera nur direkt nach dem Tippen */
  const alt=P.name;scanProjektAnlegen();scanOeffnen();toast('Neues Projekt „'+P.name+'“ angelegt'+(alt?' – „'+alt+'“ bleibt unverändert':''));}
+/* ================= Kamera wählen, Scan-Ziel (Rumpf / Bauteil) ================= */
+const KAM={id:(()=>{try{return localStorage.getItem('werftkoje-kamera')||'';}catch(e){return '';}})()};
+async function kameraStream(w,h,fps){const base={width:{ideal:w},height:{ideal:h}};if(fps)base.frameRate={ideal:fps};
+ if(KAM.id){try{return await navigator.mediaDevices.getUserMedia({video:Object.assign({deviceId:{exact:KAM.id}},base),audio:false});}catch(e){if(e&&e.name==='NotAllowedError')throw e;KAM.id='';try{localStorage.setItem('werftkoje-kamera','');}catch(e2){}}}
+ return navigator.mediaDevices.getUserMedia({video:Object.assign({facingMode:'environment'},base),audio:false});}
+async function kameraFokus(st){try{const tr=st.getVideoTracks()[0],cap=tr.getCapabilities?tr.getCapabilities():{};if(cap.focusMode&&cap.focusMode.includes('continuous'))await tr.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}}
+/* Auswahlfeld; S = Zustand mit st (Stream) und v (Video) */
+function kameraWahl(S,w,h,fps){const sel=el('select',{'aria-label':'Kamera',style:'flex:1;min-width:0'});
+ const fuellen=async()=>{let devs=[];try{devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');}catch(e){}sel.innerHTML='';const akt=(()=>{try{return S.st.getVideoTracks()[0].getSettings().deviceId||'';}catch(e){return '';}})();
+  devs.forEach((d,k)=>sel.append(el('option',{value:d.deviceId,text:d.label||('Kamera '+(k+1))})));if(akt)sel.value=akt;sel.disabled=devs.length<2;if(devs.length<2)sel.title='Nur eine Kamera gefunden';};
+ sel.addEventListener('change',async()=>{const id=sel.value;KAM.id=id;try{localStorage.setItem('werftkoje-kamera',id);}catch(e){}let st;try{st=await kameraStream(w,h,fps);}catch(e){toast('Kamera lässt sich nicht umschalten');return;}
+  try{S.st.getTracks().forEach(t=>t.stop());}catch(e){}S.st=st;S.v.srcObject=st;try{await S.v.play();}catch(e){}kameraFokus(st);toast('Kamera gewechselt');fuellen();});
+ fuellen();return el('label',{style:'flex:1;display:flex;gap:6px;align-items:center'},'Kamera',sel);}
+/* Scan-Ziel im laufenden Projekt umstellen */
+function scanZielSetzen(v){const R=P.rumpf;if(R.scanZiel===v)return;R.scanZiel=v;SCANZIEL=v;P.name=String(P.name||'').replace(/^(3D-Scan|Marken-Scan|Punkte-Scan|Bauteil-Scan) /,v==='objekt'?'Bauteil-Scan ':'3D-Scan ');
+ if(v==='rumpf'){P.teile=P.teile.filter(t=>t.id!=='scanobjekt');}else R.scanLeer=true;
+ try{if(R.markerScan&&R.markerScan.ergebnis)mkUebernehmen();else if(R.punktScan&&R.punktScan.ergebnis)ptUebernehmen();else if(SCS.occ)scAnwenden();}catch(e){console.error(e);}
+ if(v==='rumpf'&&R.scanLeer&&!SCS.occ&&!(R.markerScan&&R.markerScan.ergebnis)&&!(R.punktScan&&R.punktScan.ergebnis)){}changed('geo');
+ const t=document.getElementById('scZielT');if(t)t.textContent=v==='objekt'?'wird ein Bauteil (Polygonnetz)':'wird ein Bootsrumpf (Aufmaß)';}
+function scanZielSchalter(){const sg=el('div',{class:'seg',role:'group','aria-label':'Was wird gescannt'});const akt=()=>P.rumpf.scanZiel||'rumpf';
+ for(const[v,t] of [['rumpf','Bootsrumpf'],['objekt','Bauteil / Objekt']]){const b=el('button',{class:'v',type:'button','aria-pressed':String(akt()===v)},t);b.addEventListener('click',()=>{scanZielSetzen(v);for(const c of sg.children)c.setAttribute('aria-pressed',String(c===b));});sg.append(b);}
+ return el('div',{class:'row'},sg,el('span',{class:'note',id:'scZielT',text:akt()==='objekt'?'wird ein Bauteil (Polygonnetz)':'wird ein Bootsrumpf (Aufmaß)'}));}
+function scanFertigMeldung(){if(P.rumpf.scanZiel==='objekt'){const p=P.teile.find(t=>t.id==='scanobjekt');if(p){sel=p.id;tab='teile';p.name=P.name.replace('Bauteil-Scan','Bauteil');setTimeout(()=>bibSpeichern(p,true),600);}const si=P.rumpf.standInfo||(P.rumpf.markerScan&&P.rumpf.markerScan.standInfo)||(P.rumpf.punktScan&&P.rumpf.punktScan.standInfo)||'';toast('Bauteil aus dem Scan gebaut'+(si?' · '+si:'')+' – unter Teile bearbeiten, in andere Projekte mit „Teile … einfügen“ übernehmen');return true;}return false;}
 /* ================= Marken-Scan: Bedienung, Kamera, Rechnen im Hintergrund ================= */
 const MKS={on:false};
 const mkLS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:v;}catch(e){return d;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}};
@@ -2427,7 +2487,7 @@ function mkStil(){if(document.getElementById('scStyle'))return;const s=document.
  s.textContent='body.scan .win,body.scan .card,body.scan .bar{display:none!important}#scan{position:fixed;z-index:40;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 16px));padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px;max-height:calc(100% - 16px);overflow:auto}#scan .sch{display:flex;justify-content:space-between;align-items:center}#scCv{display:block;width:100%;height:34vh;object-fit:contain;background:#000;border-radius:8px;touch-action:manipulation}#scan .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}#scan label{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--dim)}#scan input[type=number]{width:74px;background:var(--field);color:var(--ink);border:1px solid var(--rule);border-radius:6px;padding:5px 6px;font:12px var(--f-mono)}#scan input[type=range]{flex:1;min-width:90px}';document.head.append(s);}
 async function mkOeffnen(){if(MKS.on||SCS.on)return;
  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast(window.isSecureContext===false?'Kamera geht nur über HTTPS – '+APP_URL+' öffnen':'Dieser Browser gibt keine Kamera frei');return;}
- let st;try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}},audio:false});}
+ let st;try{st=await kameraStream(1920,1080);}
  catch(e){const n=e&&e.name||'';toast(n==='NotAllowedError'?(scImRahmen()?'Kamera in dieser eingebetteten Ansicht gesperrt – Werftkoje direkt öffnen':'Kamera abgelehnt – im Browser für diese Seite erlauben'):n==='NotFoundError'?'Keine Kamera gefunden':'Kamera nicht verfügbar ('+(n||'Fehler')+')');return;}
  try{const tr=st.getVideoTracks()[0],cap=tr.getCapabilities?tr.getCapabilities():{};if(cap.focusMode&&cap.focusMode.includes('continuous'))await tr.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}
  const v=document.createElement('video');v.playsInline=true;v.muted=true;v.setAttribute('playsinline','');v.srcObject=st;try{await v.play();}catch(e){}
@@ -2437,7 +2497,7 @@ async function mkOeffnen(){if(MKS.on||SCS.on)return;
  const sIn=el('input',{type:'number',id:'mkS',min:'5',max:'60',step:'0.1',inputmode:'decimal',value:String(M.s)});sIn.addEventListener('change',()=>{const v2=parseFloat(sIn.value);if(v2>=5){M.s=v2;commit();}});
  const go=btn(M.frames.length?'Weiter aufnehmen':'Aufnahme starten',()=>{MKS.auf=!MKS.auf;go.textContent=MKS.auf?'Pause':'Weiter aufnehmen';MKS.prev=null;mkInfo();},'pri');go.id='mkGo';
  const wrap=el('div',{id:'scan',class:'panel',role:'dialog','aria-label':'Marken-Scan'},
-  el('div',{class:'sch'},el('span',{class:'lbl',text:'Marken-Scan · Runde '+(M.sitzung||1)}),btn('Schließen',()=>mkSchliessen())),
+  el('div',{class:'sch'},el('span',{class:'lbl',text:'Marken-Scan · Runde '+(M.sitzung||1)}),btn('Schließen',()=>mkSchliessen())),scanZielSchalter(),el('div',{class:'row'},kameraWahl(MKS,1920,1080)),
   cv,el('p',{class:'note',id:'scInfo',style:'margin:0'}),
   el('p',{class:'note',style:'margin:0',text:(M.sitzung||1)>1?'Boot umgedreht? Dann jetzt die andere Seite aufnehmen – achte darauf, dass die roten Kantenmarken wieder gut zu sehen sind, darüber werden beide Runden zusammengesetzt.':'Langsam um das Boot gehen, Kamera 30–50 cm entfernt, verschiedene Höhen und Winkel. Bilder werden automatisch aufgenommen, wenn genug Marken scharf im Bild sind. Danach Boot umdrehen und mit „Scan fortsetzen“ die andere Seite aufnehmen.'}),
   el('div',{class:'row'},el('label',{for:'mkS'},'Markengröße (mm)',sIn)),
@@ -2468,16 +2528,16 @@ function mkAufnahme(d,w,h,t){if(!MKS.auf)return;const M=P.rumpf.markerScan;const
  MKS.lastKf={d,t};MKS.grund='Bild aufgenommen';MKS.blitz=performance.now();if(t-MKS.saveT>15000){MKS.saveT=t;commit();}}
 async function mkFertig(){const M=P.rumpf.markerScan;if(!M)return;if(M.frames.length<6){toast('Noch zu wenige Bilder ('+M.frames.length+') – weiter um das Boot gehen');return;}
  MKS.auf=false;const go=document.getElementById('mkGo');if(go)go.textContent='Weiter aufnehmen';const info=document.getElementById('scInfo');
- const ok=await mkBerechnen(t=>{if(info)info.textContent='Rechne … '+t;});if(ok){mkSchliessen();tab='linien';renderWin();try{for(const id of ['tScan','tSee']){const b=$(id);if(b&&b.getAttribute('aria-pressed')!=='true')b.click();}}catch(e){}try{goView('free');}catch(e){}}}
+ const ok=await mkBerechnen(t=>{if(info)info.textContent='Rechne … '+t;});if(ok){mkSchliessen();tab='scan';scanFertigMeldung();renderWin();try{for(const id of ['tScan','tSee']){const b=$(id);if(b&&b.getAttribute('aria-pressed')!=='true')b.click();}}catch(e){}try{goView('free');}catch(e){}}}
 async function mkBerechnen(fort){const M=P.rumpf.markerScan;toast('Rechne den Rumpf aus '+M.frames.length+' Bildern – das dauert etwas');let r;
  try{r=(await mkRufen({typ:'rek',frames:M.frames.map(fr=>({w:fr.w,h:fr.h,s:fr.s,d:mkUnpack(fr)})),s:+M.s||15},null,t=>{const m=/LM (\d+) ([\d.]+)/.exec(t);fort&&fort(m?('Feinausgleich, Fehler '+m[2]+' px'):t);})).r;}
  catch(e){toast('Berechnung fehlgeschlagen: '+e.message);return false;}
  if(!r||!r.marken||r.marken.length<8){toast('Zu wenige Marken sicher erkannt – mehr Bilder aus verschiedenen Richtungen aufnehmen');return false;}
  const rd=(v,k)=>Math.round(v*k)/k;M.ergebnis={f:rd(r.f,10),fBreite:r.fBreite,fehler:rd(r.fehler,1000),cams:r.cams,frames:r.frames,stand:new Date().toISOString(),marken:r.marken.map(m=>({id:m.id,n:m.n,R:m.R.map(x=>rd(x,1e6)),p:m.p.map(x=>rd(x,100))}))};
- if(!mkUebernehmen())return false;toast('Rumpf aus '+r.marken.length+' Marken gebaut · '+r.cams+' von '+r.frames+' Bildern verwendet · Fehler '+rd(r.fehler,100)+' px');try{cloudSave(false);}catch(e){}return true;}
+ if(!mkUebernehmen())return false;toast((P.rumpf.scanZiel==='objekt'?'Bauteil':'Rumpf')+' aus '+r.marken.length+' Marken gebaut · '+r.cams+' von '+r.frames+' Bildern verwendet · Fehler '+rd(r.fehler,100)+' px');try{cloudSave(false);}catch(e){}return true;}
 function mkUebernehmen(){const M=P.rumpf.markerScan,E=M&&M.ergebnis;if(!E)return false;const B=mkBoot(E.marken,+M.s||15,{bugHeckTauschen:!!M.tauschen,kopfueber:!!M.kopfueber,laenge:+M.laenge||0,wlAnteil:M.wl==null?0.4:+M.wl});
  if(B.fehler){toast(B.fehler);return false;}
- if(P.rumpf.scanZiel==='objekt'){const rd=v=>Math.round(v*10)/10;E.punkte=B.pts.map(q=>[rd(q.x),rd(q.y),rd(q.s),Math.round(q.n[0]*100)/100,Math.round(q.n[1]*100)/100,Math.round(q.n[2]*100)/100,q.k?1:0]);const N=netzAusPunkten(B.pts);if(!N){toast('Zu wenige Marken für eine Fläche');return false;}netzTeilSetzen('scanobjekt','Gescanntes Bauteil',N.pos,N.idx);P.rumpf.scanLeer=true;changed('geo');return true;}const st=mkAufmass(B,Math.max(6,Math.min(30,+M.stationen||14)));if(st.length<4){toast('Zu wenige Spanten – mehr Marken auf den Rumpf oder mehr Bilder');return false;}
+ if(P.rumpf.scanZiel==='objekt'){const rd=v=>Math.round(v*10)/10;E.punkte=B.pts.map(q=>[rd(q.x),rd(q.y),rd(q.s),Math.round(q.n[0]*100)/100,Math.round(q.n[1]*100)/100,Math.round(q.n[2]*100)/100,q.k?1:0]);const O=objektNetz(B.pts,M.flaeche||'auto');if(O.fehler){toast(O.fehler);return false;}netzTeilSetzen('scanobjekt','Gescanntes Bauteil',O.netz.pos,O.netz.idx);M.standInfo=O.info;if(O.alle)E.punkte=O.alle.map(q=>[rd(q.x),rd(q.y),rd(q.s),Math.round(q.n[0]*100)/100,Math.round(q.n[1]*100)/100,Math.round(q.n[2]*100)/100,q.k?1:0]);P.rumpf.scanLeer=true;changed('geo');return true;}const st=mkAufmass(B,Math.max(6,Math.min(30,+M.stationen||14)));if(st.length<4){toast('Zu wenige Spanten – mehr Marken auf den Rumpf oder mehr Bilder');return false;}
  const R=P.rumpf,rd=v=>Math.round(v*10)/10;R.L=Math.round(B.L);R.aufmass={bezug:{laengs:'bug',versatz:0,wl:0,kieloben:false},stationen:st,senten:[]};R.aufmassAktiv=true;R.eigen=true;R.scanLeer=false;R.B=Math.round(2*Math.max(...st.map(s=>s.breite)));
  E.punkte=B.pts.map(q=>[rd(q.x),rd(q.y),rd(q.s),Math.round(q.n[0]*100)/100,Math.round(q.n[1]*100)/100,Math.round(q.n[2]*100)/100,q.k?1:0]);E.kante=B.sh.map(q=>[rd(q.x),rd(q.y),rd(q.s)]);
  try{deriveAufmass();}catch(e){}changed('geo');return true;}
@@ -2494,6 +2554,7 @@ function mkBereich(box){const M=P.rumpf.markerScan;box.append(sub('Marken-Scan (
  box.append(sub('Dieses Marken-Scan-Projekt'),note(M.frames.length+' Bilder in '+(M.sitzung||1)+' Runde(n)'+(E?' · berechnet: '+E.marken.length+' Marken, '+E.cams+'/'+E.frames+' Bilder, Fehler '+E.fehler+' px, Brennweite '+Math.round(E.f)+' px bei '+E.fBreite+' px Bildbreite':' · noch nicht berechnet')+'.'),
   el('div',{class:'row'},btn('Scan fortsetzen (z. B. Boot umgedreht)',()=>mkFortsetzen()),btn('Neu berechnen',async()=>{if(await mkBerechnen())renderWin();})));
  if(!E)return;const ub=()=>{clearTimeout(MKS.ubT);MKS.ubT=setTimeout(()=>{if(mkUebernehmen())renderWin();},450);};
+ if(P.rumpf.scanZiel==='objekt')box.append(pick(M,'flaeche','Fläche aus den Marken',[['auto','Automatisch (Poisson ab 80 Marken, sonst Abstandsfeld)'],['poisson','Poisson – glatt und geschlossen'],['abstand','Abstandsfeld – folgt den Marken enger, kantiger']],i+'fl',v=>{M.flaeche=v;if(mkUebernehmen())renderWin();}));
  box.append(check(M,'tauschen','Bug und Heck tauschen',g,i+'t',ub),check(M,'kopfueber','Oben und unten tauschen',g,i+'k',ub),num(M,'laenge','Länge über alles (optional, sonst aus den Marken)',0,20000,1,'mm',g,i+'l',ub),num(M,'stationen','Anzahl Spanten',6,30,1,'',g,i+'s',ub),num(M,'wl','Wasserlinie (Anteil der Rumpfhöhe über dem tiefsten Punkt)',0,1,0.05,'',g,i+'w',ub),
   el('div',{class:'row'},btn('Linien neu aus den Marken übernehmen',ub)),note('Gelb: Flächenmarken, rot: Kantenmarken. Ein- und ausblenden unter Modell → Einblenden → „Scan-Netz“. Danach unter „Rumpf von Hand formen“ bzw. im Aufmaß nachbessern.'));}
 /* ================= Stiftpunkte-Scan: Bedienung ================= */
@@ -2504,7 +2565,7 @@ function ptProjektAnlegen(){scanProjektAnlegen();if(SCANZIEL!=='objekt')P.name=P
 function ptNeuesProjekt(){if(PTS.on||MKS.on||SCS.on)return;const alt=P.name;ptProjektAnlegen();ptOeffnen();toast('Neues Projekt „'+P.name+'“ angelegt'+(alt?' – „'+alt+'“ bleibt unverändert':''));}
 async function ptOeffnen(){if(PTS.on||MKS.on||SCS.on)return;const S=P.rumpf.punktScan;if(!S){ptNeuesProjekt();return;}
  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast(window.isSecureContext===false?'Kamera geht nur über HTTPS – '+APP_URL+' öffnen':'Dieser Browser gibt keine Kamera frei');return;}
- let st;try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}},audio:false});}
+ let st;try{st=await kameraStream(1280,720,30);}
  catch(e){const n=e&&e.name||'';toast(n==='NotAllowedError'?(scImRahmen()?'Kamera in dieser eingebetteten Ansicht gesperrt – Werftkoje direkt öffnen':'Kamera abgelehnt – im Browser für diese Seite erlauben'):'Kamera nicht verfügbar ('+(n||'Fehler')+')');return;}
  try{const tr=st.getVideoTracks()[0],cap=tr.getCapabilities?tr.getCapabilities():{};if(cap.focusMode&&cap.focusMode.includes('continuous'))await tr.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}
  const v=document.createElement('video');v.playsInline=true;v.muted=true;v.setAttribute('playsinline','');v.srcObject=st;try{await v.play();}catch(e){}
@@ -2512,7 +2573,7 @@ async function ptOeffnen(){if(PTS.on||MKS.on||SCS.on)return;const S=P.rumpf.punk
  Object.assign(PTS,{on:true,auf:false,st,v,T:{},last:[],lw:1,lh:1,lastKf:null,grund:'',raf:0,cap:null,cx:null,saveT:0,quote:1,fps:0});
  mkStil();const cv=el('canvas',{id:'scCv','aria-label':'Kamerabild mit erkannten Punkten'});PTS.cv=cv;
  const go=btn('Aufnahme starten',()=>{if(!PTS.auf){S.frames=[];PTS.T={};PTS.lastKf=null;}PTS.auf=!PTS.auf;go.textContent=PTS.auf?'Anhalten':'Neu starten';ptInfo();},'pri');go.id='ptGo';
- const wrap=el('div',{id:'scan',class:'panel',role:'dialog','aria-label':'Punkte-Scan'},el('div',{class:'sch'},el('span',{class:'lbl',text:'Stiftpunkte-Scan'}),btn('Schließen',()=>ptSchliessen())),
+ const wrap=el('div',{id:'scan',class:'panel',role:'dialog','aria-label':'Punkte-Scan'},el('div',{class:'sch'},el('span',{class:'lbl',text:'Stiftpunkte-Scan'}),btn('Schließen',()=>ptSchliessen())),scanZielSchalter(),el('div',{class:'row'},kameraWahl(PTS,1280,720,30)),
   cv,el('p',{class:'note',id:'scInfo',style:'margin:0'}),
   el('p',{class:'note',style:'margin:0',text:'In einem Zug langsam und gleichmäßig um das Objekt gehen, ohne Sprünge und ohne die Kamera abzusetzen – die Punkte werden von Bild zu Bild verfolgt. Abstand 30–50 cm, Objekt füllt etwa das halbe Bild. Am Ende wieder am Anfang ankommen.'}),
   el('div',{class:'row'},go,btn('Fertig – Rumpf berechnen',()=>ptFertig(),'pri')));
@@ -2539,17 +2600,17 @@ function ptAufnahme(tr,w,h){if(!PTS.auf)return;const S=P.rumpf.punktScan;
  const t=performance.now();if(t-PTS.saveT>15000){PTS.saveT=t;commit();}}
 async function ptFertig(){const S=P.rumpf.punktScan;if(!S)return;if(S.frames.length<10){toast('Noch zu wenige Bilder ('+S.frames.length+') – weiter um das Objekt gehen');return;}
  PTS.auf=false;const go=document.getElementById('ptGo');if(go)go.textContent='Neu starten';const info=document.getElementById('scInfo');
- const ok=await ptBerechnen(t=>{if(info)info.textContent='Rechne … '+t;});if(ok){ptSchliessen();tab='linien';renderWin();try{for(const id of ['tScan','tSee']){const b=$(id);if(b&&b.getAttribute('aria-pressed')!=='true')b.click();}}catch(e){}try{goView('free');}catch(e){}}}
+ const ok=await ptBerechnen(t=>{if(info)info.textContent='Rechne … '+t;});if(ok){ptSchliessen();tab='scan';scanFertigMeldung();renderWin();try{for(const id of ['tScan','tSee']){const b=$(id);if(b&&b.getAttribute('aria-pressed')!=='true')b.click();}}catch(e){}try{goView('free');}catch(e){}}}
 async function ptBerechnen(fort){const S=P.rumpf.punktScan;toast('Rechne aus '+S.frames.length+' Bildern – das kann ein bis zwei Minuten dauern');let r;
  try{r=(await mkRufen({typ:'ptrek',frames:S.frames.map(fr=>({w:fr.w,h:fr.h,p:ptUnpack(fr)}))},null,t=>{const m=/LM (\d+) ([\d.]+)/.exec(t);fort&&fort(m?('Feinausgleich, Fehler '+m[2]+' px'):t);})).r;}
  catch(e){toast('Berechnung fehlgeschlagen: '+e.message);return false;}
  if(!r||!r.punkte||r.punkte.length<15){toast('Zu wenige Punkte sicher erkannt – langsamer gehen, mehr Punkte, besseres Licht');return false;}
  const rd=(v,k)=>Math.round(v*k)/k;const sc=Math.max(...r.punkte.map(q=>Math.abs(q.p[0])+Math.abs(q.p[1])+Math.abs(q.p[2])))||1;
  S.ergebnis={f:rd(r.f,10),fBreite:r.fBreite,fehler:rd(r.fehler,1000),cams:r.cams,frames:r.frames,stand:new Date().toISOString(),punkte:r.punkte.map(q=>({id:q.id,rot:q.rot?1:0,n:q.n,p:q.p.map(x=>rd(x,1e6/sc))}))};
- if(!ptUebernehmen())return false;toast('Rumpf aus '+r.punkte.length+' Punkten gebaut · '+r.cams+' von '+r.frames+' Bildern · Fehler '+rd(r.fehler,100)+' px'+(S.abstand>0?'':' – jetzt im Linien-Tab den Abstand vorderster–hinterster Punkt eintragen (Maßstab)'));try{cloudSave(false);}catch(e){}return true;}
+ if(!ptUebernehmen())return false;toast((P.rumpf.scanZiel==='objekt'?'Bauteil':'Rumpf')+' aus '+r.punkte.length+' Punkten gebaut · '+r.cams+' von '+r.frames+' Bildern · Fehler '+rd(r.fehler,100)+' px'+(S.abstand>0?'':' – jetzt im Linien-Tab den Abstand vorderster–hinterster Punkt eintragen (Maßstab)'));try{cloudSave(false);}catch(e){}return true;}
 function ptUebernehmen(){const S=P.rumpf.punktScan,E=S&&S.ergebnis;if(!E)return false;const B=ptZuBoot({punkte:E.punkte},+S.laenge||0,{abstand:+S.abstand||0,laenge:+S.laenge||0,bugHeckTauschen:!!S.tauschen,kopfueber:!!S.kopfueber,wlAnteil:S.wl==null?0.4:+S.wl});
  if(B.fehler){toast(B.fehler);return false;}
- if(P.rumpf.scanZiel==='objekt'){const rd=v=>Math.round(v*10)/10;E.anzeige=B.pts.map(q=>[rd(q.x),rd(q.y),rd(q.s),Math.round(q.n[0]*100)/100,Math.round(q.n[1]*100)/100,Math.round(q.n[2]*100)/100,q.k?1:0]);const N=netzAusPunkten(B.pts);if(!N){toast('Zu wenige Punkte für eine Fläche');return false;}netzTeilSetzen('scanobjekt','Gescanntes Bauteil',N.pos,N.idx);P.rumpf.scanLeer=true;changed('geo');return true;}const st=mkAufmass(B,Math.max(6,Math.min(30,+S.stationen||14)));if(st.length<4){toast('Zu wenige Spanten – mehr Punkte oder mehr Bilder');return false;}
+ if(P.rumpf.scanZiel==='objekt'){const rd=v=>Math.round(v*10)/10;E.anzeige=B.pts.map(q=>[rd(q.x),rd(q.y),rd(q.s),Math.round(q.n[0]*100)/100,Math.round(q.n[1]*100)/100,Math.round(q.n[2]*100)/100,q.k?1:0]);const O=objektNetz(B.pts,S.flaeche||'auto');if(O.fehler){toast(O.fehler);return false;}netzTeilSetzen('scanobjekt','Gescanntes Bauteil',O.netz.pos,O.netz.idx);S.standInfo=O.info;if(O.alle)E.anzeige=O.alle.map(q=>[rd(q.x),rd(q.y),rd(q.s),Math.round(q.n[0]*100)/100,Math.round(q.n[1]*100)/100,Math.round(q.n[2]*100)/100,q.k?1:0]);P.rumpf.scanLeer=true;changed('geo');return true;}const st=mkAufmass(B,Math.max(6,Math.min(30,+S.stationen||14)));if(st.length<4){toast('Zu wenige Spanten – mehr Punkte oder mehr Bilder');return false;}
  const R=P.rumpf,rd=v=>Math.round(v*10)/10;R.L=Math.round(B.L);R.aufmass={bezug:{laengs:'bug',versatz:0,wl:0,kieloben:false},stationen:st,senten:[]};R.aufmassAktiv=true;R.eigen=true;R.scanLeer=false;R.B=Math.round(2*Math.max(...st.map(s=>s.breite)));
  E.anzeige=B.pts.map(q=>[rd(q.x),rd(q.y),rd(q.s),Math.round(q.n[0]*100)/100,Math.round(q.n[1]*100)/100,Math.round(q.n[2]*100)/100,q.k?1:0]);try{deriveAufmass();}catch(e){}changed('geo');return true;}
 function ptBereich(box){const S=P.rumpf.punktScan;box.append(sub('Stiftpunkte-Scan (Notlösung ohne Marken)'),
@@ -2558,9 +2619,126 @@ function ptBereich(box){const S=P.rumpf.punktScan;box.append(sub('Stiftpunkte-Sc
  if(!S)return;const E=S.ergebnis,g='name',i='pts';box.append(sub('Dieses Punkte-Scan-Projekt'),note(S.frames.length+' Bilder'+(E?' · berechnet: '+E.punkte.length+' Punkte, '+E.cams+'/'+E.frames+' Bilder, Fehler '+E.fehler+' px':' · noch nicht berechnet')+'.'),
   el('div',{class:'row'},btn('Neu aufnehmen',()=>ptOeffnen()),S.frames.length?btn('Neu berechnen',async()=>{if(await ptBerechnen())renderWin();}):null));
  if(!E)return;const ub=()=>{clearTimeout(PTS.ubT);PTS.ubT=setTimeout(()=>{if(ptUebernehmen())renderWin();},450);};
+ if(P.rumpf.scanZiel==='objekt')box.append(pick(S,'flaeche','Fläche aus den Punkten',[['auto','Automatisch (Poisson ab 80 Punkten, sonst Abstandsfeld)'],['poisson','Poisson – glatt und geschlossen'],['abstand','Abstandsfeld – folgt den Punkten enger, kantiger']],i+'fl',v=>{S.flaeche=v;if(ptUebernehmen())renderWin();}));
  box.append(num(S,'abstand','Maßstab: Abstand vorderster bis hinterster Punkt (längs gemessen)',0,20000,1,'mm',g,i+'a',ub),num(S,'laenge','Länge über alles (optional)',0,20000,1,'mm',g,i+'l',ub),
   check(S,'tauschen','Bug und Heck tauschen',g,i+'t',ub),check(S,'kopfueber','Oben und unten tauschen',g,i+'k',ub),num(S,'stationen','Anzahl Spanten',6,30,1,'',g,i+'s',ub),num(S,'wl','Wasserlinie (Anteil der Rumpfhöhe über dem tiefsten Punkt)',0,1,0.05,'',g,i+'w',ub),
   S.abstand>0?null:note('Ohne Maßstab ist der Rumpf nur in der Form richtig, nicht in der Größe.'));}
+
+/* ================= Netzwerkzeuge (eigene Umsetzung bekannter Verfahren) ================= */
+/* Netz: pos (Float32Array, x y z …), idx (Array, Dreiecke) */
+function mtNachbarn(nv,idx){const nb=Array.from({length:nv},()=>new Set());for(let t=0;t<idx.length;t+=3){const a=idx[t],b=idx[t+1],c=idx[t+2];nb[a].add(b).add(c);nb[b].add(a).add(c);nb[c].add(a).add(b);}return nb;}
+function mtRandPunkte(nv,idx){const e=new Map();for(let t=0;t<idx.length;t+=3)for(let k=0;k<3;k++){const a=idx[t+k],b=idx[t+(k+1)%3],key=a<b?a*4194304+b:b*4194304+a;e.set(key,(e.get(key)||0)+1);}
+ const r=new Uint8Array(nv);for(const[key,c] of e)if(c===1){r[Math.floor(key/4194304)]=1;r[key%4194304]=1;}return r;}
+function mtAufraeumen(pos,idx){/* unbenutzte Punkte und entartete Dreiecke entfernen */const used=new Int32Array(pos.length/3).fill(-1),np=[],ni=[];
+ for(let t=0;t<idx.length;t+=3){const a=idx[t],b=idx[t+1],c=idx[t+2];if(a===b||b===c||a===c)continue;for(const v of [a,b,c]){if(used[v]<0){used[v]=np.length/3;np.push(pos[3*v],pos[3*v+1],pos[3*v+2]);}ni.push(used[v]);}}
+ return{pos:Float32Array.from(np),idx:ni};}
+/* 2. Taubin-Glättung: glättet ohne zu schrumpfen; Randpunkte bleiben */
+function netzTaubin(pos,idx,runden,lam,mu){lam=lam||0.5;mu=mu||-0.53;const nv=pos.length/3,nb=mtNachbarn(nv,idx),rand=mtRandPunkte(nv,idx);let P=Float32Array.from(pos);
+ const schritt=f=>{const Q=Float32Array.from(P);for(let v=0;v<nv;v++){if(rand[v]||!nb[v].size)continue;let x=0,y=0,z=0;for(const w of nb[v]){x+=P[3*w];y+=P[3*w+1];z+=P[3*w+2];}const n=nb[v].size;Q[3*v]+=f*(x/n-P[3*v]);Q[3*v+1]+=f*(y/n-P[3*v+1]);Q[3*v+2]+=f*(z/n-P[3*v+2]);}P=Q;};
+ for(let r=0;r<(runden||5);r++){schritt(lam);schritt(mu);}return P;}
+/* 3. Löcher schließen: Randschleifen suchen, in ihrer Ebene per Ohrenschnitt füllen */
+function netzLoecherFuellen(pos,idx,maxRand){const P=Array.from(pos),I=idx.slice(),dir=new Set();for(let t=0;t<idx.length;t+=3)for(let k=0;k<3;k++)dir.add(idx[t+k]+','+idx[t+(k+1)%3]);
+ const nach=new Map();for(let t=0;t<idx.length;t+=3)for(let k=0;k<3;k++){const u=idx[t+k],v=idx[t+(k+1)%3];if(!dir.has(v+','+u)){if(nach.has(v))nach.set(v,-1);else nach.set(v,u);}}/* Lochkante v->u */
+ const fertig=new Set();let n=0;
+ for(const[s0] of nach){if(fertig.has(s0)||nach.get(s0)<0)continue;const L=[];let u=s0,ok=true;while(true){if(fertig.has(u)){ok=u===s0;break;}fertig.add(u);L.push(u);const w=nach.get(u);if(w==null||w<0){ok=false;break;}u=w;if(L.length>100000){ok=false;break;}}
+  if(!ok||L.length<3||(maxRand&&L.length>maxRand))continue;
+  /* Ebene (Newell) */let nx=0,ny=0,nz=0,c=[0,0,0];for(let k=0;k<L.length;k++){const a=L[k],b=L[(k+1)%L.length];nx+=(P[3*a+1]-P[3*b+1])*(P[3*a+2]+P[3*b+2]);ny+=(P[3*a+2]-P[3*b+2])*(P[3*a]+P[3*b]);nz+=(P[3*a]-P[3*b])*(P[3*a+1]+P[3*b+1]);for(let q=0;q<3;q++)c[q]+=P[3*a+q]/L.length;}
+  const nl=Math.hypot(nx,ny,nz)||1;const N=[nx/nl,ny/nl,nz/nl],U=v3.norm(Math.abs(N[0])<0.9?v3.cross(N,[1,0,0]):v3.cross(N,[0,1,0])),W=v3.cross(N,U);
+  const p2=L.map(v=>{const d=[P[3*v]-c[0],P[3*v+1]-c[1],P[3*v+2]-c[2]];return[v3.dot(d,U),v3.dot(d,W)];});
+  const tris=mtOhren(p2);if(tris)for(const[a,b,cc] of tris)I.push(L[a],L[b],L[cc]);else{const ci=P.length/3;P.push(...c);for(let k=0;k<L.length;k++)I.push(L[k],L[(k+1)%L.length],ci);}n++;}
+ return{pos:Float32Array.from(P),idx:I,n};}
+function mtOhren(p){const n=p.length;let ar=0;for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n];ar+=a[0]*b[1]-b[0]*a[1];}if(Math.abs(ar)<1e-12)return null;const sg=ar>0?1:-1;
+ const V=[...Array(n).keys()],out=[],cr=(a,b,c)=>((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]))*sg;
+ const drin=(q,a,b,c)=>cr(a,b,q)>=0&&cr(b,c,q)>=0&&cr(c,a,q)>=0;let guard=0;
+ while(V.length>3&&guard++<n*n){let cut=false;for(let i=0;i<V.length;i++){const ia=V[(i+V.length-1)%V.length],ib=V[i],ic=V[(i+1)%V.length];const a=p[ia],b=p[ib],c=p[ic];if(cr(a,b,c)<=1e-12)continue;
+   let leer=true;for(const j of V){if(j===ia||j===ib||j===ic)continue;if(drin(p[j],a,b,c)){leer=false;break;}}if(!leer)continue;out.push([ia,ib,ic]);V.splice(i,1);cut=true;break;}if(!cut)return null;}
+ if(V.length===3)out.push([V[0],V[1],V[2]]);return out;}
+/* Kanten-Zusammenlegen (gemeinsam für Vereinfachen und Neuvernetzen) */
+function mtStruktur(pos,idx){const nv=pos.length/3,P=[];for(let v=0;v<nv;v++)P.push([pos[3*v],pos[3*v+1],pos[3*v+2]]);const F=[];for(let t=0;t<idx.length;t+=3)F.push([idx[t],idx[t+1],idx[t+2]]);
+ const VF=Array.from({length:nv},()=>new Set());F.forEach((f,i)=>{for(const v of f)VF[v].add(i);});return{P,F,VF,tot:new Uint8Array(F.length),vtot:new Uint8Array(nv)};}
+function mtNormale(P,f){const a=P[f[0]],b=P[f[1]],c=P[f[2]];return v3.cross(v3.sub(b,a),v3.sub(c,a));}
+function mtNachbarV(S,v){const s=new Set();for(const fi of S.VF[v])for(const w of S.F[fi])if(w!==v)s.add(w);return s;}
+function mtRandKante(S,a,b){let n=0;for(const fi of S.VF[a])if(S.F[fi].includes(b))n++;return n===1;}
+function mtZusammen(S,a,b,ziel,pruef){/* b in a, a an Position ziel. Gibt false zurück, wenn es das Netz verdirbt */
+ const na=mtNachbarV(S,a),nb=mtNachbarV(S,b);let gem=0;for(const w of na)if(nb.has(w))gem++;let fab=0;for(const fi of S.VF[a])if(S.F[fi].includes(b))fab++;if(gem!==fab)return false;/* Verbindungsbedingung */
+ for(const v of [a,b])for(const fi of S.VF[v]){const f=S.F[fi];if(f.includes(a)&&f.includes(b))continue;const n0=mtNormale(S.P,f);const g=f.map(x=>x===a||x===b?-1:x);const pts=f.map((x,k)=>g[k]<0?ziel:S.P[x]);const n1=v3.cross(v3.sub(pts[1],pts[0]),v3.sub(pts[2],pts[0]));if(v3.dot(n0,n1)<=0.1*v3.len(n0)*v3.len(n1))return false;if(pruef&&!pruef(pts))return false;}
+ for(const fi of [...S.VF[b]]){const f=S.F[fi];if(f.includes(a)){S.tot[fi]=1;for(const v of f)S.VF[v].delete(fi);continue;}for(let k=0;k<3;k++)if(f[k]===b)f[k]=a;S.VF[a].add(fi);}
+ S.VF[b].clear();S.vtot[b]=1;S.P[a]=ziel;return true;}
+function mtAusgabe(S){const map=new Int32Array(S.P.length).fill(-1),pos=[],idx=[];S.F.forEach((f,i)=>{if(S.tot[i])return;for(const v of f){if(map[v]<0){map[v]=pos.length/3;pos.push(...S.P[v]);}idx.push(map[v]);}});return{pos:Float32Array.from(pos),idx};}
+/* 1. Vereinfachen nach Fehlerquadriken (Garland–Heckbert) */
+function netzVereinfachen(pos,idx,zielDreiecke){const S=mtStruktur(pos,idx),nv=S.P.length,Q=Array.from({length:nv},()=>new Float64Array(10));
+ const addQ=(q,a,b,c,d,w)=>{q[0]+=w*a*a;q[1]+=w*a*b;q[2]+=w*a*c;q[3]+=w*a*d;q[4]+=w*b*b;q[5]+=w*b*c;q[6]+=w*b*d;q[7]+=w*c*c;q[8]+=w*c*d;q[9]+=w*d*d;};
+ S.F.forEach(f=>{const n=mtNormale(S.P,f),l=v3.len(n);if(l<1e-12)return;const u=v3.mul(n,1/l),d=-v3.dot(u,S.P[f[0]]);for(const v of f)addQ(Q[v],u[0],u[1],u[2],d,l/2);});
+ /* Ränder festhalten: senkrechte Ebenen mit hohem Gewicht */
+ S.F.forEach(f=>{const n=mtNormale(S.P,f);for(let k=0;k<3;k++){const a=f[k],b=f[(k+1)%3];if(!mtRandKante(S,a,b))continue;const e=v3.sub(S.P[b],S.P[a]),pn=v3.norm(v3.cross(e,n)),d=-v3.dot(pn,S.P[a]),w=v3.dot(e,e)*100;addQ(Q[a],pn[0],pn[1],pn[2],d,w);addQ(Q[b],pn[0],pn[1],pn[2],d,w);}});
+ const fehler=(q,p)=>{const[x,y,z]=p;return q[0]*x*x+2*q[1]*x*y+2*q[2]*x*z+2*q[3]*x+q[4]*y*y+2*q[5]*y*z+2*q[6]*y+q[7]*z*z+2*q[8]*z+q[9];};
+ const bestP=(a,b)=>{const q=new Float64Array(10);for(let k=0;k<10;k++)q[k]=Q[a][k]+Q[b][k];const A=[[q[0],q[1],q[2]],[q[1],q[4],q[5]],[q[2],q[5],q[7]]],r=[-q[3],-q[6],-q[8]];
+  const det=A[0][0]*(A[1][1]*A[2][2]-A[1][2]*A[2][1])-A[0][1]*(A[1][0]*A[2][2]-A[1][2]*A[2][0])+A[0][2]*(A[1][0]*A[2][1]-A[1][1]*A[2][0]);let c=[S.P[a],S.P[b],v3.mul(v3.add(S.P[a],S.P[b]),0.5)];
+  if(Math.abs(det)>1e-9){const x=mkLoes(A.map(z=>z.slice()),r);if(x&&v3.len(v3.sub(x,c[2]))<3*v3.len(v3.sub(S.P[a],S.P[b]))+1e-9)c.unshift(x);}let best=null;for(const p of c){const e=fehler(q,p);if(!best||e<best.e)best={p,e};}return best;};
+ const ver=new Uint32Array(nv),heap=[];const push=(e)=>{heap.push(e);let i=heap.length-1;while(i>0){const p=(i-1)>>1;if(heap[p].c<=heap[i].c)break;[heap[p],heap[i]]=[heap[i],heap[p]];i=p;}};
+ const pop=()=>{const t=heap[0],l=heap.pop();if(heap.length){heap[0]=l;let i=0;for(;;){const a=2*i+1,b=a+1;let m=i;if(a<heap.length&&heap[a].c<heap[m].c)m=a;if(b<heap.length&&heap[b].c<heap[m].c)m=b;if(m===i)break;[heap[m],heap[i]]=[heap[i],heap[m]];i=m;}}return t;};
+ const kanten=v=>{for(const w of mtNachbarV(S,v)){const r=bestP(v,w);push({c:r.e,a:v,b:w,p:r.p,va:ver[v],vb:ver[w]});}};
+ {const seen=new Set();S.F.forEach(f=>{for(let k=0;k<3;k++){const a=f[k],b=f[(k+1)%3],key=a<b?a+'_'+b:b+'_'+a;if(seen.has(key))continue;seen.add(key);const r=bestP(a,b);push({c:r.e,a,b,p:r.p,va:0,vb:0});}});}
+ let lebend=S.F.length;while(lebend>zielDreiecke&&heap.length){const e=pop();if(S.vtot[e.a]||S.vtot[e.b]||ver[e.a]!==e.va||ver[e.b]!==e.vb)continue;let weg=0;for(const fi of S.VF[e.a])if(S.F[fi].includes(e.b))weg++;
+  if(!mtZusammen(S,e.a,e.b,e.p))continue;for(let k=0;k<10;k++)Q[e.a][k]+=Q[e.b][k];lebend-=weg;ver[e.a]++;kanten(e.a);}
+ return mtAusgabe(S);}
+/* 4. Gleichmäßig neu vernetzen (Botsch/Kobbelt): teilen, zusammenlegen, kippen, tangential entspannen */
+function netzNeuVernetzen(pos,idx,L,runden){let M={pos,idx};if(!L){let s=0,n=0;for(let t=0;t<idx.length;t+=3)for(let k=0;k<3;k++){const a=idx[t+k],b=idx[t+(k+1)%3];s+=Math.hypot(pos[3*a]-pos[3*b],pos[3*a+1]-pos[3*b+1],pos[3*a+2]-pos[3*b+2]);n++;}L=s/n;}
+ const hi=4/3*L,lo=4/5*L;
+ for(let r=0;r<(runden||4);r++){
+  /* teilen */{const P=Array.from(M.pos),I=M.idx.slice(),mid=new Map(),len=(a,b)=>Math.hypot(P[3*a]-P[3*b],P[3*a+1]-P[3*b+1],P[3*a+2]-P[3*b+2]);let geteilt=true,g=0;
+   while(geteilt&&g++<6){geteilt=false;const neu=[];mid.clear();for(let t=0;t<I.length;t+=3){const f=[I[t],I[t+1],I[t+2]];let lk=-1,lm=hi;for(let k=0;k<3;k++){const l=len(f[k],f[(k+1)%3]);if(l>lm){lm=l;lk=k;}}
+     if(lk<0){neu.push(...f);continue;}const a=f[lk],b=f[(lk+1)%3],c=f[(lk+2)%3],key=a<b?a+'_'+b:b+'_'+a;let m=mid.get(key);if(m==null){m=P.length/3;P.push((P[3*a]+P[3*b])/2,(P[3*a+1]+P[3*b+1])/2,(P[3*a+2]+P[3*b+2])/2);mid.set(key,m);}neu.push(a,m,c,m,b,c);geteilt=true;}
+    /* Dreiecke, deren Kante nur vom Nachbarn geteilt wurde, ebenfalls teilen */const fix=[];for(let t=0;t<neu.length;t+=3){const f=[neu[t],neu[t+1],neu[t+2]];let done=false;for(let k=0;k<3&&!done;k++){const a=f[k],b=f[(k+1)%3],key=a<b?a+'_'+b:b+'_'+a,m=mid.get(key);if(m!=null){const c=f[(k+2)%3];fix.push(a,m,c,m,b,c);done=true;}}if(!done)fix.push(...f);}
+    I.length=0;I.push(...fix);}M={pos:Float32Array.from(P),idx:I};}
+  /* zusammenlegen */{const S=mtStruktur(M.pos,M.idx);const rand=mtRandPunkte(S.P.length,M.idx);const seen=new Set();for(let fi=0;fi<S.F.length;fi++){if(S.tot[fi])continue;const f=S.F[fi];for(let k=0;k<3;k++){const a=f[k],b=f[(k+1)%3];if(S.vtot[a]||S.vtot[b]||rand[a]||rand[b])continue;const l=v3.len(v3.sub(S.P[a],S.P[b]));if(l>=lo)continue;const m=v3.mul(v3.add(S.P[a],S.P[b]),0.5);
+    let zuLang=false;for(const w of [...mtNachbarV(S,a),...mtNachbarV(S,b)])if(v3.len(v3.sub(S.P[w],m))>hi){zuLang=true;break;}if(zuLang)continue;mtZusammen(S,a,b,m);break;}}M=mtAusgabe(S);}
+  /* kippen: Valenz Richtung 6 */{const P=M.pos,I=M.idx.slice(),nv=P.length/3,val=new Int32Array(nv);for(const v of I)val[v]++;/* Valenz ~ Anzahl Dreiecke */const rand=mtRandPunkte(nv,I);
+   const em=new Map();for(let t=0;t<I.length;t+=3)for(let k=0;k<3;k++){const a=I[t+k],b=I[t+(k+1)%3],key=a<b?a+'_'+b:b+'_'+a;let l=em.get(key);if(!l)em.set(key,l=[]);l.push(t);}
+   const pt=v=>[P[3*v],P[3*v+1],P[3*v+2]],nrm=(a,b,c)=>v3.cross(v3.sub(pt(b),pt(a)),v3.sub(pt(c),pt(a)));const tgt=v=>rand[v]?4:6;const benutzt=new Set();
+   for(const[key,l] of em){if(l.length!==2||benutzt.has(l[0])||benutzt.has(l[1]))continue;const[t1,t2]=l;const f1=[I[t1],I[t1+1],I[t1+2]],f2=[I[t2],I[t2+1],I[t2+2]];const[a,b]=key.split('_').map(Number);const c=f1.find(x=>x!==a&&x!==b),d=f2.find(x=>x!==a&&x!==b);if(c==null||d==null||c===d)continue;
+    const vor=Math.abs(val[a]-tgt(a))+Math.abs(val[b]-tgt(b))+Math.abs(val[c]-tgt(c))+Math.abs(val[d]-tgt(d)),nach=Math.abs(val[a]-1-tgt(a))+Math.abs(val[b]-1-tgt(b))+Math.abs(val[c]+1-tgt(c))+Math.abs(val[d]+1-tgt(d));if(nach>=vor)continue;
+    if(em.has(c<d?c+'_'+d:d+'_'+c))continue;/* Orientierung aus f1 übernehmen */const k1=f1.indexOf(a),aNachB=f1[(k1+1)%3]===b;const n1=aNachB?[c,a,d]:[c,d,a],n2=aNachB?[d,b,c]:[d,c,b];
+    const o1=nrm(...f1),o2=nrm(...f2),m1=nrm(...n1),m2=nrm(...n2);if(v3.dot(m1,o1)<=0||v3.dot(m2,o1)<=0||v3.dot(m1,o2)<=0||v3.dot(m2,o2)<=0)continue;
+    I[t1]=n1[0];I[t1+1]=n1[1];I[t1+2]=n1[2];I[t2]=n2[0];I[t2+1]=n2[1];I[t2+2]=n2[2];val[a]--;val[b]--;val[c]++;val[d]++;benutzt.add(t1);benutzt.add(t2);}M={pos:M.pos,idx:I};}
+  /* tangential entspannen */{const P=Float32Array.from(M.pos),nv=P.length/3,nb=mtNachbarn(nv,M.idx),rand=mtRandPunkte(nv,M.idx),N=new Float64Array(3*nv);for(let t=0;t<M.idx.length;t+=3){const a=M.idx[t],b=M.idx[t+1],c=M.idx[t+2];const n=v3.cross([P[3*b]-P[3*a],P[3*b+1]-P[3*a+1],P[3*b+2]-P[3*a+2]],[P[3*c]-P[3*a],P[3*c+1]-P[3*a+1],P[3*c+2]-P[3*a+2]]);for(const v of [a,b,c])for(let q=0;q<3;q++)N[3*v+q]+=n[q];}
+   const Q=Float32Array.from(P);for(let v=0;v<nv;v++){if(rand[v]||!nb[v].size)continue;let x=0,y=0,z=0;for(const w of nb[v]){x+=P[3*w];y+=P[3*w+1];z+=P[3*w+2];}const k=nb[v].size,d=[x/k-P[3*v],y/k-P[3*v+1],z/k-P[3*v+2]],n=v3.norm([N[3*v],N[3*v+1],N[3*v+2]]),dn=v3.dot(d,n);for(let q=0;q<3;q++)Q[3*v+q]=P[3*v+q]+0.8*(d[q]-dn*n[q]);}M={pos:Q,idx:M.idx};}}
+ return mtAufraeumen(M.pos,M.idx);}
+/* 5. Poisson-Oberflächenrekonstruktion (Kazhdan 2006) auf regelmäßigem Gitter */
+function poissonFlaeche(pts,opt){opt=opt||{};let Pt=pts.map(q=>({p:[q.x,q.y,q.s],n:v3.norm(q.n)}));if(Pt.length<8)return null;
+ const nn=Pt.map((a,i)=>{let b=Infinity;for(let j=0;j<Pt.length;j++)if(j!==i){const d=v3.len(v3.sub(a.p,Pt[j].p));if(d<b)b=d;}return b;}).sort((a,b)=>a-b);const sp=nn[nn.length>>1]||10;
+ if(opt.boden){/* Boden unter dem Bauteil schließen: Punkte auf der Standfläche (y=0), Normale nach unten */const H=mkHuelle(Pt.map(q=>[q.p[0],q.p[2]]));if(H.length>=3){let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const[x,z] of H){x0=Math.min(x0,x);x1=Math.max(x1,x);z0=Math.min(z0,z);z1=Math.max(z1,z);}
+  const drin=(x,z)=>{for(let i=0;i<H.length;i++){const a=H[i],b=H[(i+1)%H.length];if((b[0]-a[0])*(z-a[1])-(b[1]-a[1])*(x-a[0])<0)return false;}return true;};for(let x=x0;x<=x1;x+=sp*0.8)for(let z=z0;z<=z1;z+=sp*0.8)if(drin(x,z))Pt.push({p:[x,0,z],n:[0,-1,0]});}}
+ const N=opt.aufl||64;let lo=[1e9,1e9,1e9],hi=[-1e9,-1e9,-1e9];for(const q of Pt)for(let a=0;a<3;a++){lo[a]=Math.min(lo[a],q.p[a]);hi[a]=Math.max(hi[a],q.p[a]);}
+ const ext=Math.max(hi[0]-lo[0],hi[1]-lo[1],hi[2]-lo[2]),h=ext*1.25/(N-4);const dim=[0,1,2].map(a=>Math.min(N,Math.ceil((hi[a]-lo[a])/h)+8));for(let a=0;a<3;a++)lo[a]-=((dim[a]*h)-(hi[a]-lo[a]))/2;
+ const[nx,ny,nz]=dim,nV=nx*ny*nz,id=(i,j,k)=>(k*ny+j)*nx+i,Vx=new Float64Array(nV),Vy=new Float64Array(nV),Vz=new Float64Array(nV);
+ /* Normalen mit Gewicht auf das Gitter verteilen (trilinear, etwas breiter) */const w0=(sp/h)*(sp/h);
+ for(const q of Pt){const g=[(q.p[0]-lo[0])/h,(q.p[1]-lo[1])/h,(q.p[2]-lo[2])/h],b=g.map(Math.floor);for(let dk=-1;dk<=2;dk++)for(let dj=-1;dj<=2;dj++)for(let di=-1;di<=2;di++){const i=b[0]+di,j=b[1]+dj,k=b[2]+dk;if(i<1||j<1||k<1||i>=nx-1||j>=ny-1||k>=nz-1)continue;
+  const d2=(i-g[0])**2+(j-g[1])**2+(k-g[2])**2,w=Math.exp(-d2/1.2)*w0;const o=id(i,j,k);Vx[o]+=w*q.n[0];Vy[o]+=w*q.n[1];Vz[o]+=w*q.n[2];}}
+ /* Divergenz */const D=new Float64Array(nV);for(let k=1;k<nz-1;k++)for(let j=1;j<ny-1;j++)for(let i=1;i<nx-1;i++){const o=id(i,j,k);D[o]=((Vx[o+1]-Vx[o-1])+(Vy[o+nx]-Vy[o-nx])+(Vz[o+nx*ny]-Vz[o-nx*ny]))/2;}
+ /* Laplace X = D, Rand X=0: konjugierte Gradienten */const X=new Float64Array(nV),R=Float64Array.from(D),Pd=Float64Array.from(D),AP=new Float64Array(nV);let rr=0;for(let o=0;o<nV;o++)rr+=R[o]*R[o];const r0=rr;
+ const lap=(src,dst)=>{for(let k=1;k<nz-1;k++)for(let j=1;j<ny-1;j++)for(let i=1;i<nx-1;i++){const o=id(i,j,k);dst[o]=src[o+1]+src[o-1]+src[o+nx]+src[o-nx]+src[o+nx*ny]+src[o-nx*ny]-6*src[o];}};
+ for(let it=0;it<(opt.iter||400)&&rr>1e-10*r0;it++){lap(Pd,AP);let pAp=0;for(let o=0;o<nV;o++)pAp+=Pd[o]*AP[o];if(Math.abs(pAp)<1e-30)break;const al=rr/pAp;let rn=0;for(let o=0;o<nV;o++){X[o]+=al*Pd[o];R[o]-=al*AP[o];rn+=R[o]*R[o];}const be=rn/rr;rr=rn;for(let o=0;o<nV;o++)Pd[o]=R[o]+be*Pd[o];}
+ /* Iso-Wert: Mittel an den Messpunkten */const tri=(p)=>{const g=[(p[0]-lo[0])/h,(p[1]-lo[1])/h,(p[2]-lo[2])/h],b=g.map(v=>Math.max(0,Math.floor(v))),f=g.map((v,a)=>v-b[a]);let s=0;for(let c=0;c<8;c++){const i=Math.min(nx-1,b[0]+(c&1)),j=Math.min(ny-1,b[1]+((c>>1)&1)),k=Math.min(nz-1,b[2]+((c>>2)&1));s+=X[id(i,j,k)]*((c&1)?f[0]:1-f[0])*(((c>>1)&1)?f[1]:1-f[1])*(((c>>2)&1)?f[2]:1-f[2]);}return s;};
+ let iso=0;for(const q of pts)iso+=tri([q.x,q.y,q.s]);iso/=pts.length;const sgn=iso>0?1:-1;/* Rand (X=0) liegt außen */
+ /* Oberfläche: Surface Nets mit linearer Interpolation */const F=new Float32Array(nV);for(let o=0;o<nV;o++)F[o]=sgn*(X[o]-iso);/* > 0 = innen */
+ const M=snWert(F,nx,ny,nz);for(let v=0;v<M.pos.length;v+=3){M.pos[v]=lo[0]+M.pos[v]*h;M.pos[v+1]=lo[1]+M.pos[v+1]*h;M.pos[v+2]=lo[2]+M.pos[v+2]*h;}
+ const ix=M.idx;for(let t=0;t<ix.length;t+=3){const z=ix[t+1];ix[t+1]=ix[t+2];ix[t+2]=z;}/* Umlaufsinn: außen positiv */
+ return{pos:netzTaubin(M.pos,ix,3),idx:ix,h};}
+function snWert(F,nx,ny,nz){const id=(i,j,k)=>(k*ny+j)*nx+i,cid=(i,j,k)=>(k*(ny-1)+j)*(nx-1)+i,vid=new Int32Array((nx-1)*(ny-1)*(nz-1)).fill(-1),pos=[];
+ const E=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]],co=d=>[d&1,(d>>1)&1,(d>>2)&1];
+ for(let k=0;k<nz-1;k++)for(let j=0;j<ny-1;j++)for(let i=0;i<nx-1;i++){const v=[];let pos_=0;for(let d=0;d<8;d++){const c=co(d),x=F[id(i+c[0],j+c[1],k+c[2])];v.push(x);if(x>0)pos_++;}if(pos_===0||pos_===8)continue;
+  let sx=0,sy=0,sz=0,ne=0;for(const[a,b] of E){if((v[a]>0)===(v[b]>0))continue;const t=v[a]/(v[a]-v[b]),ca=co(a),cb=co(b);sx+=ca[0]+(cb[0]-ca[0])*t;sy+=ca[1]+(cb[1]-ca[1])*t;sz+=ca[2]+(cb[2]-ca[2])*t;ne++;}vid[cid(i,j,k)]=pos.length/3;pos.push(i+sx/ne,j+sy/ne,k+sz/ne);}
+ const idx=[],q=(a,b,c,d,f)=>{if(a<0||b<0||c<0||d<0)return;if(f)idx.push(a,b,c,a,c,d);else idx.push(a,d,c,a,c,b);};
+ for(let k=1;k<nz-1;k++)for(let j=1;j<ny-1;j++)for(let i=1;i<nx-1;i++){const o=F[id(i,j,k)]>0;
+  if(o!==(F[id(i+1,j,k)]>0))q(vid[cid(i,j-1,k-1)],vid[cid(i,j,k-1)],vid[cid(i,j,k)],vid[cid(i,j-1,k)],!o);
+  if(o!==(F[id(i,j+1,k)]>0))q(vid[cid(i-1,j,k-1)],vid[cid(i,j,k-1)],vid[cid(i,j,k)],vid[cid(i-1,j,k)],o);
+  if(o!==(F[id(i,j,k+1)]>0))q(vid[cid(i-1,j-1,k)],vid[cid(i,j-1,k)],vid[cid(i,j,k)],vid[cid(i-1,j,k)],!o);}
+ return{pos:Float32Array.from(pos),idx};}
+/* Kennzahlen: Volumen, offene Kanten */
+function netzPruefen(pos,idx){let vol=0;for(let t=0;t<idx.length;t+=3){const a=3*idx[t],b=3*idx[t+1],c=3*idx[t+2],P=pos;vol+=(P[a]*(P[b+1]*P[c+2]-P[b+2]*P[c+1])-P[a+1]*(P[b]*P[c+2]-P[b+2]*P[c])+P[a+2]*(P[b]*P[c+1]-P[b+1]*P[c]))/6;}
+ const e=new Map();for(let t=0;t<idx.length;t+=3)for(let k=0;k<3;k++){const a=idx[t+k],b=idx[t+(k+1)%3],key=a<b?a*4194304+b:b*4194304+a;e.set(key,(e.get(key)||0)+1);}let offen=0,mehr=0;for(const c of e.values()){if(c===1)offen++;if(c>2)mehr++;}const d=new Set();let falsch=0;for(let t=0;t<idx.length;t+=3)for(let k=0;k<3;k++){const key=idx[t+k]+','+idx[t+(k+1)%3];if(d.has(key))falsch++;d.add(key);}
+ return{vol,offen,mehr,falsch,nv:pos.length/3,nf:idx.length/3};}
 
 /* ================= Bauteile als Polygonnetz (Teiltyp „netz“): Scan, Import, Einfügen ================= */
 /* Speicher: Punkte in mm (x längs, y hoch, s quer) als Int16 × q, Flächen als Uint16/Uint32, Base64 */
@@ -2599,25 +2777,37 @@ function snNetz(occ,nx,ny,nz,glatt){const O=(i,j,k)=>i<0||j<0||k<0||i>=nx||j>=ny
 function netzGlaetten(P0,idx,runden){const nv=P0.length/3,nb=Array.from({length:nv},()=>new Set());for(let t=0;t<idx.length;t+=3){const a=idx[t],b=idx[t+1],c=idx[t+2];nb[a].add(b).add(c);nb[b].add(a).add(c);nb[c].add(a).add(b);}
  for(let r=0;r<runden;r++){const P1=new Float32Array(P0.length);for(let v=0;v<nv;v++){let x=0,y=0,z=0,n=0;for(const w of nb[v]){x+=P0[3*w];y+=P0[3*w+1];z+=P0[3*w+2];n++;}if(!n){P1.set(P0.subarray(3*v,3*v+3),3*v);continue;}
   P1[3*v]=0.5*P0[3*v]+0.5*x/n;P1[3*v+1]=0.5*P0[3*v+1]+0.5*y/n;P1[3*v+2]=0.5*P0[3*v+2]+0.5*z/n;}P0=P1;}return P0;}
-function netzAusPunkten(pts){/* pts: [{x,y,s,n:[nx,ny,ns]}] in mm -> {pos,idx} */const n=pts.length;if(n<8)return null;
+function netzAusPunkten(pts,opt){opt=opt||{};/* pts: [{x,y,s,n:[nx,ny,ns]}] in mm -> {pos,idx} */const n=pts.length;if(n<8)return null;
  const P=pts.map(q=>[q.x,q.y,q.s]),N=pts.map(q=>v3.norm(q.n));const nn=P.map((p,i)=>{let b=Infinity;for(let j=0;j<n;j++)if(j!==i){const d=v3.len(v3.sub(p,P[j]));if(d<b)b=d;}return b;}).sort((a,b)=>a-b);const sp=nn[n>>1]||10;
- let lo=[1e9,1e9,1e9],hi=[-1e9,-1e9,-1e9];for(const p of P)for(let a=0;a<3;a++){lo[a]=Math.min(lo[a],p[a]);hi[a]=Math.max(hi[a],p[a]);}lo=lo.map(v=>v-1.5*sp);hi=hi.map(v=>v+1.5*sp);
- let h=sp/2.5;const ext=[0,1,2].map(a=>hi[a]-lo[a]);while(ext.some(e=>e/h>110))h*=1.15;const nx=Math.ceil(ext[0]/h),ny=Math.ceil(ext[1]/h),nz=Math.ceil(ext[2]/h);
+ let lo=[1e9,1e9,1e9],hi=[-1e9,-1e9,-1e9];for(const p of P)for(let a=0;a<3;a++){lo[a]=Math.min(lo[a],p[a]);hi[a]=Math.max(hi[a],p[a]);}lo=lo.map(v=>v-1.5*sp);hi=hi.map(v=>v+1.5*sp);if(opt.boden)lo[1]=Math.min(lo[1],-2*sp);
+ let h=sp/2;const ext=[0,1,2].map(a=>hi[a]-lo[a]);while(ext.some(e=>e/h>90))h*=1.15;const nx=Math.ceil(ext[0]/h),ny=Math.ceil(ext[1]/h),nz=Math.ceil(ext[2]/h);
  const cs=sp*1.8,grid=new Map(),key=(a,b,c)=>a+','+b+','+c;P.forEach((p,i)=>{const k=key(Math.floor(p[0]/cs),Math.floor(p[1]/cs),Math.floor(p[2]/cs));let l=grid.get(k);if(!l)grid.set(k,l=[]);l.push(i);});
  const occ=new Uint8Array(nx*ny*nz),R=1.8*sp;
  for(let k=0;k<nz;k++)for(let i=0;i<nx;i++)for(let j=0;j<ny;j++){const c=[lo[0]+(i+0.5)*h,lo[1]+(j+0.5)*h,lo[2]+(k+0.5)*h],gx=Math.floor(c[0]/cs),gy=Math.floor(c[1]/cs),gz=Math.floor(c[2]/cs);
   let sw=0,sf=0,dmin=Infinity;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)for(let e=-1;e<=1;e++){const l=grid.get(key(gx+a,gy+b,gz+e));if(!l)continue;for(const q of l){const d=v3.sub(c,P[q]),dl=v3.len(d);if(dl>R)continue;if(dl<dmin)dmin=dl;const w=1/(dl*dl+sp*sp*0.05);sw+=w;sf+=w*v3.dot(N[q],d);}}
-  if(sw>0&&sf/sw<0)occ[(k*nx+i)*ny+j]=1;}
+  const id=(k*nx+i)*ny+j;if(opt.boden&&c[1]<0)occ[id]=1;else if(sw>0)occ[id]=sf/sw<0?1:2;}
+ /* Inneres füllen: Voxel ohne Messwert gelten als innen, wenn in mind. 5 von 6 Achsrichtungen zuerst „innen“ kommt */
+ {const N3=nx*ny*nz,hits=new Uint8Array(N3),at=(i,j,k)=>(k*nx+i)*ny+j;const sweep=(len,idf)=>{let last=0;for(let t=0;t<len;t++){const id=idf(t),v=occ[id];if(v)last=v;else if(last===1)hits[id]++;}};
+  for(let k=0;k<nz;k++)for(let j=0;j<ny;j++){sweep(nx,t=>at(t,j,k));sweep(nx,t=>at(nx-1-t,j,k));}
+  for(let k=0;k<nz;k++)for(let i=0;i<nx;i++){sweep(ny,t=>at(i,t,k));sweep(ny,t=>at(i,ny-1-t,k));}
+  for(let i=0;i<nx;i++)for(let j=0;j<ny;j++){sweep(nz,t=>at(i,j,t));sweep(nz,t=>at(i,j,nz-1-t));}
+  for(let q=0;q<N3;q++)occ[q]=occ[q]===1||(occ[q]===0&&hits[q]>=5)?1:0;}
  const M=snNetz(occ,nx,ny,nz,3),pos=M.pos;for(let v=0;v<pos.length;v+=3){pos[v]=lo[0]+(pos[v]+0.5)*h;pos[v+1]=lo[1]+(pos[v+1]+0.5)*h;pos[v+2]=lo[2]+(pos[v+2]+0.5)*h;}return{pos,idx:M.idx};}
 /* ---- Bedienung im Teile-Tab ---- */
-function netzBereich(box,p,i){const g='geo',m=netzMasse(p);
+function netzWerkzeug(p,f,msg){const d=netzDaten(p);if(!d)return;let r;try{r=f({pos:Float32Array.from(d.pos),idx:Array.from(d.idx)});}catch(e){console.error(e);toast('Das ging nicht: '+e.message);return;}if(!r||!r.idx||r.idx.length<9){toast('Dann bliebe nichts übrig');return;}
+ p.netz=netzKodieren(r.pos,r.idx);changed('geo');renderWin();if(msg)toast(msg+' · zurück mit ↶');}
+function netzBereich(box,p,i){const g='geo',m=netzMasse(p);box.append(sub('Absetzen'),el('div',{class:'row'},btn('Auf Deck setzen',()=>teilAbsetzen(p,'deck')),btn('Innen an die Bordwand',()=>teilAbsetzen(p,'innen')),btn('Außen an die Bordwand',()=>teilAbsetzen(p,'aussen'))),note('Seite (Stb/Bb) nach der jetzigen Lage – vorher quer auf die gewünschte Seite schieben. Danach mit Lage und Drehung fein einstellen.'),el('div',{class:'row'},btn('In „Meine Bauteile“ speichern',()=>bibSpeichern(p))),sub('Netz'));
  if(m)box.append(note('Polygonnetz: '+m.nv+' Punkte, '+m.nf+' Dreiecke · Länge '+mm(m.L)+', Höhe '+mm(m.H)+', Breite '+mm(m.B)+' · Volumen ca. '+fmtN(m.vol/1000,0)+' cm³ (nur bei geschlossenem Netz sinnvoll).'));
+ {const d=netzDaten(p);if(d){const c=netzPruefen(d.pos,d.idx);box.append(note(c.offen?('Offene Kanten: '+c.offen+' – „Löcher schließen“ macht das Netz dicht (für Volumen und 3D-Druck).'):'Das Netz ist geschlossen.'));}}
  box.append(num(p,'skala','Größe (Faktor)',0.01,100,0.01,'×',g,i),check(p,'spiegelX','Spiegeln längs',g,i),check(p,'spiegelS','Spiegeln quer',g,i),check(p,'spiegelY','Spiegeln hoch',g,i));
  if(m){const v={L:Math.round(m.L)};box.append(num(v,'L','Länge auf dieses Maß bringen',1,100000,1,'mm','name',i+'-zl'),el('div',{class:'row'},btn('Länge übernehmen',()=>{if(v.L>0&&m.L>0){p.skala=Math.round((+p.skala||1)*v.L/m.L*10000)/10000;changed('geo');renderWin();}})));}
  if(p.dichte==null)p.dichte=1.0;box.append(num(p,'dichte','Dichte',0.05,12,0.01,'g/cm³','name',i),el('div',{class:'row'},btn('Masse aus Volumen × Dichte',()=>{const q=netzMasse(p);if(q){p.masse=Math.round(q.vol/1000*(+p.dichte||1));changed('geo');renderWin();toast('Masse '+fmtN(p.masse,0)+' g');}}),
-  btn('Glätten',()=>{const d=netzDaten(p);if(!d)return;const P0=netzGlaetten(Float32Array.from(d.pos),d.idx,1);p.netz=netzKodieren(P0,d.idx);changed('geo');renderWin();}),
+  btn('Glätten (Taubin)',()=>netzWerkzeug(p,d=>({pos:netzTaubin(d.pos,d.idx,6),idx:d.idx}),'Geglättet – Maße bleiben erhalten')),
+  btn('Vereinfachen …',()=>{const d=netzDaten(p);if(!d)return;const n=d.idx.length/3,z=prompt('Wie viele Dreiecke sollen bleiben? (jetzt '+n+')',String(Math.max(200,Math.round(n/3))));if(z==null)return;const ziel=Math.max(50,Math.round(+z||0));if(!(ziel<n)){toast('Das wären nicht weniger');return;}netzWerkzeug(p,d2=>netzVereinfachen(d2.pos,d2.idx,ziel),'Vereinfacht auf ca. '+ziel+' Dreiecke');}),
+  btn('Löcher schließen',()=>netzWerkzeug(p,d=>{const r=netzLoecherFuellen(d.pos,d.idx);toast(r.n?r.n+' Loch/Löcher geschlossen':'Keine Löcher gefunden');return r;},null)),
+  btn('Gleichmäßig neu vernetzen',()=>netzWerkzeug(p,d=>netzNeuVernetzen(d.pos,d.idx,null,4),'Neu vernetzt – gleichmäßige Dreiecke')),
   btn('Unten abschneiden …',()=>{const d=netzDaten(p);if(!d)return;const ys=[];for(let k=1;k<d.pos.length;k+=3)ys.push(d.pos[k]);const y0=Math.min(...ys),y1=Math.max(...ys);const t=prompt('Alles unterhalb dieser Höhe entfernen – Anteil der Höhe von unten (0–1), z. B. 0.05 für den Tisch:', '0.05');if(t==null)return;const cut=y0+(y1-y0)*clamp(+t||0,0,0.95);
-   const keep=[];for(let k=0;k<d.idx.length;k+=3){const a=d.idx[k],b=d.idx[k+1],c=d.idx[k+2];if(d.pos[3*a+1]>=cut&&d.pos[3*b+1]>=cut&&d.pos[3*c+1]>=cut)keep.push(a,b,c);}if(keep.length<9){toast('Dann bliebe nichts übrig');return;}p.netz=netzKodieren(d.pos,keep);changed('geo');renderWin();}),
+   const S2=netzSchneiden(d.pos,d.idx,[0,1,0],cut);if(S2.idx.length<9){toast('Dann bliebe nichts übrig');return;}p.netz=netzKodieren(S2.pos,S2.idx);changed('geo');renderWin();toast('Unten abgeschnitten und flach geschlossen');}),
   btn('Als STL speichern',()=>{const G=netzGeo(p),q=G.attributes.position.array,ix=G.index.array,n=ix.length/3,buf=new ArrayBuffer(84+50*n),dv=new DataView(buf);dv.setUint32(80,n,true);let o=84;for(let t=0;t<n;t++){o+=12;for(let c=0;c<3;c++){const v=ix[3*t+c];dv.setFloat32(o,q[3*v+2]*1000,true);dv.setFloat32(o+4,q[3*v]*1000,true);dv.setFloat32(o+8,q[3*v+1]*1000,true);o+=12;}o+=2;}ausgeben(dateiName(p.name)+'.stl',new Blob([buf]),'model/stl');})));}
 /* ---- STL / OBJ einlesen ---- */
 function netzLesen(name,buf){const u=new Uint8Array(buf),low=name.toLowerCase();let pos=[],idx=[];
@@ -2647,6 +2837,144 @@ async function teileEinfuegenDialog(){let docs=[];try{docs=await store.list();}c
    P.teile.push(...neu);sel=neu[0].id;tab='teile';zu();changed('geo');renderWin();toast(neu.length+' Teil(e) eingefügt – mit Lage, Drehung und Größe ausrichten');},'pri'),btn('Zurück',liste)));};
  liste();wrap.append(box);document.body.append(wrap);}
 
+/* ---- Standfläche: Netz an einer Ebene abschneiden und unten flach schließen ---- */
+function netzSchneiden(pos,idx,n,d){const nv=pos.length/3,val=new Float64Array(nv),P=Array.from(pos);for(let v=0;v<nv;v++)val[v]=n[0]*pos[3*v]+n[1]*pos[3*v+1]+n[2]*pos[3*v+2]-d;
+ const cache=new Map(),cut=(a,b)=>{const k=a<b?a+'_'+b:b+'_'+a;let id=cache.get(k);if(id!=null)return id;const t=val[a]/(val[a]-val[b]);id=P.length/3;for(let q=0;q<3;q++)P.push(pos[3*a+q]+(pos[3*b+q]-pos[3*a+q])*t);cache.set(k,id);return id;};
+ const out=[],kante=[];
+ for(let t=0;t<idx.length;t+=3){let v=[idx[t],idx[t+1],idx[t+2]];const ins=v.map(x=>val[x]>=0);const n_in=ins.filter(Boolean).length;if(n_in===3){out.push(...v);continue;}if(n_in===0)continue;
+  /* drehen, sodass v[0] der „besondere“ Punkt ist (allein drin bzw. allein draußen) */let r=0;for(let k=0;k<3;k++){const odd=n_in===1?ins[k]:!ins[k];if(odd){r=k;break;}}v=[v[r],v[(r+1)%3],v[(r+2)%3]];
+  if(n_in===1){const ab=cut(v[0],v[1]),ac=cut(v[0],v[2]);out.push(v[0],ab,ac);kante.push([ab,ac]);}
+  else{const ab=cut(v[0],v[1]),ac=cut(v[0],v[2]);/* v[0] draußen, v[1],v[2] drin */out.push(ab,v[1],v[2],ab,v[2],ac);kante.push([ac,ab]);}}
+ /* Schnittkanten zu Schleifen verbinden und mit Fächer schließen */const next=new Map();for(const[u,w] of kante)next.set(u,w);const done=new Set();
+ for(const[u0] of kante){if(done.has(u0))continue;const loop=[];let u=u0;while(u!=null&&!done.has(u)){done.add(u);loop.push(u);u=next.get(u);}if(loop.length<3)continue;
+  let c=[0,0,0];for(const x of loop)for(let q=0;q<3;q++)c[q]+=P[3*x+q]/loop.length;const ci=P.length/3;P.push(...c);for(let k=0;k<loop.length;k++){const a=loop[k],b=loop[(k+1)%loop.length];if(next.get(a)===b)out.push(ci,b,a);}}
+ /* unbenutzte Punkte entfernen */const used=new Int32Array(P.length/3).fill(-1),np=[];const oi=out.map(x=>{if(used[x]<0){used[x]=np.length/3;np.push(P[3*x],P[3*x+1],P[3*x+2]);}return used[x];});return{pos:Float32Array.from(np),idx:oi};}
+/* Standfläche in einer Punktwolke finden (Ebene, auf der alles andere auf einer Seite liegt) */
+function ebeneFinden(pts){const n=pts.length;if(n<12)return null;const P=pts.map(q=>[q.x,q.y,q.s]);const nn=P.map((p,i)=>{let b=Infinity;for(let j=0;j<n;j++)if(j!==i){const d=v3.len(v3.sub(p,P[j]));if(d<b)b=d;}return b;}).sort((a,b)=>a-b);const sp=nn[n>>1]||10,eps=Math.max(1,0.3*sp);
+ const rnd=mkRng(17);let best=null;for(let it=0;it<600;it++){const a=P[Math.floor(rnd()*n)],b=P[Math.floor(rnd()*n)],c=P[Math.floor(rnd()*n)];let nr=v3.cross(v3.sub(b,a),v3.sub(c,a));const l=v3.len(nr);if(l<1e-6)continue;nr=v3.mul(nr,1/l);const d=v3.dot(nr,a);
+  let inl=0,pos=0,neg=0;for(const p of P){const e=v3.dot(nr,p)-d;if(Math.abs(e)<eps)inl++;else if(e>0)pos++;else neg++;}const ein=Math.min(pos,neg);if(ein>0.03*n)continue;if(!best||inl>best.inl){best={n:pos>=neg?nr:v3.mul(nr,-1),d:pos>=neg?d:-d,inl};}}
+ if(!best||best.inl<Math.max(6,0.06*n))return null;/* genauer: Ausgleichsebene durch die Treffer */const I=P.filter(p=>Math.abs(v3.dot(best.n,p)-best.d)<eps);const c=I.reduce((a,p)=>v3.add(a,p),[0,0,0]).map(v=>v/I.length);
+ const C=[[0,0,0],[0,0,0],[0,0,0]];for(const p of I){const q=v3.sub(p,c);for(let i=0;i<3;i++)for(let j=0;j<3;j++)C[i][j]+=q[i]*q[j];}const{val,vec}=mkJacobi(C);let k=0;for(let i=1;i<3;i++)if(val[i]<val[k])k=i;let nr=[vec[0][k],vec[1][k],vec[2][k]];if(v3.dot(nr,best.n)<0)nr=v3.mul(nr,-1);
+ return{n:nr,d:v3.dot(nr,c),eps,tisch:pts.map((q,i)=>Math.abs(v3.dot(nr,P[i])-v3.dot(nr,c))<eps)};}
+/* Bauteil aus Punkten: Standfläche suchen, aufrecht stellen, Tischpunkte weg, Netz bauen, unten schließen */
+function objektNetz(pts,verfahren){let E=ebeneFinden(pts),p2=pts,info='';
+ if(E){/* drehen: Ebenennormale -> +y */const a=E.n,b=[0,1,0],ax=v3.cross(a,b),sn=v3.len(ax),cs=v3.dot(a,b);const R=sn<1e-9?(cs>0?[1,0,0,0,1,0,0,0,1]:[1,0,0,0,-1,0,0,0,-1]):m3.exp(v3.mul(v3.norm(ax),Math.atan2(sn,cs)));
+  const obj=pts.filter((q,i)=>!E.tisch[i]);if(obj.length<8)return{fehler:'Nur Tischpunkte gefunden – mehr Marken/Punkte auf das Bauteil'};
+  const tf=q=>{const p=m3.mv(R,[q.x,q.y,q.s]),nn=m3.mv(R,q.n);return{x:p[0],y:p[1]-E.d,s:p[2],n:nn,k:q.k};};p2=obj.map(tf);var alle=pts.map(tf);info='Standfläche erkannt ('+E.tisch.filter(Boolean).length+' Punkte auf dem Tisch)';}
+ const vf=(!verfahren||verfahren==='auto')?(p2.length>=80?'poisson':'abstand'):verfahren;let N=vf==='abstand'?null:poissonFlaeche(p2,{boden:!!E,aufl:80});if(!N||N.idx.length<12)N=netzAusPunkten(p2,{boden:!!E});if(!N)return{fehler:'Zu wenige Punkte für eine Fläche'};if(!E){if(N.idx.length/3>8000)N=netzVereinfachen(N.pos,N.idx,8000);return{netz:N,info:'Keine Standfläche erkannt – die Unterseite ist geschätzt. Tipp: ein paar Marken bzw. Punkte auf die Tischfläche rund um das Bauteil, oder unter Teile „Unten abschneiden“.'};}
+ let S=netzSchneiden(N.pos,N.idx,[0,1,0],0.5);if(S.idx.length/3>8000)S=netzVereinfachen(S.pos,S.idx,8000);return{netz:S,info,alle};}
+
+
+/* ---- Bauteil im Boot absetzen ---- */
+function teilBox(p){const b=built[p.id];if(!b)return null;boat.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(boat.matrixWorld).invert(),m=new THREE.Matrix4(),v=new THREE.Vector3(),L=P.rumpf.L;let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9,s0=1e9,s1=-1e9,n=0;
+ b.g.updateMatrixWorld(true);b.g.traverse(o=>{if(!o.isMesh||!o.geometry||!o.geometry.attributes.position)return;m.multiplyMatrices(inv,o.matrixWorld);const a=o.geometry.attributes.position;const st=Math.max(1,Math.floor(a.count/6000));
+  for(let i=0;i<a.count;i+=st){v.fromBufferAttribute(a,i).applyMatrix4(m);const x=v.z*1000+L/2,y=v.y*1000,s=v.x*1000;x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);s0=Math.min(s0,s);s1=Math.max(s1,s);n++;}});
+ return n?{x0,x1,y0,y1,s0,s1}:null;}
+function teilAbsetzen(p,wie){const B=teilBox(p);if(!B){toast('Teil ist noch nicht gezeichnet – kurz warten');return;}const xc=(B.x0+B.x1)/2,sc=(B.s0+B.s1)/2,yc=(B.y0+B.y1)/2,L=P.rumpf.L,xi=x=>clamp(x,1,L-1);
+ if(wie==='deck'){let ziel=-1e9;for(const x of [B.x0,xc,B.x1])for(const s of [B.s0,sc,B.s1])ziel=Math.max(ziel,deckY(xi(x),s));p.y=Math.round(p.y+(ziel-B.y0));toast('Auf das Deck gesetzt');}
+ else{const sg=sc>=0?1:-1,hbs=[];for(const x of [B.x0,xc,B.x1])for(const y of [B.y0,yc,B.y1])hbs.push(innenHB(xi(x),y));
+  if(wie==='innen'){const hb=Math.min(...hbs)-2,aussen=sg>0?B.s1:-B.s0;p.s=Math.round(p.s+sg*(hb-aussen));toast('Innen an die Bordwand gesetzt ('+(sg>0?'Stb':'Bb')+')');}
+  else{const hb=Math.max(...hbs)+0.5,innen=sg>0?B.s0:-B.s1;p.s=Math.round(p.s+sg*(hb-innen));toast('Außen an die Bordwand gesetzt ('+(sg>0?'Stb':'Bb')+')');}}
+ changed('geo');renderWin();}
+/* ---- Bibliothek „Meine Bauteile“ (IndexedDB) ---- */
+let VORSCHAU=null;
+function teilVorschau(p){try{const g=p.typ==='netz'?netzGeo(p):null;if(!g)return '';if(!VORSCHAU){const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true,alpha:false});r.setSize(160,120);r.setPixelRatio(1);const sc=new THREE.Scene();sc.background=new THREE.Color(0x1b2a33);
+   sc.add(new THREE.HemisphereLight(0xffffff,0x445566,0.9));const dl=new THREE.DirectionalLight(0xffffff,0.7);dl.position.set(1,2,1.5);sc.add(dl);VORSCHAU={r,sc,cam:new THREE.PerspectiveCamera(35,4/3,0.001,100),m:null};}
+  const V=VORSCHAU;if(V.m){V.sc.remove(V.m);V.m.geometry.dispose();}V.m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:p.farbe||'#d9c9a3',roughness:0.6,side:THREE.DoubleSide}));V.sc.add(V.m);
+  g.computeBoundingSphere();const bs=g.boundingSphere,d=bs.radius/Math.sin(35*Math.PI/360)*1.05;V.cam.position.set(bs.center.x+d*0.55,bs.center.y+d*0.45,bs.center.z+d*0.7);V.cam.near=d/100;V.cam.far=d*10;V.cam.updateProjectionMatrix();V.cam.lookAt(bs.center);V.r.render(V.sc,V.cam);return V.r.domElement.toDataURL('image/jpeg',0.75);}catch(e){console.error(e);return '';}}
+async function bibSpeichern(p,still){if(!(await idbBereit())){toast('Die Bibliothek braucht IndexedDB – in diesem Browser nicht verfügbar');return false;}
+ const t=JSON.parse(JSON.stringify(p));delete t.parent;t.x=0;t.y=0;t.s=0;const id=(t.bibId||'b'+uid());t.bibId=id;p.bibId=id;await IDB.put('bauteile',id,{name:p.name,stand:new Date().toISOString(),teil:t,bild:teilVorschau(p)});if(!still)toast('„'+p.name+'“ unter „Meine Bauteile“ gespeichert');return true;}
+async function bibEinfuegen(e){const t=JSON.parse(JSON.stringify(e.teil));t.id=uid();t.parent=null;t.partner=undefined;t.x=Math.round(P.rumpf.L/2);t.s=0;t.y=Math.round(deckY(P.rumpf.L/2,0)+100);P.teile.push(t);sel=t.id;tab='teile';changed('geo');renderWin();
+ setTimeout(()=>{needRebuild=true;setTimeout(()=>{if(built[t.id])teilAbsetzen(t,'deck');},300);},50);toast('„'+t.name+'“ eingefügt und aufs Deck gesetzt – mit Lage/Drehung ausrichten');}
+function bibBereich(box){const wrap=el('div',{class:'grp'});box.append(sub('Meine Bauteile'),wrap);if(DB&&!window.indexedDB){wrap.append(note('Hier nicht verfügbar.'));return;}
+ idbBereit().then(ok=>ok?IDB.all('bauteile'):[]).then(L=>{wrap.textContent='';if(!L.length){wrap.append(note('Noch leer. Gescannte Bauteile landen automatisch hier; andere Netz-Teile mit „In Meine Bauteile speichern“.'));return;}
+  L.sort((a,b)=>String(b.stand).localeCompare(String(a.stand)));const g=el('div',{style:'display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px'});
+  for(const e of L){const b=el('button',{type:'button',class:'v',style:'display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:6px;min-height:0',title:'Einfügen',onclick:()=>bibEinfuegen(e)},e.bild?el('img',{src:e.bild,alt:'',style:'width:100%;border-radius:6px;display:block'}):el('div',{style:'height:70px'}),el('span',{style:'font-size:12px;line-height:1.2',text:e.name}));
+   const del=twoStep('Löschen','Sicher?',async()=>{await IDB.del('bauteile',e.id);renderWin();});del.style.fontSize='11px';g.append(el('div',{style:'display:flex;flex-direction:column;gap:4px'},b,del));}wrap.append(g,note('Antippen fügt das Bauteil in dieses Projekt ein und setzt es aufs Deck.'));}).catch(()=>wrap.append(note('Bibliothek konnte nicht gelesen werden.')));}
+
+/* ================= Werkstatt: Bausatz-Spanten und Rumpf für den 3D-Druck ================= */
+const BAU_DEF={beplankung:2,leisten:3,leistenB:5,leistenT:5,kielB:6,kielT:6,helling:true,hellingUeber:30,rahmen:12,anzahl:0,
+ wand:1.6,deckOffen:true,abschnitt:200,muffe:12,spiel:0.25,dx:2};
+const BAU=()=>{const R=P.rumpf;if(!R.bau)R.bau={};for(const k in BAU_DEF)if(R.bau[k]===undefined)R.bau[k]=BAU_DEF[k];return R.bau;};
+/* halber Spantriss außen: Punkte [s,y] vom Kiel (s=0) zur Bordkante */
+function bauHalb(x,n){const L=P.rumpf.L,pts=hullSec(clamp(x/L,0.0005,0.9995),n||48);return pts.map(([y,b])=>[Math.max(0,b),y]);}
+/* Linie um d nach innen versetzen (innen = links der Laufrichtung) */
+function bauVersatz(pts,d,geschlossen){const n=pts.length,o=[];for(let i=0;i<n;i++){const a=pts[geschlossen?(i-1+n)%n:Math.max(0,i-1)],c=pts[geschlossen?(i+1)%n:Math.min(n-1,i+1)];let tx=c[0]-a[0],ty=c[1]-a[1];const l=Math.hypot(tx,ty)||1;tx/=l;ty/=l;o.push([pts[i][0]-ty*d,pts[i][1]+tx*d]);}return o;}
+function bauLaenge(pts){const s=[0];for(let i=1;i<pts.length;i++)s.push(s[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));return s;}
+function bauBei(pts,S,t){let i=1;while(i<S.length-1&&S[i]<t)i++;const f=clamp((t-S[i-1])/((S[i]-S[i-1])||1),0,1);return[pts[i-1][0]+(pts[i][0]-pts[i-1][0])*f,pts[i-1][1]+(pts[i][1]-pts[i-1][1])*f,i];}
+/* ---- Bausatz-Spant ---- */
+function bauSpant(x){const B=BAU(),t=+B.beplankung||0,L=P.rumpf.L;
+ let R=bauVersatz(bauHalb(x,64),t,false).filter(p=>p[0]>=0);if(R.length<4)return null;if(R[0][0]>0.01)R.unshift([0,R[0][1]]);
+ const sheer=R[R.length-1],ySh=sheer[1],yBot=R[0][1];if(sheer[0]<4||ySh-yBot<4)return null;
+ const S=bauLaenge(R),Lg=S[S.length-1];
+ /* Kielschlitz: rechte Seite beginnt bei s = kb */const kb=(+B.kielB||0)/2,kt=+B.kielT||0;let tStart=0;
+ if(kb>0&&kt>0){for(let k=1;k<R.length;k++){if(R[k][0]>=kb){const f=(kb-R[k-1][0])/((R[k][0]-R[k-1][0])||1);tStart=S[k-1]+(S[k]-S[k-1])*clamp(f,0,1);break;}}}
+ /* Leisten-Kerben gleichmäßig über die Bogenlänge */const nL=Math.max(0,Math.round(+B.leisten||0)),w=+B.leistenB||0,dpt=+B.leistenT||0,kerb=[];
+ if(w>0&&dpt>0)for(let k=1;k<=nL;k++){const tt=tStart+(Lg-tStart)*k/(nL+1);if(tt-w/2>tStart+1&&tt+w/2<Lg-1)kerb.push(tt);}
+ const rechts=[bauBei(R,S,tStart).slice(0,2)],nimm=(a,b)=>{for(let k=0;k<R.length;k++)if(S[k]>a&&S[k]<b)rechts.push(R[k]);};let t0=tStart;
+ for(const tk of kerb){nimm(t0,tk-w/2);const a=bauBei(R,S,tk-w/2),b=bauBei(R,S,tk+w/2);let tx=b[0]-a[0],ty=b[1]-a[1];const l=Math.hypot(tx,ty)||1;tx/=l;ty/=l;const nx=-ty,ny=tx;
+  rechts.push([a[0],a[1]],[a[0]+nx*dpt,a[1]+ny*dpt],[b[0]+nx*dpt,b[1]+ny*dpt],[b[0],b[1]]);t0=tk+w/2;}
+ nimm(t0,Lg);rechts.push([sheer[0],sheer[1]]);
+ const yH=Math.max(...[0.02,0.25,0.5,0.75,0.98].map(u=>hdims(u).Ys*1000))+(+B.hellingUeber||0);
+ let top;if(B.helling)top=[[sheer[0],yH],[-sheer[0],yH]];else{const d=hdims(clamp(x/L,0,1)),bu=deckBucht(x/L,d)*1000;top=[];for(let j=1;j<16;j++){const q=1-2*j/16;top.push([q*sheer[0],ySh+bu*(1-q*q)-t]);}}
+ const links=rechts.slice().reverse().map(([s,y])=>[-s,y]);const au=[...rechts,...top,...links];
+ if(kb>0&&kt>0){const yk=Math.max(rechts[0][1],yBot+kt);au.push([-kb,yk],[kb,yk]);}
+ /* Erleichterungsausschnitt */let loch=null;const rb=+B.rahmen||0;
+ if(rb>0){const inn=bauVersatz(bauHalb(x,64),t+rb+dpt,false).filter(p=>p[0]>0.5);const yMin=yBot+kt+rb,yMax=ySh-rb;const r2=inn.filter(p=>p[1]>yMin&&p[1]<yMax);
+  if(r2.length>=3&&r2[r2.length-1][0]>rb*0.8&&yMax-yMin>2*rb){const l2=r2.slice().reverse().map(([s,y])=>[-s,y]);loch=[[0,yMin],...r2,[r2[r2.length-1][0],yMax],[-r2[r2.length-1][0],yMax],...l2];}}
+ return{aussen:au,loch,ySh,yH:B.helling?yH:null};}
+function bauStationen(){const B=BAU(),L=P.rumpf.L;if(+B.anzahl>0){const n=Math.round(+B.anzahl);return Array.from({length:n},(_,i)=>({x:L*(i+1)/(n+1),name:'Spant '+(i+1)}));}return rumpfStationenListe().map((o,i)=>({x:o.x,name:'Spant '+(i+1)+' ('+o.name+')'}));}
+function planBausatz(){const out=[],B=BAU();for(const o of bauStationen()){const S=bauSpant(o.x);if(!S)continue;const pl=Plan();plL(pl,S.aussen,{w:0.35,close:true});if(S.loch)plL(pl,S.loch,{w:0.3,close:true,c:'#444444'});
+  const xs=S.aussen.map(p=>p[0]);plL(pl,[[Math.min(...xs)-4,0],[Math.max(...xs)+4,0]],{c:'#2f6db3',w:0.2,d:[2,1.5]});plL(pl,[[0,Math.min(...S.aussen.map(p=>p[1]))-4],[0,Math.max(...S.aussen.map(p=>p[1]))+4]],{c:'#888888',w:0.15,d:[1,1]});
+  if(S.yH!=null)plL(pl,[[Math.min(...xs)-6,S.yH],[Math.max(...xs)+6,S.yH]],{c:'#c2410c',w:0.25,d:[3,1.5]});
+  plT(pl,0,(S.yH!=null?S.yH:S.ySh)+6,o.name+' · X='+Math.round(o.x)+' mm',{z:7,b:true,a:'center'});plT(pl,0,Math.min(...S.aussen.map(p=>p[1]))-8,'blau = Wasserlinie · orange = Helling (Baubrett) · grau = Mitte',{z:5,c:'#555555',a:'center',leg:true});out.push(pl);}
+ return out;}
+function bausatzDXF(){const polys=[],tx=[];let x0=0;for(const o of bauStationen()){const S=bauSpant(o.x);if(!S)continue;const xs=S.aussen.map(p=>p[0]),w=Math.max(...xs)-Math.min(...xs),dx=x0-Math.min(...xs);
+  polys.push({pts:S.aussen.map(([s,y])=>[s+dx,y]),layer:'SPANT'});if(S.loch)polys.push({pts:S.loch.map(([s,y])=>[s+dx,y]),layer:'AUSSCHNITT'});polys.push({pts:[[dx-5,0],[dx+5,0]],layer:'WASSERLINIE',offen:true});polys.push({pts:[[dx,-5],[dx,5]],layer:'MITTE',offen:true});
+  tx.push([o.name+' X='+Math.round(o.x),x0,(S.yH!=null?S.yH:S.ySh)+8,5,'TEXT']);x0+=w+20;}return dxf(polys,tx);}
+/* ---- Rumpf für den 3D-Druck: Schale in Abschnitten mit Steckmuffe ---- */
+function druckRing(x,M){/* geschlossener Querschnitt (Deck zu) bzw. U (Deck offen), Reihenfolge so, dass innen links liegt */const L=P.rumpf.L,h=bauHalb(x,M||40),d=hdims(clamp(x/L,0.0005,0.9995)),bu=deckBucht(x/L,d)*1000,sh=h[h.length-1];
+ const rechts=h,links=h.slice().reverse().map(([s,y])=>[-s,y]);
+ const deck=[];for(let j=1;j<12;j++){const q=1-2*j/12;deck.push([q*sh[0],sh[1]+bu*(1-q*q)]);}
+ return{zu:[...rechts.slice(1),...deck,...links.slice(0,-1),[0,h[0][1]]],U:[...links.slice(0,-1),...rechts],hb:sh[0],tief:sh[1]-h[0][1]};}
+function druckAbschnitte(){const B=BAU(),L=P.rumpf.L,n=Math.max(1,Math.ceil(L/Math.max(20,+B.abschnitt||200))),o=[];for(let i=0;i<n;i++)o.push([L*i/n,L*(i+1)/n]);return o;}
+function druckNetz(x0,x1,mitMuffe){const B=BAU(),t=+B.wand||0,offen=!!B.deckOffen&&t>0,dx=Math.max(0.5,+B.dx||2),L=P.rumpf.L,pos=[],idx=[];
+ const xs=[];for(let x=x0;x<x1-1e-6;x+=dx)xs.push(x);xs.push(x1);const P3=(x,s,y)=>{pos.push(x,y,s);return pos.length/3-1;};
+ const hohl=x=>{if(t<=0)return false;const r=druckRing(x,24);return r.hb>2.5*t&&r.tief>2.5*t;};
+ const sehne=au=>{/* Deck offen, Querschnitt zu klein für eine Schale: voll, oben gerade Linie zwischen den Bordkanten */const a=au[0],b=au[au.length-1],m=au.length;return au.map((_,j)=>[a[0]+(b[0]-a[0])*j/(m-1),a[1]+(b[1]-a[1])*j/(m-1)]);};
+ const rings=xs.map(x=>{const r=druckRing(x,40),au=offen?r.U:r.zu,inn=hohl(x)?bauVersatz(au,t,!offen):(offen?sehne(au):null);return{x,au,inn};});
+ const n=rings[0].au.length,quad=(a,b,c,d)=>idx.push(a,b,c,a,c,d);
+ const ids=rings.map(r=>({a:r.au.map(([s,y])=>P3(r.x,s,y)),i:r.inn?r.inn.map(([s,y])=>P3(r.x,s,y)):null}));
+ const segs=offen?n-1:n;
+ for(let k=0;k<rings.length-1;k++){const A=ids[k],C=ids[k+1];for(let j=0;j<segs;j++){const j2=(j+1)%n;quad(A.a[j],C.a[j],C.a[j2],A.a[j2]);}
+  if(A.i&&C.i){for(let j=0;j<segs;j++){const j2=(j+1)%n;quad(A.i[j],A.i[j2],C.i[j2],C.i[j]);}if(offen)for(const j of [0,n-1]){/* Oberkante (Süll) */if(j===0)quad(A.a[0],A.i[0],C.i[0],C.a[0]);else quad(A.a[j],C.a[j],C.i[j],A.i[j]);}}
+  else if(A.i&&!C.i)deckel(A,false,k);else if(!A.i&&C.i)deckel(C,true,k+1);}
+ function deckel(R,vorn,k){/* Hohlraum mit Fächer schließen */const r=rings[k];let c=[0,0];for(const p of r.inn){c[0]+=p[0]/r.inn.length;c[1]+=p[1]/r.inn.length;}const ci=P3(r.x,c[0],c[1]);for(let j=0;j<segs;j++){const j2=(j+1)%n;if(vorn)idx.push(ci,R.i[j],R.i[j2]);else idx.push(ci,R.i[j2],R.i[j]);}
+  if(offen){/* offene Seite oben schließen */idx.push(R.i[0],R.i[n-1],ci);}}
+ /* Enden */for(const[k,vorn] of [[0,true],[rings.length-1,false]]){const R=ids[k],r=rings[k];if(R.i){for(let j=0;j<segs;j++){const j2=(j+1)%n;if(vorn)quad(R.a[j],R.a[j2],R.i[j2],R.i[j]);else quad(R.a[j],R.i[j],R.i[j2],R.a[j2]);}}
+  else{let c=[0,0];for(const p of r.au){c[0]+=p[0]/n;c[1]+=p[1]/n;}const ci=P3(r.x,c[0],c[1]);for(let j=0;j<n;j++){const j2=(j+1)%n;if(vorn)idx.push(ci,R.a[j],R.a[j2]);else idx.push(ci,R.a[j2],R.a[j]);}}}
+ /* Steckmuffe am hinteren Ende (ragt in den nächsten Abschnitt) */
+ if(mitMuffe&&t>0&&hohl(x1)&&x1<L-1){const F=+B.muffe||10,c=+B.spiel||0.2;for(const[xa,xb,d0,d1] of [[x1-F,x1,t-0.3,t+c+0.01],[x1-F,x1+F,t+c,2*t+c]]){if(!hohl(xa)||!hohl(Math.min(L-1,xb)))continue;const rr=[];for(let x=xa;x<=xb+1e-6;x+=dx){const r=druckRing(x,40),au=offen?r.U:r.zu;rr.push({x,o:bauVersatz(au,d0,!offen).map(([s,y])=>P3(x,s,y)),i:bauVersatz(au,d1,!offen).map(([s,y])=>P3(x,s,y))});}
+   for(let k=0;k<rr.length-1;k++){const A=rr[k],C=rr[k+1];for(let j=0;j<segs;j++){const j2=(j+1)%n;quad(A.o[j],C.o[j],C.o[j2],A.o[j2]);quad(A.i[j],A.i[j2],C.i[j2],C.i[j]);}if(offen){quad(A.o[0],A.i[0],C.i[0],C.o[0]);quad(A.o[n-1],C.o[n-1],C.i[n-1],A.i[n-1]);}}
+   for(const[R,vorn] of [[rr[0],true],[rr[rr.length-1],false]]){for(let j=0;j<segs;j++){const j2=(j+1)%n;if(vorn)quad(R.o[j],R.o[j2],R.i[j2],R.i[j]);else quad(R.o[j],R.i[j],R.i[j2],R.o[j2]);}}}}
+ return{pos:Float32Array.from(pos),idx};}
+function stlAusNetz(M,name){const p=M.pos,ix=M.idx,n=ix.length/3,buf=new ArrayBuffer(84+50*n),dv=new DataView(buf);const h=('Werftkoje '+(name||'')).slice(0,79);for(let i=0;i<h.length;i++)dv.setUint8(i,h.charCodeAt(i)&127);dv.setUint32(80,n,true);let o=84;
+ for(let t=0;t<n;t++){const a=3*ix[3*t],b=3*ix[3*t+1],c=3*ix[3*t+2];/* Ausgabe: X längs, Y quer (Stb), Z hoch */const V=k=>[p[k],p[k+2],p[k+1]],A=V(a),B=V(b),C=V(c);const nn=v3.norm(v3.cross(v3.sub(B,A),v3.sub(C,A)));
+  dv.setFloat32(o,nn[0],true);dv.setFloat32(o+4,nn[1],true);dv.setFloat32(o+8,nn[2],true);o+=12;for(const q of [A,B,C]){dv.setFloat32(o,q[0],true);dv.setFloat32(o+4,q[1],true);dv.setFloat32(o+8,q[2],true);o+=12;}o+=2;}return new Uint8Array(buf);}
+async function druckZip(){const B=BAU(),ab=druckAbschnitte(),files=[];toast('Baue '+ab.length+' Abschnitt(e) …');await new Promise(r=>setTimeout(r,30));
+ ab.forEach(([a,b],i)=>{const M=druckNetz(a,b,i<ab.length-1);files.push([dateiName(P.name)+' Abschnitt '+(i+1)+' von '+ab.length+' ('+Math.round(a)+'-'+Math.round(b)+' mm).stl',stlAusNetz(M,'Abschnitt '+(i+1))]);});
+ const info='Werftkoje – Rumpf für den 3D-Druck\n'+P.name+'\nAbschnitte: '+ab.length+' (max. '+B.abschnitt+' mm)\nWandstärke: '+B.wand+' mm'+(B.wand>0?(B.deckOffen?' · Deck offen':' · Deck geschlossen'):' (voll)')+'\nSteckmuffe: '+B.muffe+' mm je Seite, Spiel '+B.spiel+' mm – sitzt am hinteren Ende jedes Abschnitts und steckt im nächsten.\nKoordinaten: X ab Bug, Y nach Steuerbord, Z nach oben (mm). Abschnitte zum Drucken z. B. aufrecht auf die Schnittfläche stellen.\n';
+ files.push(['LIESMICH.txt',new TextEncoder().encode(info)]);await ausgeben(dateiName(P.name)+' 3D-Druck.zip',zipStore(files),'application/zip');}
+function werkstattBereich(box){const B=BAU(),g='name',i='bau';
+ const d1=el('details',{class:'grp'});d1.append(el('summary',{class:'sub',text:'Bausatz: Spanten zum Aussägen/Lasern'}),note('Spanten = Rumpfform minus Beplankung, mit Schlitz für die Kielleiste, Kerben für Längsleisten, optional Verlängerung bis zur Helling-Linie (kieloben auf dem Baubrett aufbauen) und Erleichterungsausschnitt.'),
+  num(B,'anzahl','Anzahl Spanten (0 = Stationen aus dem Aufmaß)',0,60,1,'',g,i+'n'),num(B,'beplankung','Beplankung (Dicke der Außenhaut)',0,20,0.1,'mm',g,i+'b'),num(B,'kielB','Kielschlitz Breite',0,60,0.5,'mm',g,i+'kb'),num(B,'kielT','Kielschlitz Tiefe',0,60,0.5,'mm',g,i+'kt'),
+  num(B,'leisten','Längsleisten je Seite',0,12,1,'',g,i+'l'),num(B,'leistenB','Leiste Breite',0,30,0.5,'mm',g,i+'lb'),num(B,'leistenT','Leiste Tiefe',0,30,0.5,'mm',g,i+'lt'),check(B,'helling','Bis zur Helling-Linie verlängern (Bau kieloben)',g,i+'h'),num(B,'hellingUeber','Helling-Linie über der höchsten Deckskante',0,500,1,'mm',g,i+'hu'),num(B,'rahmen','Rahmenbreite (0 = voller Spant ohne Ausschnitt)',0,200,1,'mm',g,i+'r'),
+  el('div',{class:'row'},btn('Spanten 1:1 (PDF)',()=>planPDF(planBausatz(),{name:dateiName(P.name)+' Bausatz-Spanten.pdf',titel:'Bausatz-Spanten 1:1 – '+P.name,massstab:1}),'pri'),btn('Spanten (DXF für Laser/CNC)',()=>ausgeben(dateiName(P.name)+' Bausatz-Spanten.dxf',bausatzDXF(),'application/dxf'))));
+ const d2=el('details',{class:'grp'});d2.append(el('summary',{class:'sub',text:'3D-Druck: Rumpf in Abschnitten'}),note('Der Rumpf wird in druckbare Abschnitte geteilt, als Schale mit Wandstärke. Jeder Abschnitt hat hinten eine Steckmuffe, die in den nächsten passt (Spiel einstellbar) – zusammenstecken und verkleben.'),
+  num(B,'abschnitt','Abschnittslänge höchstens (Druckbett)',20,2000,5,'mm',g,i+'a'),num(B,'wand','Wandstärke (0 = voller Körper)',0,20,0.1,'mm',g,i+'w'),check(B,'deckOffen','Deck offen lassen',g,i+'o'),num(B,'muffe','Muffe: Länge je Seite',0,60,1,'mm',g,i+'m'),num(B,'spiel','Muffe: Spiel',0,2,0.05,'mm',g,i+'s'),num(B,'dx','Feinheit (Ringabstand)',0.5,10,0.5,'mm',g,i+'dx'),
+  note('Ergebnis: '+druckAbschnitte().length+' Abschnitt(e).'),el('div',{class:'row'},btn('STL-Dateien (ZIP)',()=>druckZip(),'pri')));
+ box.append(d1,d2);}
+
 /* Auswahl beim Leisten-Knopf */
 function scanWahl(){if(MKS.on||SCS.on)return;const wrap=el('div',{style:'position:fixed;inset:0;z-index:50;background:rgba(5,10,14,.6);display:flex;align-items:center;justify-content:center;padding:16px'});const zu=()=>wrap.remove();
  wrap.addEventListener('click',e=>{if(e.target===wrap)zu();});
@@ -2655,19 +2983,35 @@ function scanWahl(){if(MKS.on||SCS.on)return;const wrap=el('div',{style:'positio
    for(const[v,t] of [['rumpf','Bootsrumpf (wird Aufmaß)'],['objekt','Bauteil / Objekt (wird Polygonnetz)']]){const b=el('button',{class:'v',type:'button','aria-pressed':String(SCANZIEL===v),onclick:()=>set(v)},t);b.dataset.v=v;sg.append(b);}return sg;})(),
   note('Jeder Scan legt ein eigenes neues Projekt an, dein aktuelles bleibt unverändert. Gescannte Bauteile fügst du später unter Teile → „Gescanntes Bauteil … einfügen“ in jedes Projekt ein.'),
   btn('Mit Klebemarken (genau, auch Deck + Unterseite)',()=>{zu();mkNeuesProjekt();},'pri'),note('Vorher den Markenbogen drucken und aufkleben (Linien-Tab → Marken-Scan).'),
-  btn('Mit Stiftpunkten (Notlösung, wenn keine Marken da sind)',()=>{zu();ptNeuesProjekt();}),note('Schwarze Punkte mit Stift aufmalen, rote auf die Deck-Rumpf-Kante, einmal ruhig ganz herumgehen.'),btn('Ohne Marken (Umriss, schnell und grob)',()=>{zu();scanNeuesProjekt();}),btn('Marken drucken',()=>{zu();mkBogenDrucken();}),btn('Größe und Anzahl der Marken einstellen …',()=>{zu();tab='linien';showWin(true);renderWin();setTimeout(()=>{const b=[...document.querySelectorAll('.sub')].find(x=>/Marken-Scan/.test(x.textContent));if(b)b.scrollIntoView({block:'start'});},80);}),btn('Abbrechen',zu)));
+  btn('Mit Stiftpunkten (Notlösung, wenn keine Marken da sind)',()=>{zu();ptNeuesProjekt();}),note('Schwarze Punkte mit Stift aufmalen, rote auf die Deck-Rumpf-Kante, einmal ruhig ganz herumgehen.'),btn('Ohne Marken (Umriss, schnell und grob)',()=>{zu();scanNeuesProjekt();}),btn('Marken drucken',()=>{zu();mkBogenDrucken();}),btn('Größe und Anzahl der Marken einstellen …',()=>{zu();tab='scan';klappSetzen('scan:Marken-Scan (genau, mit Klebemarken)',true);showWin(true);renderWin();setTimeout(()=>{const b=[...document.querySelectorAll('.sub')].find(x=>/Marken-Scan/.test(x.textContent));if(b)b.scrollIntoView({block:'start'});},80);}),btn('Abbrechen',zu)));
  document.body.append(wrap);}
 
-function scanBereich(box){box.append(sub('Rundum-Scan (3D aus der Kamera)'),
+function scanBereich(box){box.append(sub('3D-Scan: was wird gescannt?'),(()=>{const sg=el('div',{class:'seg'});for(const[v,t] of [['rumpf','Bootsrumpf (Aufmaß)'],['objekt','Bauteil / Objekt (Polygonnetz)']]){const b=el('button',{class:'v',type:'button','aria-pressed':String(SCANZIEL===v)},t);b.addEventListener('click',()=>{SCANZIEL=v;for(const c of sg.children)c.setAttribute('aria-pressed',String(c===b));});sg.append(b);}return sg;})(),note('Gilt für die Scan-Knöpfe unten. Im laufenden Scan lässt es sich oben im Kamerafenster noch umstellen.'));box.append(sub('Rundum-Scan ohne Marken (Umriss)'),
  note('Um das Objekt herumgehen: Die Kamera erkennt die Silhouette, der Lagesensor liefert die Blickrichtung, daraus baut sich der Rumpf von selbst auf. Du trägst die Länge als Maßstab ein, optional Breite und Höhe. Braucht HTTPS, Kamera- und Bewegungssensor-Freigabe. Das Ergebnis ist ein grober Rumpf (Hüllform), den du mit der Foto-Vorlage prüfst und von Hand nachformst.'),
  el('div',{class:'row'},btn('Neues 3D-Modell scannen und anlegen',scanNeuesProjekt,'pri')),note('Der Scan legt immer ein eigenes neues Projekt an, dein aktuelles Projekt bleibt unverändert. Unter Modell → Einblenden zeigt „Scan-Netz“ das erfasste Polygonnetz.'));
  if(P.rumpf.scanVox){const V=P.rumpf.scanVox;let info='';try{scNetzGeo(V);info=SCNETZ.punkte+' Punkte, '+SCNETZ.dreiecke+' Dreiecke';}catch(e){}box.append(sub('Scan-Netz'),note('Gespeichertes Polygonnetz des Scans ('+info+'). Gelb im 3D-Bild; ein- und ausblenden unter Modell → Einblenden → „Scan-Netz“.'),el('div',{class:'row'},btn('Scan-Netz als STL speichern',()=>scNetzStl()),btn('Scan-Netz zeigen/verbergen',()=>{const b=$('tScan');b.click();})));}mkBereich(box);ptBereich(box);}
+/* ---- Tab „Scan“: einklappbare Abschnitte, Erste Schritte je Verfahren ---- */
+const KLAPP=(()=>{try{return JSON.parse(localStorage.getItem('werftkoje-klapp')||'{}')||{};}catch(e){return{};}})();
+function klappSetzen(k,v){KLAPP[k]=!!v;try{localStorage.setItem('werftkoje-klapp',JSON.stringify(KLAPP));}catch(e){}}
+function klappen(box,standardOffen){/* direkte .sub-Überschriften werden zu aufklappbaren Abschnitten */const kids=[...box.children];let ziel=null;
+ for(const c of kids){if(c.tagName==='DIV'&&c.classList.contains('sub')){const t=c.textContent,k=tab+':'+t,d=el('details',{class:'klapp'}),sm=el('summary',{class:'sub',text:t}),g=el('div',{class:'grp'});d.append(sm,g);
+   d.open=k in KLAPP?KLAPP[k]:!!(standardOffen&&standardOffen(t));d.addEventListener('toggle',()=>klappSetzen(k,d.open));c.replaceWith(d);ziel=g;}
+  else if(ziel)ziel.append(c);}}
+const SCHRITTE={
+ 'Marken':['Unter „Marken drucken“ den Bogen ausdrucken (100 %, nicht „an Seite anpassen“) und die Marken ausschneiden.','Marken unregelmäßig über die Oberfläche kleben, Abstand etwa 5–10 cm; die roten Kantenmarken genau über Eck auf die Deck-Rumpf-Kante.','„Neues 3D-Modell mit Marken scannen“ tippen, Scan-Ziel oben im Kamerafenster prüfen (Rumpf oder Bauteil).','Langsam einmal ganz herumgehen, jede Marke aus mehreren Richtungen fotografieren. Für die Unterseite das Objekt umdrehen und eine zweite Runde starten.','„Fertig“ tippen – Aufmaß bzw. Polygonnetz entstehen automatisch in einem neuen Projekt.'],
+ 'Stiftpunkte':['Mit mattem schwarzem Stift Punkte von 4–6 mm setzen, Abstand 3–5 cm, leicht unregelmäßig.','Optional rote Punkte auf die Deck-Rumpf-Kante, alle 6–8 cm.','Abstand vom vordersten zum hintersten Punkt messen – das ist der Maßstab.','„Neues 3D-Modell mit Stiftpunkten scannen“, dann in einem ruhigen Rundgang filmen.','„Fertig“ tippen und den gemessenen Abstand eintragen.'],
+ 'Umriss':['Objekt vor einen ruhigen, kontrastreichen Hintergrund stellen.','Länge messen (Maßstab), optional Breite und Höhe.','„Neues 3D-Modell scannen und anlegen“ tippen, Kamera- und Bewegungssensor freigeben.','Gleichmäßig einmal herumgehen, das Objekt immer ganz im Bild.','Ergebnis mit der Foto-Vorlage (Tab Linien) prüfen und von Hand nachformen.']};
+function ersteSchritte(box){box.append(sub('Erste Schritte'));const sg=el('div',{class:'seg'}),liste=el('div');let wahl=(()=>{try{return localStorage.getItem('werftkoje-schritte')||'Marken';}catch(e){return'Marken';}})();if(!SCHRITTE[wahl])wahl='Marken';
+ const zeig=()=>{liste.textContent='';const ol=el('ol',{class:'schritte'});for(const t of SCHRITTE[wahl])ol.append(el('li',{text:t}));liste.append(ol);for(const b of sg.children)b.setAttribute('aria-pressed',String(b.dataset.v===wahl));};
+ for(const[v,t] of [['Marken','Mit Marken (genau)'],['Stiftpunkte','Stiftpunkte'],['Umriss','Umriss (grob)']]){const b=el('button',{class:'v',type:'button'},t);b.dataset.v=v;b.addEventListener('click',()=>{wahl=v;try{localStorage.setItem('werftkoje-schritte',v);}catch(e){}zeig();});sg.append(b);}
+ zeig();box.append(sg,liste,note('Jeder Scan legt ein eigenes neues Projekt an. Gescannte Bauteile landen zusätzlich unter Teile → „Meine Bauteile“.'));}
+function renderScan(box){if(typeof mkKernLaden==='function')mkKernLaden();ersteSchritte(box);scanBereich(box);klappen(box,t=>/Erste Schritte|was wird gescannt|Scan-Netz/.test(t)||(KLAPP['scan:Erste Schritte']===undefined&&/Marken-Scan/.test(t)));}
 function scNetzStl(){const V=P.rumpf.scanVox;if(!V)return;const g=scNetzGeo(V,true),p=g.attributes.position.array,ix=g.index.array,n=ix.length/3,buf=new ArrayBuffer(84+50*n),dv=new DataView(buf);dv.setUint32(80,n,true);let o=84;
  for(let t=0;t<n;t++){o+=12;for(let c=0;c<3;c++){const v=ix[3*t+c];dv.setFloat32(o,(p[3*v+2]*1000+P.rumpf.L/2),true);dv.setFloat32(o+4,p[3*v]*1000,true);dv.setFloat32(o+8,p[3*v+1]*1000,true);o+=12;}o+=2;}
  ausgeben((P.name||'scan').replace(/[^\w\-äöüÄÖÜß ]+/g,'_')+'-netz.stl',new Blob([buf],{type:'model/stl'}),'model/stl');}
 window.addEventListener('pagehide',()=>scSchliessen());
 
-function renderLinien(box){const R=P.rumpf,L=R.L,r=Math.round;if(sel==='rumpf')sel=null;hullEdW=null;scanBereich(box);fotoBereich(box);strakBereich(box);renderAufmass(box);
+function renderLinien(box){const R=P.rumpf,L=R.L,r=Math.round;if(sel==='rumpf')sel=null;hullEdW=null;box.append(note('Scannen hat jetzt einen eigenen Tab „Scan“ oben.'));fotoBereich(box);strakBereich(box);renderAufmass(box);
  box.append(sub('Rumpf von Hand formen'),note('Deckslinie, Kiellinie und halbe Breite als eigene Kurven. Das 3D-Modell folgt sofort.'));
  if(!R.aufmassAktiv)box.append(check(R,'eigen','Rumpf folgt meinen Linien','geo','rumpf',()=>{if(R.eigen&&!R.linien)seedLines(R);renderWin();}));
  if(R.eigen&&R.linien){const seg=el('div',{class:'seg'});for(const [k,t] of [['deck','Deckslinie'],['kiel','Kiellinie'],['breite','Halbe Breite']])seg.append(el('button',{class:'v',type:'button','aria-pressed':hullAct===k,onclick:()=>{hullAct=k;renderWin();}},t));box.append(seg);
@@ -2753,6 +3097,7 @@ function renderProjekt(box){const i='prj';
    el('div',{class:'row'},btn('Speichern',()=>speichern(),'pri'),btn('Speichern unter …',fileSaveAs),btn('Als Kopie speichern',()=>{P.name=P.name+' Kopie';cloudSave(true);}),btn('Als Datei (.json)',fileSave)),
    note(FILE_H?'Verknüpfte Datei: '+FILE_H.name+' – wird bei jedem „Speichern“ mit aktualisiert (gilt bis zum Schließen der App).':'„Speichern unter …“ lässt dich Ordner und Dateinamen frei wählen, z. B. deinen Projektordner oder eine Cloud-Ablage.'));
   const list=el('div',{class:'grp',id:'cloudList'},note('Lade gespeicherte Projekte …'));box.append(sub('Meine Projekte'),list);
+  if(!DB){const sp=note('Speicher: …');box.append(sp);speicherStand().then(S=>{if(!S){sp.textContent='Speicherstand nicht abfragbar';return;}const MB=b=>fmtN(b/1048576,b<1048576*10?1:0)+' MB';sp.textContent='Speicher: '+MB(S.belegt)+' belegt von '+MB(S.frei)+(S.dauerhaft?' · dauerhaft (der Browser räumt nicht von selbst auf)':' · nicht dauerhaft – bei Platzmangel könnte der Browser aufräumen; regelmäßig „Sicherung speichern“');});}
   store.list().then(docs=>{list.textContent='';if(!docs.length){list.append(note('Noch keine gespeicherten Projekte.'));return;}
    for(const v of docs){const d={id:v.id};const t=v.stand?new Date(v.stand).toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'}):'';
     list.append(el('div',{class:'prow'},el('div',null,el('b',{text:v.name||'Ohne Namen'}),el('span',{text:(KLASSEN[v.klasse]?KLASSEN[v.klasse].name.split(' (')[0]+' · ':'')+t+(d.id===P.cloudId?' · offen':'')})),
@@ -3043,6 +3388,7 @@ function exportBereich(box){const n=dateiName(P.name),p=P.teile.find(t=>t.id===s
   el('div',{class:'row'},btn('Rumpfspanten (DXF)',()=>ausgeben(n+' Spanten.dxf',rumpfDXF(),'application/dxf')),btn('Rumpfspanten 1:1 (PDF)',()=>planPDF(planRumpf(),{name:n+' Rumpfspanten.pdf',titel:'1:1 Druckschablone – Rumpfspanten (Linienriss) '+P.name,massstab:pdfMassstab().schablone})),btn('als SVG',()=>ausgeben(n+' Spanten 1zu1.svg',planSVG(planStapel(planRumpf()),'Rumpfspanten '+P.name,1),'image/svg+xml'))),
   el('div',{class:'row'},btn('Seitenriss (PDF)',()=>planPDF(planSeitenriss(rechnenAlles()),{name:n+' Seitenriss.pdf',titel:P.name+' – Seitenriss mit Schwerpunkten',massstab:pdfMassstab().riss})),btn('Für NACA-Visualizer (.json)',()=>ausgeben(n+' NACA-Visualizer.json',JSON.stringify(zuNaca(),null,2),'application/json'))),
   num(pdfMassstab(),'schablone','Maßstab der Schablonen 1:',1,50,1,'','name','ex-ms'),check(pdfMassstab(),'einzeln','Jedes Teil auf ein eigenes Blatt','name','ex-ein'),note('PDFs sind A4. Kleine Teile (z. B. Spanten) setzt die App platzsparend nebeneinander auf ein Blatt; große werden auf mehrere Seiten verteilt – mit Kleberand, Passkreuzen und 10-mm-Kontrollquadrat. Immer mit 100 % drucken.'));
+ werkstattBereich(box);
  if(p)box.append(note('Gewähltes Teil: '+p.name),el('div',{class:'row'},btn('Teil als STL',()=>ausgeben(dateiName(p.name)+'.stl',stlBin(netze(p.id)),'model/stl')),
   p.typ==='profil'?btn('Profilschnitte (DXF)',()=>ausgeben(dateiName(p.name)+' Profile.dxf',profilDXF(p),'application/dxf')):null,p.typ==='profil'?btn('Umriss 1:1 (PDF)',()=>planPDF(planUmriss(p),{name:dateiName(p.name)+' Umriss.pdf',titel:'Druckschablone – '+p.name,massstab:pdfMassstab().schablone})):null));
  else box.append(note('Für Einzelteil-Export erst im Teile-Tab ein Teil wählen.'));}
@@ -4045,7 +4391,7 @@ function rcVorlage(k){const V=RC_VORLAGEN[k],R=P.rumpf,L=R.L,r=v=>Math.round(v*1
 const VORLAGEN_NAMEN={marblehead:'Marblehead',moth:'Foiling Moth',k6:'Kutter K6',zk10:'ZK 10',zk10gfk:'ZK 10 GFK (Seesport Leipzig)',motordingi:'Motordingi Typ 401',topcatk2:'Skua V1 (Katamaran)',leer:'Nur Rumpf (leer)',scan:'Rundum-Scan (leer, baut sich beim Scannen auf)'};
 async function neuesProjekt(name,vorlage,vorherSichern){flush();if(vorherSichern)await cloudSave(false);
  P=normalize(TEMPLATES[vorlage]());P.name=String(name||'').trim()||'Neues Projekt';delete P.cloudId;sel=null;auswahl=new Set();commit();needRebuild=true;renderAll();setTimeout(()=>goView('free'),50);
- await cloudSave(true);tab=vorlage==='scan'?'linien':'projekt';renderWin();if(vorlage==='scan')toast('Leeres Projekt – im Tab Linien „Rundum-Scan starten“ tippen');}
+ await cloudSave(true);tab=vorlage==='scan'?'scan':'projekt';renderWin();if(vorlage==='scan')toast('Leeres Projekt – im Tab Scan eine Scan-Art wählen');}
 function neuesProjektBereich(box){const v={n:'',t:'marblehead',s:true};
  box.append(sub('Neues Projekt'));const ni=el('input',{type:'text',id:'np-name',placeholder:'z. B. Meine Marblehead 2027'});ni.addEventListener('input',()=>{v.n=ni.value;});
  const ts=el('select',{id:'np-vorlage'});for(const k in VORLAGEN_NAMEN)ts.append(el('option',{value:k,text:VORLAGEN_NAMEN[k]}));ts.addEventListener('change',()=>{v.t=ts.value;});

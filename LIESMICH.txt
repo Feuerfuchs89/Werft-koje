@@ -158,3 +158,43 @@ Neu: Bauteile scannen und in Projekte einbauen
 - Einbauen: im Zielprojekt Teile -> „Gescanntes Bauteil / Teile aus anderem Projekt einfügen …“: Projekt wählen,
   Teile ankreuzen, einfügen. Geht mit jedem gespeicherten Projekt, nicht nur mit Scans.
 - Auch STL- oder OBJ-Dateien (mm) aus anderen Programmen lassen sich so als Bauteil einlesen.
+- In jedem Scan-Fenster: oben umschalten „Bootsrumpf“ / „Bauteil / Objekt“ (auch noch während des Scans)
+  und die Kamera wählen (z. B. Weitwinkel oder Tele, wenn das Handy mehrere hat). Die gewählte Kamera
+  merkt sich die App für die nächsten Scans.
+- Standfläche bei Bauteilen (die Unterseite sieht die Kamera nicht):
+  * Marken/Stiftpunkte: ein paar Marken bzw. Punkte zusätzlich auf die Tischfläche rund um das Bauteil.
+    Die App erkennt daraus die Standfläche, stellt das Bauteil aufrecht darauf, schneidet dort ab und
+    schließt die Unterseite flach.
+  * Umriss-Scan: im Scan-Fenster die Höhe des Bauteils eintragen – dort wird abgeschnitten und flach geschlossen.
+  * Nachträglich immer möglich: Teile -> Bauteil -> „Unten abschneiden“ (schließt jetzt ebenfalls flach).
+
+Neu: Netzwerkzeuge für Bauteile (Teile -> Bauteil wählen)
+- „Vereinfachen …“: weniger Dreiecke bei gleicher Form (Fehlerquadriken nach Garland/Heckbert).
+- „Glätten (Taubin)“: glättet Dellen, ohne dass das Teil schrumpft.
+- „Löcher schließen“: füllt offene Stellen; die App zeigt an, ob das Netz geschlossen ist.
+- „Gleichmäßig neu vernetzen“: gleich große, saubere Dreiecke (gut für 3D-Druck/CNC).
+- Poisson-Rekonstruktion: Bauteil-Scans mit Marken/Punkten bekommen eine glatte, geschlossene Fläche.
+  Einstellbar im Linien-Tab: Automatisch (Poisson ab 80 Marken/Punkten), Poisson oder Abstandsfeld.
+- Gescannte Netze werden automatisch auf höchstens 8000 Dreiecke vereinfacht.
+- Jeder Schritt lässt sich mit ↶ zurücknehmen.
+
+=== Version 37 ===
+Speicher
+- Projekte liegen jetzt in der IndexedDB des Browsers statt im kleinen localStorage (ca. 5 MB Grenze).
+  Alte Projekte werden beim ersten Start automatisch übernommen. Unter Projekt → „Meine Projekte“
+  steht, wie viel Speicher belegt ist und ob der Browser ihn dauerhaft hält.
+Bauteile
+- Teile → Polygonnetz-Teil: „Absetzen“ aufs Deck, innen an die Bordwand oder außen an den Rumpf.
+- „Meine Bauteile“: Bibliothek mit Vorschaubildern. Gescannte Bauteile landen automatisch dort und
+  lassen sich in jedes Projekt einfügen.
+Werkstatt (Tab Projekt → Export)
+- Bausatz-Spanten 1:1 als PDF oder DXF (Laser/CNC): Rumpfform minus Beplankung, Kielschlitz,
+  Kerben für Längsleisten, Verlängerung bis zur Helling-Linie, Erleichterungsausschnitt.
+- 3D-Druck: Rumpf in Abschnitten als STL (ZIP), als Schale mit Wandstärke, Deck offen oder zu,
+  mit Steckmuffe und einstellbarem Spiel.
+Scan
+- Eigener Tab „Scan“ mit aufklappbaren Abschnitten und „Erste Schritte“ für Marken, Stiftpunkte und Umriss.
+Tempo
+- Schriftzug und Bänder werden über ein Raster statt Dreieck für Dreieck an den Rumpf gelegt,
+  Bänke/Böden nutzen einen Zwischenspeicher: Neuaufbau beim ZK10 GFK ca. 2,3 s → 0,1 s,
+  Start spürbar schneller.
