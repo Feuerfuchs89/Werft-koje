@@ -85,4 +85,25 @@ Neu: Skua V1 und Katamarane
   Ältere gespeicherte ZK-10-Projekte: Rumpf -> „Bug & Heck vom K6 übernehmen“.
 - Neuer Teiltyp „Seitenbank“: Sitzbrett innen an der Bordwand, gebogen nach dem Rumpf, ragt nie nach außen.
 - Kasten-Option „Quer bis an Seitenbank bzw. Bordwand“: Duchten enden bündig und passend geformt.
-- Neuer Teiltyp „Boden mit Seitenwänden“: Boden in fester Tiefe, Wände hoch zu den Seitenbänken, bleibt in der Bordwand.
+- Neuer Teiltyp „Boden mit Seitenwänden“: Bauart „Wände senkrecht unter den Bänken“ (Standard beim ZK 10):
+  die Wände laufen von der Bankinnenkante senkrecht nach unten, der Boden liegt dort, wo sie die
+  Bordwand treffen. Zu Bug und Heck steigt er mit dem Rumpf an (Winkel einstellbar, Standard 8°).
+  Alternativ „Boden in fester Höhe“ mit schrägen Wänden zu den Bänken.
+- ZK 10 / ZK 10 GFK: Rumpf geglättet – in der Draufsicht ohne Wellen (gleichmäßiger Bogen wie in der
+  Beschlagzeichnung KV-ZK10-005), Spantformen gleichmäßig von Bug bis Heck. Dollen, Wanten und Dollenplatten
+  sitzen wieder an der Bordwand. Ältere gespeicherte ZK-10-Projekte: Rumpf -> „Geglättete Linien übernehmen“.
+- ZK 10 GFK: Schwarzband läuft bis an den Steven und schmiegt sich am Bug an (Band -> „Am Bug anschmiegen“,
+  „Vorstand am Steven“, Knopf „Oberkante an die Bordkante legen“). Dollenplatten, Dollen und Edelstahl-Ovale
+  sitzen außen auf dem Band und sind überall sichtbar. Schriftzug seesport-leipzig.de 10 cm höher und mittig zwischen hinterster Dollenplatte und Heck.
+- Boden: Stirnwände fallen jetzt senkrecht von der Bug- bzw. Hecksitzfläche bis auf den Boden.
+
+Neu: 3D-Scanner
+- Oben in der Leiste: „Neues 3D-Modell scannen und anlegen“ (am Handy „3D-Scan“). Legt ein neues
+  Projekt an (das bisherige wird vorher gespeichert) und öffnet sofort Kamera und Lagesensor.
+- Ablauf: Objekt antippen (Farbe), Länge in mm eintragen, „Scan starten“, in gleichem Abstand
+  ganz herumgehen, dann eine zweite Runde mit schräg nach unten gehaltener Kamera, „Fertig“.
+- Die Zeile unter dem Kamerabild sagt jetzt, warum gerade keine Ansicht aufgenommen wird
+  (zu schnell, Objekt nicht ganz im Bild, Kamera zu steil, Ansicht schon drin, kein Sensor).
+- Funktioniert nur in der Werftkoje über https (GitHub Pages) im Handy-Browser. In der Version
+  innerhalb von Claude und in eingebetteten Ansichten sperrt der Browser Kamera und Sensoren.
+  Am Computer gibt es keinen Lagesensor.
