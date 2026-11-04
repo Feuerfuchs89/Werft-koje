@@ -98,12 +98,63 @@ Neu: Skua V1 und Katamarane
 - Boden: Stirnwände fallen jetzt senkrecht von der Bug- bzw. Hecksitzfläche bis auf den Boden.
 
 Neu: 3D-Scanner
-- Oben in der Leiste: „Neues 3D-Modell scannen und anlegen“ (am Handy „3D-Scan“). Legt ein neues
+- Oben in der Leiste direkt neben Werkstatt und Modell: „Neues 3D-Modell scannen und anlegen“ (am Handy „3D-Scan“). Legt ein neues
   Projekt an (das bisherige wird vorher gespeichert) und öffnet sofort Kamera und Lagesensor.
 - Ablauf: Objekt antippen (Farbe), Länge in mm eintragen, „Scan starten“, in gleichem Abstand
   ganz herumgehen, dann eine zweite Runde mit schräg nach unten gehaltener Kamera, „Fertig“.
+- Jeder Scan legt ein eigenes neues Projekt an („3D-Scan Datum Uhrzeit“); dein aktuelles Projekt wird nie
+  überschrieben (auch nicht über den Knopf im Linien-Tab).
+- Scan-Netz: Das erfasste Polygonnetz wird mit dem Projekt gespeichert und gelb im 3D-Bild gezeigt
+  (Modell -> Einblenden -> „Scan-Netz“, nach dem Scan mit Durchsicht). Linien-Tab: „Scan-Netz als STL speichern“
+  (volle Auflösung, mm, x = Länge ab Bug).
 - Die Zeile unter dem Kamerabild sagt jetzt, warum gerade keine Ansicht aufgenommen wird
   (zu schnell, Objekt nicht ganz im Bild, Kamera zu steil, Ansicht schon drin, kein Sensor).
 - Funktioniert nur in der Werftkoje über https (GitHub Pages) im Handy-Browser. In der Version
   innerhalb von Claude und in eingebetteten Ansichten sperrt der Browser Kamera und Sensoren.
   Am Computer gibt es keinen Lagesensor.
+
+Neu: Marken-Scan (genau, mit Klebemarken)
+- Oben „3D-Scan“ -> „Mit Klebemarken“. Legt wie immer ein eigenes neues Projekt an.
+- Linien-Tab -> Marken-Scan -> „Markenbogen als PDF“: codierte Marken (jede mit eigener Nummer) in
+  wählbarer Größe. In Originalgröße drucken, den 100-mm-Balken nachmessen.
+  Rote Kantenmarken (K…): rote gestrichelte Oberkante genau auf die Deck-Rumpf-Kante, flach auf die Bordwand.
+  Schwarze Flächenmarken: verteilt auf Rumpf, Deck und Spiegel, ca. 4–5 cm Abstand. Marken nicht knicken.
+- Runde 1: Deck nach oben, langsam um das Boot, Kamera 30–50 cm, verschiedene Höhen und Winkel.
+  Bilder werden automatisch aufgenommen (grün = schon oft gesehen, gelb = neu, rot = Kantenmarke).
+- Boot umdrehen, „Scan fortsetzen“, Runde 2 von unten. Beide Runden werden über die Marken, die in beiden
+  zu sehen sind (vor allem die Kantenmarken), automatisch zusammengesetzt.
+- „Fertig – Rumpf berechnen“: Die App bestimmt Kamerastandorte, Brennweite und die Lage jeder Marke
+  (Bündelausgleich) und baut daraus das Aufmaß: Decklinie aus den Kantenmarken, Spanten und Kiellinie
+  aus den Flächenmarken. Hohle Formen werden – anders als beim Umriss-Scan – richtig erfasst.
+- Danach: Bug/Heck tauschen, oben/unten tauschen, Länge über alles, Anzahl Spanten, Wasserlinie einstellbar.
+  Die Marken erscheinen im 3D-Bild (Modell -> Einblenden -> „Scan-Netz“).
+- Tipp: eine Kantenmarke je Seite möglichst nah am Bug, 2–3 Marken auf den Spiegel.
+
+Neu: Drucken
+- Marken: „Marken drucken“ öffnet direkt den Druckdialog (Linien-Tab -> Marken-Scan oder oben 3D-Scan ->
+  „Marken drucken“). „als PDF speichern“ gibt es weiterhin.
+- PDF-Pläne (Rumpfspanten, Profilschnitte, Schablonen …): Kleine Teile werden platzsparend nebeneinander
+  auf ein Blatt gesetzt (z. B. alle 14 Spanten des K6 bei 1:50 auf einer Seite). Große Teile werden wie bisher
+  mit Kleberand auf mehrere Seiten verteilt. Abschaltbar: „Jedes Teil auf ein eigenes Blatt“.
+
+Neu: Stiftpunkte-Scan (Notlösung ohne Marken)
+- Oben „3D-Scan“ -> „Mit Stiftpunkten“. Eigenes neues Projekt.
+- Mit schwarzem, mattem Stift Punkte von 4–6 mm aufmalen, Abstand 3–5 cm, leicht unregelmäßig.
+  Rote Punkte genau auf die Deck-Rumpf-Kante (alle 6–8 cm je Seite) – daraus wird die Decklinie.
+- In einem Zug langsam um das Objekt gehen (Boot am besten kopfüber auf einen Bock), Kamera nicht
+  absetzen. Die Punkte haben keine Nummer und werden von Bild zu Bild verfolgt; die Zeile unter dem
+  Bild zeigt, wie viel Prozent verfolgt werden („Langsamer bewegen“, wenn es zu schnell ist).
+- Maßstab: Abstand vom vordersten zum hintersten Punkt (längs) messen und im Linien-Tab eintragen,
+  optional die Länge über alles.
+- Genauigkeit etwa 2–5 mm, unsicherer als mit Marken. Deck und Unterseite lassen sich hier nicht in
+  zwei Runden zusammensetzen (dafür braucht es die nummerierten Marken).
+
+Neu: Bauteile scannen und in Projekte einbauen
+- Oben „3D-Scan“: zuerst wählen „Bootsrumpf“ (wird Aufmaß) oder „Bauteil / Objekt“ (wird Polygonnetz).
+  Alle drei Verfahren (Marken, Stiftpunkte, Umriss) gehen für beides. Ein Bauteil-Scan wird ein eigenes
+  Projekt „Bauteil-Scan …“ mit dem Teil „Gescanntes Bauteil“ (Teiltyp Polygonnetz).
+- Bearbeiten (Teile -> Bauteil wählen): Lage, Drehung, Größe (Faktor oder „Länge auf dieses Maß bringen“),
+  spiegeln, glätten, unten abschneiden (z. B. die Tischfläche), Dichte -> Masse aus dem Volumen, als STL speichern.
+- Einbauen: im Zielprojekt Teile -> „Gescanntes Bauteil / Teile aus anderem Projekt einfügen …“: Projekt wählen,
+  Teile ankreuzen, einfügen. Geht mit jedem gespeicherten Projekt, nicht nur mit Scans.
+- Auch STL- oder OBJ-Dateien (mm) aus anderen Programmen lassen sich so als Bauteil einlesen.
