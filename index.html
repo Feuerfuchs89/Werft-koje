@@ -736,13 +736,15 @@ let uidN=0;const uid=()=>'t'+Date.now().toString(36).slice(-5)+(uidN++).toString
 
 /* ================= Datenmodell & Vorlagen ================= */
 /* Koordinaten in mm: x = Abstand vom Bug, y = Höhe über Wasserlinie, s = seitlich (+ = Steuerbord). Winkel in Grad. */
-const TYPEN={profil:'Profil',bombe:'Bombe / Körper',rohr:'Rohr / Stab',kasten:'Kasten',servo:'Servo / Winde',segel:'Segel',fuehler:'Fühler (Wand)',platte:'Platte / Netz',kiel:'Kiel / Steven',aufbau:'Aufbau (Kajüte, Süll)',ausschnitt:'Ausschnitt / Öffnung',beschlag:'Beschlag / Kleinteil',bank:'Seitenbank (folgt der Bordwand)',boden:'Boden mit Seitenwänden',verdeck:'Verdeck (Plane)',schriftzug:'Schriftzug (Name am Rumpf)',band:'Scheuerband (vorstehendes Band am Rumpf)',netz:'Polygonnetz (Scan / Import)'};
+const TYPEN={profil:'Profil',bombe:'Bombe / Körper',rohr:'Rohr / Stab',kasten:'Kasten',servo:'Servo / Winde',segel:'Segel',fuehler:'Fühler (Wand)',platte:'Platte / Netz',kiel:'Kiel / Steven',aufbau:'Aufbau (Kajüte, Süll)',ausschnitt:'Ausschnitt / Öffnung',beschlag:'Beschlag / Kleinteil',bank:'Seitenbank (folgt der Bordwand)',boden:'Boden mit Seitenwänden',verdeck:'Verdeck (Plane)',schriftzug:'Schriftzug (Name am Rumpf)',band:'Scheuerband (vorstehendes Band am Rumpf)',reling:'Reling (Relingsstützen und Handlauf auf der Bordkante)',bullaugen:'Bullaugenreihe (runde Fenster in der Bordwand)',netz:'Polygonnetz (Scan / Import)'};
 const TYPHILFE={netz:'Gescanntes oder importiertes Bauteil',profil:'Flosse, Ruder, Schwert, Tragflügel, Klappe',bombe:'Bleibombe oder stromlinienförmiger Körper',rohr:'Mast, Baum, Gestänge, Flügelrohr',kasten:'Akku, Empfänger, Halterung',servo:'Servo mit Hebelarm, Segelwinde',segel:'Großsegel, Fock',fuehler:'Pendel, das auf dem Wasser schleift',platte:'Trampolin, Deckel, Spant',aufbau:'Kajüte, Cockpitsüll, Lukendeckel auf dem Deck',ausschnitt:'Luke, Durchführung, Cockpit, Bullauge – schneidet ein echtes Loch in Deck oder Bordwand',beschlag:'Rolle, Block, Öse, Deckdurchführung, Spanner, Mastfuß',bank:'Längsbank/Sitzbrett innen an der Bordwand, gebogen nach dem Rumpf',boden:'Durchgehender Boden in fester Tiefe, mit Wänden hoch zu den Seitenbänken',kiel:'Balken unter dem Rumpf, folgt Kiellinie und Vorsteven',verdeck:'Plane mit First, Wölbung und Fenstern (einstellbar)',schriftzug:'Bootsname seitlich auf den Rumpf',band:'Band am Rumpf, steht nach außen vor, läuft am Heck bündig aus'};
 const KLASSEN={
   marblehead:{name:'Marblehead (Klasse M)',regeln:{loa:1290,tiefgang:700,hoehe:2160,segel:5161}},
   moth:{name:'Internationale Moth',regeln:{loa:3355,breite:2250,segel:82500}},
   k6:{name:'Kutter K6 (Sollwerte laut Generalplan)',regeln:{loa:5500,breite:2100,tiefgang:1450,segel:137000}},
   zk10:{name:'ZK 10 (Klassenvorschrift, Höchstmaße)',regeln:{loa:7550,breite:2200,tiefgang:1560,segel:239800}},
+  gorchfock:{name:'Gorch Fock (Bark, Linienriss-Rekonstruktion)',regeln:{loa:82000,tiefgang:5600,segel:21000000}},
+  ixylon:{name:'Ixylon (Einheitsklasse, Daten laut Bedienungsanleitung)',regeln:{loa:5100,breite:1800,tiefgang:820,segel:125000}},
   topcatk2:{name:'Skua V1 (Kat, Maße wie Topcat K2)',regeln:{loa:5170,breite:2440,segel:177000}},
   frei:{name:'Freie Konstruktion',regeln:{}}
 };
@@ -758,6 +760,196 @@ const ZK10GFK_JSON='{"v":1,"zk10v":1,"name":"ZK 10 GFK (Seesport Leipzig)","klas
 const MOTORDINGI_JSON='{"v":1,"name":"Motordingi „Achim“ (Typ 401, Bau-Nr. 48)","klasse":"frei","rumpf":{"L":6400,"B":1932,"Bpos":50,"H":1000,"sprung":50,"T":480,"seite":300,"bug":70,"spiegel":80,"boden":60,"masse":2000000,"farbe":"#1f3fb0","aufmassAktiv":true,"eigen":true,"offen":false,"aufmass":{"bezug":{"laengs":"bug","versatz":0,"wl":480,"kieloben":false},"stationen":[{"id":"st0","pos":0,"deck":1180,"kiel":1130,"breite":0,"spant":[]},{"id":"st70","pos":70,"deck":1171,"kiel":1124,"breite":104,"spant":[[1126,23],[1133,54],[1141,73],[1150,89],[1155,95],[1160,99],[1168,103]]},{"id":"st139","pos":139,"deck":1163,"kiel":1100,"breite":198,"spant":[[1103,43],[1108,82],[1113,104],[1118,124],[1123,141],[1128,156],[1135,171],[1141,182],[1147,190],[1154,195],[1159,198]]},{"id":"st220","pos":220,"deck":1153,"kiel":956,"breite":288,"spant":[[964,63],[972,92],[982,120],[995,151],[1011,180],[1027,204],[1045,227],[1065,248],[1084,264],[1104,276],[1124,284],[1140,287]]},{"id":"st300","pos":300,"deck":1144,"kiel":764,"breite":362,"spant":[[779,79],[794,116],[813,151],[840,190],[870,226],[901,257],[935,286],[973,311],[1011,332],[1049,347],[1087,356],[1117,361]]},{"id":"st400","pos":400,"deck":1131,"kiel":578,"breite":440,"spant":[[600,96],[622,140],[650,183],[689,231],[733,275],[777,312],[827,347],[882,379],[938,403],[993,422],[1048,434],[1093,439]]},{"id":"st500","pos":500,"deck":1120,"kiel":426,"breite":503,"spant":[[454,110],[480,158],[516,209],[565,264],[620,315],[676,357],[738,397],[808,433],[877,461],[946,482],[1016,496],[1071,502]]},{"id":"st650","pos":650,"deck":1110,"kiel":292,"breite":574,"spant":[[324,125],[357,185],[398,243],[455,306],[480,329],[521,363],[586,411],[660,455],[742,495],[823,527],[905,550],[987,565],[1053,572]]},{"id":"st800","pos":800,"deck":1102,"kiel":210,"breite":631,"spant":[[246,134],[281,199],[326,271],[388,345],[460,410],[480,425],[531,461],[611,509],[701,550],[790,583],[879,607],[968,622],[1040,629]]},{"id":"st1000","pos":1000,"deck":1090,"kiel":137,"breite":703,"spant":[[175,141],[213,208],[260,299],[327,397],[403,475],[480,532],[565,584],[661,625],[756,656],[851,679],[947,695],[1023,701]]},{"id":"st1200","pos":1200,"deck":1078,"kiel":96,"breite":769,"spant":[[135,143],[175,211],[224,318],[292,448],[371,542],[450,606],[480,626],[538,658],[636,701],[734,728],[832,748],[931,762],[1009,767]]},{"id":"st1400","pos":1400,"deck":1068,"kiel":74,"breite":831,"spant":[[114,141],[154,208],[203,332],[273,499],[352,612],[432,683],[480,715],[521,735],[621,778],[720,800],[819,815],[919,826],[998,830]]},{"id":"st1600","pos":1600,"deck":1062,"kiel":70,"breite":881,"spant":[[110,136],[149,201],[199,344],[268,548],[348,681],[427,757],[480,793],[516,807],[616,846],[715,860],[814,871],[913,877],[993,880]]},{"id":"st2000","pos":2000,"deck":1070,"kiel":70,"breite":921,"spant":[[110,124],[150,184],[200,361],[270,615],[350,770],[430,851],[480,884],[520,893],[620,916],[720,918],[820,920],[920,920],[1000,921]]},{"id":"st2500","pos":2500,"deck":1081,"kiel":70,"breite":957,"spant":[[110,127],[151,190],[201,384],[272,656],[353,818],[434,902],[480,933],[525,941],[626,957],[727,957],[828,957],[929,957],[1010,957]]},{"id":"st3200","pos":3200,"deck":1095,"kiel":70,"breite":966,"spant":[[111,129],[152,194],[203,396],[275,670],[357,831],[439,915],[480,942],[531,951],[634,966],[736,966],[839,966],[941,966],[1023,966]]},{"id":"st3800","pos":3800,"deck":1093,"kiel":60,"breite":962,"spant":[[101,127],[143,191],[194,384],[267,657],[349,821],[432,906],[480,938],[525,946],[628,962],[731,962],[835,962],[938,962],[1021,962]]},{"id":"st4400","pos":4400,"deck":1092,"kiel":50,"breite":944,"spant":[[92,124],[133,185],[185,367],[258,637],[342,800],[425,884],[480,920],[519,926],[623,944],[727,944],[832,944],[936,944],[1019,944]]},{"id":"st5000","pos":5000,"deck":1090,"kiel":40,"breite":908,"spant":[[82,117],[124,174],[176,340],[250,596],[334,754],[418,835],[480,873],[512,880],[618,908],[722,908],[828,908],[932,908],[1016,908]]},{"id":"st5600","pos":5600,"deck":1088,"kiel":22,"breite":858,"spant":[[65,107],[107,158],[161,301],[235,537],[320,688],[406,765],[480,807],[502,811],[608,858],[715,858],[822,858],[928,858],[1013,858]]},{"id":"st6000","pos":6000,"deck":1086,"kiel":10,"breite":821,"spant":[[53,101],[96,147],[150,276],[225,500],[311,644],[397,719],[480,763],[494,765],[602,821],[709,821],[817,821],[925,821],[1011,821]]},{"id":"st6250","pos":6250,"deck":1086,"kiel":4,"breite":793,"spant":[[47,97],[91,141],[145,262],[220,477],[307,617],[394,690],[480,733],[491,735],[599,793],[707,793],[816,793],[924,793],[1010,793]]},{"id":"st6400","pos":6400,"deck":1085,"kiel":0,"breite":767,"spant":[[43,93],[87,136],[141,251],[217,458],[304,595],[391,666],[480,709],[488,709],[597,767],[705,767],[814,767],[922,767],[1009,767]]}],"senten":[]},"farbeUnten":"#b5402c","deckFarbe":"#c4c9cc","linien":{"deck":[[0,700],[70,691],[139,683],[220,673],[300,664],[400,651],[500,640],[650,630],[800,622],[1000,610],[1200,598],[1400,588],[1600,582],[2000,590],[2500,601],[3200,615],[3800,613],[4400,612],[5000,610],[5600,608],[6000,606],[6250,606],[6400,605]],"kiel":[[0,650],[70,644],[139,620],[220,476],[300,284],[400,98],[500,-54],[650,-188],[800,-270],[1000,-343],[1200,-384],[1400,-406],[1600,-410],[2000,-410],[2500,-410],[3200,-410],[3800,-420],[4400,-430],[5000,-440],[5600,-458],[6000,-470],[6250,-476],[6400,-480]],"breite":[[0,0],[70,104],[139,198],[220,288],[300,362],[400,440],[500,503],[650,574],[800,631],[1000,703],[1200,769],[1400,831],[1600,881],[2000,921],[2500,957],[3200,966],[3800,962],[4400,944],[5000,908],[5600,858],[6000,821],[6250,793],[6400,767]],"bucht":null}},"lage":{"hoehe":0,"kraengung":0,"trimm":0,"hMin":-300,"hMax":300},"steuer":[{"id":"ruder","name":"Ruder","min":-35,"max":35,"wert":0,"einheit":"°"}],"teile":[{"id":"motorkasten","typ":"kasten","name":"Motorkasten (Motor 1 HK 65 mit Wendegetriebe)","parent":null,"x":3300,"y":110,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#4a5560","masse":230000,"anker":[0,0,0],"laenge":970,"breite":500,"hoehe":680},{"id":"tank1","typ":"kasten","name":"Treibstofftank 45 l Stb.","parent":null,"x":4350,"y":165,"s":380,"achse":"y","winkel":0,"antrieb":null,"farbe":"#8a6a48","masse":30000,"anker":[0,0,0],"laenge":450,"breite":300,"hoehe":330},{"id":"tank2","typ":"kasten","name":"Treibstofftank 45 l Bb.","parent":null,"x":4350,"y":165,"s":-380,"achse":"y","winkel":0,"antrieb":null,"farbe":"#8a6a48","masse":30000,"anker":[0,0,0],"laenge":450,"breite":300,"hoehe":330},{"id":"batterie","typ":"kasten","name":"Batterie 12 V 105 Ah","parent":null,"x":2300,"y":-130,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#3a6ea5","masse":30000,"anker":[0,0,0],"laenge":330,"breite":175,"hoehe":235},{"id":"welle","typ":"rohr","name":"Propellerwelle Ø34","parent":null,"x":3800,"y":-230,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":9000,"anker":[0,0,0],"x2":5900,"y2":-300,"s2":0,"durchm":34},{"id":"propeller","typ":"profil","name":"Propeller 3-flügelig links Ø330","parent":null,"x":5900,"y":-300,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":5000,"anker":[0,0,0],"lage":"senkrecht","spann":165,"sehneWurzel":70,"sehneSpitze":45,"dicke":8,"pfeil":0,"drehpunkt":50},{"id":"ruder","typ":"profil","name":"Plattenruder","parent":null,"x":6480,"y":150,"s":0,"achse":"y","winkel":0,"antrieb":{"quelle":"steuer:ruder","faktor":1,"versatz":0,"min":-40,"max":40},"farbe":"#c2272d","masse":12000,"anker":[0,0,0],"lage":"senkrecht","spann":630,"sehneWurzel":230,"sehneSpitze":230,"dicke":6,"pfeil":0,"drehpunkt":10},{"id":"kiel","typ":"kiel","name":"Kiel und Vorsteven (Flachstahl 60x8)","parent":null,"x":3200,"y":0,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#8a6a48","masse":40000,"anker":[0,0,0],"breite":60,"hoehe":8,"hoeheSteven":8,"hoeheHeck":8},{"id":"bank-stb","typ":"kasten","name":"Sitzbank Stb.","parent":null,"x":2350,"y":320,"s":650,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":15000,"anker":[0,0,0],"laenge":900,"breite":280,"hoehe":40},{"id":"bank-bb","typ":"kasten","name":"Sitzbank Bb.","parent":null,"x":2350,"y":320,"s":-650,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":15000,"anker":[0,0,0],"laenge":900,"breite":280,"hoehe":40},{"id":"bank-ach-stb","typ":"kasten","name":"Sitzbank achtern Stb.","parent":null,"x":4600,"y":320,"s":650,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":15000,"anker":[0,0,0],"laenge":1500,"breite":280,"hoehe":40},{"id":"bank-ach-bb","typ":"kasten","name":"Sitzbank achtern Bb.","parent":null,"x":4600,"y":320,"s":-650,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9a77c","masse":15000,"anker":[0,0,0],"laenge":1500,"breite":280,"hoehe":40},{"id":"steuerstand","typ":"kasten","name":"Steuerstand mit Steuerrad","parent":null,"x":1900,"y":670,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#6b7a83","masse":8000,"anker":[0,0,0],"laenge":300,"breite":300,"hoehe":180},{"id":"scheinwerfer-mast","typ":"rohr","name":"Mast (weiß)","parent":null,"x":1380,"y":571,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#f2f4f5","masse":3000,"anker":[0,0,0],"x2":1380,"y2":2691,"s2":0,"durchm":55},{"id":"scheinwerfer","typ":"bombe","name":"Scheinwerfer 35 W","parent":null,"x":1290,"y":1334,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#e9ecee","masse":1500,"anker":[0,0,0],"laenge":180,"durchm":130,"blei":false},{"id":"poller1","typ":"kasten","name":"Poller Bug","parent":null,"x":330,"y":710,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#6c7780","masse":3000,"anker":[0,0,0],"laenge":120,"breite":80,"hoehe":70},{"id":"poller2","typ":"kasten","name":"Poller Heck","parent":null,"x":6050,"y":610,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#6c7780","masse":3000,"anker":[0,0,0],"laenge":120,"breite":80,"hoehe":70},{"id":"rettungsring","typ":"kasten","name":"Rettungsring","parent":null,"x":6050,"y":640,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#e8553f","masse":2000,"anker":[0,0,0],"laenge":440,"breite":440,"hoehe":80},{"id":"anker","typ":"kasten","name":"Anker 15 kg","parent":null,"x":600,"y":690,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#6c7780","masse":15000,"anker":[0,0,0],"laenge":450,"breite":300,"hoehe":60},{"id":"fender-bug","typ":"kasten","name":"Bugfender","parent":null,"x":400,"y":682,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1e2326","masse":2000,"anker":[0,0,0],"laenge":600,"breite":700,"hoehe":60,"poly":[[700,-491],[500,-393],[300,-259],[130,10],[110,0],[130,-10],[300,259],[500,393],[700,491],[700,451],[500,353],[300,219],[130,-50],[230,0],[130,50],[300,-219],[500,-353],[700,-451]]},{"id":"fender-heck-s","typ":"kasten","name":"Heckfender Stb.","parent":null,"x":6200,"y":570,"s":560,"achse":"y","winkel":0,"antrieb":null,"farbe":"#2b3135","masse":3000,"anker":[0,0,0],"laenge":300,"breite":250,"hoehe":300},{"id":"fender-heck-b","typ":"kasten","name":"Heckfender Bb.","parent":null,"x":6200,"y":570,"s":-560,"achse":"y","winkel":0,"antrieb":null,"farbe":"#2b3135","masse":3000,"anker":[0,0,0],"laenge":300,"breite":250,"hoehe":300},{"id":"topplaterne","typ":"bombe","name":"Topplaterne","parent":null,"x":1380,"y":2671,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#f5f5f5","masse":300,"anker":[0,0,0],"laenge":110,"durchm":90,"blei":false},{"id":"laterne-stb","typ":"kasten","name":"Seitenlaterne Stb. (grün)","parent":null,"x":1700,"y":644,"s":640,"achse":"y","winkel":0,"antrieb":null,"farbe":"#2fa84f","masse":500,"anker":[0,0,0],"laenge":90,"breite":90,"hoehe":90},{"id":"laterne-bb","typ":"kasten","name":"Seitenlaterne Bb. (rot)","parent":null,"x":1700,"y":644,"s":-640,"achse":"y","winkel":0,"antrieb":null,"farbe":"#d23a2e","masse":500,"anker":[0,0,0],"laenge":90,"breite":90,"hoehe":90},{"id":"verdeck","typ":"verdeck","name":"Verdeck (blaue Plane)","parent":null,"x":2800,"y":600,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b3fa8","masse":6000,"anker":[0,0,0],"xSpitze":2150,"xEcke":2610,"xEckeUnten":2360,"xFenster":3200,"xFirst":3200,"xHinten":6400,"halbbreite":813,"hVorn":560,"hFirst":860,"kron":190,"hHinten":820,"kronHinten":220,"scheibeIn":true,"xScheibeUnten":1500,"dy":-1090,"ds":0},{"id":"name-achim","typ":"schriftzug","name":"Schriftzug „Achim“ (beide Seiten)","parent":null,"x":1550,"y":330,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#ffffff","masse":0,"anker":[0,0,0],"text":"Achim","x0":1050,"x1":2050,"hoehe":230,"beide":true},{"id":"ruderschaft","typ":"rohr","name":"Ruderschaft","parent":null,"x":6490,"y":650,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#8a9399","masse":2000,"anker":[0,0,0],"x2":6490,"y2":100,"s2":0,"durchm":32}],"verbindungen":[],"linien":[],"rechnen":{"wasser":"suess","zielKg":null,"vorlaufZiel":5,"kern":0,"harz":"hand","marker":true,"laminat":[{"material":"Glasgewebe","gramm":160,"winkel":45,"lagen":2},{"material":"Carbongelege","gramm":300,"winkel":0,"lagen":2},{"material":"Glasgewebe","gramm":160,"winkel":-45,"lagen":1}],"teile":null,"massstab":{"schablone":1,"riss":20}}}';
 /* Skua V1 – Katamaran mit den Maßen des Topcat K2, nachgebaut nach Herstellerangaben (LüA 5,17 m, Breite 2,44 m, Mast 8,20 m, Groß 13,5 m², Fock 4,2 m², 160 kg) und Seitenriss – Linien geschätzt */
 const TOPCATK2_JSON='{"v":1,"name":"Skua V1","klasse":"topcatk2","rumpf":{"L":5170,"B":410,"Bpos":50,"H":430,"sprung":40,"T":240,"seite":220,"bug":5,"spiegel":75,"boden":70,"wolbung":12,"masse":108000,"farbe":"#f4f5f2","deckFarbe":"#e6e8ea","kat":2030,"aufmassAktiv":true,"eigen":true,"aufmass":{"bezug":{"laengs":"bug","versatz":0,"wl":0,"kieloben":false},"stationen":[{"id":"k2st0","pos":0,"deck":395,"kiel":365,"breite":8,"spant":[]},{"id":"k2st120","pos":120,"deck":400,"kiel":60,"breite":35,"spant":[[94,10],[155,21],[230,29],[315,34]]},{"id":"k2st300","pos":300,"deck":405,"kiel":-40,"breite":75,"spant":[[4,21],[85,45],[182,63],[294,72]]},{"id":"k2st600","pos":600,"deck":412,"kiel":-85,"breite":125,"spant":[[-35,35],[54,75],[164,105],[288,120]]},{"id":"k2st1000","pos":1000,"deck":420,"kiel":-115,"breite":160,"spant":[[-62,45],[35,96],[152,134],[286,154]]},{"id":"k2st1700","pos":1700,"deck":430,"kiel":-150,"breite":192,"spant":[[-92,54],[12,115],[140,161],[285,184]]},{"id":"k2st2500","pos":2500,"deck":425,"kiel":-180,"breite":205,"spant":[[-120,57],[-11,123],[122,172],[274,197]]},{"id":"k2st3300","pos":3300,"deck":400,"kiel":-205,"breite":202,"spant":[[-144,57],[-36,121],[98,170],[249,194]]},{"id":"k2st4000","pos":4000,"deck":365,"kiel":-228,"breite":190,"spant":[[-169,53],[-62,114],[68,160],[217,182]]},{"id":"k2st4450","pos":4450,"deck":340,"kiel":-236,"breite":178,"spant":[[-178,50],[-75,107],[52,150],[196,171]]},{"id":"k2st4800","pos":4800,"deck":315,"kiel":-170,"breite":168,"spant":[[-122,47],[-34,101],[72,141],[194,161]]},{"id":"k2st5170","pos":5170,"deck":280,"kiel":0,"breite":155,"spant":[[28,43],[78,93],[140,130],[210,149]]}],"senten":[]},"streifen":[{"x0":120,"x1":5080,"abDeck":75,"d0":10,"d1":10,"farbe":"#e30b1c"},{"x0":500,"x1":4950,"y0":35,"ym":45,"y1":95,"d0":6,"d1":42,"farbe":"#e30b1c"}]},"lage":{"hoehe":0,"kraengung":0,"trimm":0,"hMin":-300,"hMax":300},"steuer":[{"id":"ruder","name":"Ruder","min":-35,"max":35,"wert":0,"einheit":"°"},{"id":"schot","name":"Schot (Segelwinkel)","min":0,"max":80,"wert":15,"einheit":"°"}],"teile":[{"id":"traverse-v","typ":"rohr","name":"Fronttraverse","parent":null,"x":2290,"y":470,"s":-1110,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9cfd3","masse":7000,"anker":[0,0,0],"x2":2290,"y2":470,"s2":1110,"durchm":80,"querschnitt":"oval","tiefe":140,"spitze":100,"verjAb":60},{"id":"traverse-h","typ":"rohr","name":"Achtertraverse","parent":null,"x":4520,"y":385,"s":-1110,"achse":"y","winkel":0,"antrieb":null,"farbe":"#c9cfd3","masse":6000,"anker":[0,0,0],"x2":4520,"y2":385,"s2":1110,"durchm":70,"querschnitt":"oval","tiefe":140,"spitze":100,"verjAb":60},{"id":"trampolin","typ":"platte","name":"Trampolin","parent":null,"x":0,"y":0,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#2b3135","masse":4000,"anker":[0,0,0],"pts":[[2335,462,-985],[4475,382,-985],[4475,382,985],[2335,462,985]]},{"id":"mast","typ":"rohr","name":"Mast","parent":null,"x":2290,"y":510,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#e9eaeb","masse":11000,"anker":[0,0,0],"x2":2819,"y2":8693,"s2":0,"durchm":70,"querschnitt":"fluegel","tiefe":170,"spitze":70,"verjAb":70},{"id":"hahnepot-stb","typ":"rohr","name":"Hahnepot Stb.","parent":null,"x":300,"y":408,"s":1015,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":150,"anker":[0,0,0],"x2":567,"y2":905,"s2":0,"durchm":4,"partner":"hahnepot-bb"},{"id":"hahnepot-bb","typ":"rohr","name":"Hahnepot Bb.","parent":null,"x":300,"y":408,"s":-1015,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":150,"anker":[0,0,0],"x2":567,"y2":905,"s2":0,"durchm":4,"partner":"hahnepot-stb"},{"id":"vorstag","typ":"rohr","name":"Vorstag","parent":null,"x":567,"y":905,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":300,"anker":[0,0,0],"x2":2610,"y2":5860,"s2":0,"durchm":4},{"id":"want-stb","typ":"rohr","name":"Want Stb.","parent":null,"x":2700,"y":425,"s":1180,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":400,"anker":[0,0,0],"x2":2610,"y2":5860,"s2":0,"durchm":4,"partner":"want-bb"},{"id":"want-bb","typ":"rohr","name":"Want Bb.","parent":null,"x":2700,"y":425,"s":-1180,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":400,"anker":[0,0,0],"x2":2610,"y2":5860,"s2":0,"durchm":4,"partner":"want-stb"},{"id":"trapez-stb","typ":"rohr","name":"Trapezdraht Stb.","parent":null,"x":2610,"y":5840,"s":30,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":150,"anker":[0,0,0],"x2":2680,"y2":1500,"s2":330,"durchm":2,"partner":"trapez-bb"},{"id":"trapez-bb","typ":"rohr","name":"Trapezdraht Bb.","parent":null,"x":2610,"y":5840,"s":-30,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":150,"anker":[0,0,0],"x2":2680,"y2":1500,"s2":-330,"durchm":2,"partner":"trapez-stb"},{"id":"gross","typ":"segel","name":"Großsegel","parent":null,"x":2305,"y":830,"s":0,"achse":"y","winkel":0,"antrieb":{"quelle":"steuer:schot","faktor":1,"versatz":0,"min":0,"max":90},"farbe":"#f4f5f2","masse":5500,"anker":[2380,0,0],"vorliek":7830,"unterliek":2380,"kopf":750,"rundung":330,"fall":3.7,"woelbung":9,"baum":true},{"id":"fock","typ":"segel","name":"Fock","parent":null,"x":567,"y":920,"s":0,"achse":"y","winkel":0,"antrieb":{"quelle":"steuer:schot","faktor":1,"versatz":0,"min":0,"max":90},"farbe":"#f4f5f2","masse":2000,"anker":[1450,0,0],"vorliek":5346,"unterliek":1560,"kopf":0,"rundung":150,"fall":22.5,"woelbung":8,"baum":false},{"id":"traveller","typ":"kasten","name":"Traveller-Schiene","parent":null,"x":4520,"y":428,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":800,"anker":[0,0,0],"laenge":30,"breite":1700,"hoehe":12},{"id":"schotblock","typ":"beschlag","name":"Großschotblock (Traveller)","parent":null,"x":4520,"y":450,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":400,"anker":[0,0,0],"art":"block","groesse":60},{"id":"ruder-stb","typ":"profil","name":"Ruder Stb.","parent":null,"x":5235,"y":300,"s":1015,"achse":"y","winkel":0,"antrieb":{"quelle":"steuer:ruder","faktor":1,"versatz":0,"min":-35,"max":35},"farbe":"#e8eaec","masse":3500,"anker":[0,0,0],"lage":"senkrecht","spann":800,"sehneWurzel":230,"sehneSpitze":170,"dicke":12,"naca":"0012","pfeil":40,"drehpunkt":20,"partner":"ruder-bb"},{"id":"ruderkopf-stb","typ":"kasten","name":"Ruderkopf Stb.","parent":"ruder-stb","x":5235,"y":380,"s":1015,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":1000,"anker":[0,0,0],"laenge":120,"breite":55,"hoehe":230,"partner":"ruderkopf-bb"},{"id":"pinne-stb","typ":"rohr","name":"Pinne Stb.","parent":"ruder-stb","x":5220,"y":440,"s":1015,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":400,"anker":[0,0,0],"x2":4980,"y2":445,"s2":1015,"durchm":20,"partner":"pinne-bb"},{"id":"ruder-bb","typ":"profil","name":"Ruder Bb.","parent":null,"x":5235,"y":300,"s":-1015,"achse":"y","winkel":0,"antrieb":{"quelle":"steuer:ruder","faktor":1,"versatz":0,"min":-35,"max":35},"farbe":"#e8eaec","masse":3500,"anker":[0,0,0],"lage":"senkrecht","spann":800,"sehneWurzel":230,"sehneSpitze":170,"dicke":12,"naca":"0012","pfeil":40,"drehpunkt":20,"partner":"ruder-stb"},{"id":"ruderkopf-bb","typ":"kasten","name":"Ruderkopf Bb.","parent":"ruder-bb","x":5235,"y":380,"s":-1015,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":1000,"anker":[0,0,0],"laenge":120,"breite":55,"hoehe":230,"partner":"ruderkopf-stb"},{"id":"pinne-bb","typ":"rohr","name":"Pinne Bb.","parent":"ruder-bb","x":5220,"y":440,"s":-1015,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":400,"anker":[0,0,0],"x2":4980,"y2":445,"s2":-1015,"durchm":20,"partner":"pinne-stb"},{"id":"pinnenstange","typ":"rohr","name":"Pinnen-Querstange","parent":null,"x":4980,"y":445,"s":-1015,"achse":"y","winkel":0,"antrieb":null,"farbe":"#9aa3a8","masse":900,"anker":[0,0,0],"x2":4980,"y2":445,"s2":1015,"durchm":25},{"id":"ausleger","typ":"rohr","name":"Pinnenausleger","parent":null,"x":4980,"y":450,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#1b2024","masse":300,"anker":[0,0,0],"x2":3600,"y2":520,"s2":0,"durchm":16},{"id":"name-rumpf","typ":"schriftzug","name":"Schriftzug Rumpf","parent":null,"x":0,"y":215,"s":0,"achse":"y","winkel":0,"antrieb":null,"farbe":"#111418","masse":0,"anker":[0,0,0],"text":"SKUA V1","x0":3550,"x1":4750,"hoehe":110,"beide":true,"bandFolgen":false,"stil":"sport","schatten":"#9aa3a8","neigung":0}],"verbindungen":[{"id":"v-gs","name":"Großschot","a":"gross","b":"schotblock","art":"seil"},{"id":"v-fs-stb","name":"Fockschot","a":"fock","b":"traverse-v","art":"seil"}],"linien":[],"segelDesign":{"streifen":[{"y0":608,"breite":870,"winkel":27,"farbe":"#e30b1c"},{"y0":2100,"breite":900,"winkel":30,"farbe":"#e30b1c"}],"texte":[{"text":"SKUA","x":3480,"y":1430,"hoehe":400,"winkel":10,"farbe":"#111418","schatten":"#9aa3a8"},{"text":"V1","x":4120,"y":2150,"hoehe":440,"winkel":10,"farbe":"#111418","schatten":"#9aa3a8"}]}}';
+/* Segeljolle Ixylon (VEB Yachtwerft Berlin), nach DDR-Bedienungsanleitung: Pallungsplan (Spantkonturen ab Spiegel, Höhen ab Basis,
+   Wasserlinien 90 mm), Seitenriss und Deckplan; Hauptdaten LüA 5,10 m, B 1,80 m, T Rumpf 0,18 m, mit Schwertern 0,77–0,82 m,
+   Groß 8,8 m², Fock 3,7 m², Mast ca. 7,0 m. Zwischen den Pallungs-Spanten und vor dem Mastfuß ist die Form aus den Rissen ergänzt. */
+/* senkrechte Platte quer zum Boot (x fest): Rechteck b × h mit Eckenradius r, Mitte (x, y, s) */
+function rundRechteck(x,y,s,b,h,r){const o=[],n=6;for(const [cs,cy,a0] of [[b/2-r,h/2-r,0],[-(b/2-r),h/2-r,90],[-(b/2-r),-(h/2-r),180],[b/2-r,-(h/2-r),270]])for(let k=0;k<=n;k++){const a=(a0+90*k/n)*Math.PI/180;o.push([x,Math.round(y+cy+r*Math.sin(a)),Math.round(s+cs+r*Math.cos(a))]);}return o;}
+function tplIxylon(){const FSB_Y=642,L=5100,WL=185,X=pos=>L-pos,Y=h=>h-WL;
+ /* [pos ab Spiegel, Deck(Schandeck) über Basis, Kiel über Basis, halbe Deckbreite, Spant [[Höhe, halbe Breite]]] */
+ const sp=(pos,deck,kiel,breite,pts)=>{/* Seiten oberhalb WL3 aus Deckbreite ergänzen */const o=pts.slice();const [h3,b3]=o[o.length-1];
+   if(breite>b3&&deck>h3+40){for(const [f,g] of [[0.35,0.62],[0.7,0.9]])o.push([Math.round(h3+f*(deck-h3)),Math.round(b3+g*(breite-b3))]);}
+   return{id:'ix'+pos,pos,deck,kiel,breite,spant:o};};
+ const st=[
+  sp(0,548,181,505,[[195,170],[215,300],[245,400],[270,440]]),
+  sp(877,556,110,763,[[125,260],[180,500],[270,655]]),       // Bodenwrange I
+  sp(1327,560,75,836,[[90,165],[180,645],[270,750]]),        // Bodenwrange II
+  sp(1757,572,45,880,[[90,390],[180,705],[270,800]]),        // Bodenwrange III
+  sp(2467,594,12,900,[[40,200],[90,445],[180,695],[270,785]]),// Massenmittelpunkt
+  sp(3367,615,5,797,[[40,140],[90,270],[180,485],[270,580]]), // Bodenwrange IV
+  sp(3617,625,10,739,[[45,120],[90,215],[180,415],[270,510]]),// Mastfuß
+  sp(4000,662,38,620,[[90,150],[180,300],[270,395]]),
+  sp(4400,676,72,477,[[110,60],[180,170],[270,255]]),
+  sp(4750,683,130,300,[[180,60],[270,130],[400,200]]),
+  sp(4950,686,280,170,[[330,35],[420,80],[550,135]]),
+  sp(5050,688,480,80,[[520,25],[600,55]]),
+  {id:'ix5100',pos:5100,deck:690,kiel:690,breite:0,spant:[]}];
+ const R={L,B:1800,Bpos:52,H:420,sprung:140,T:180,seite:300,bug:10,spiegel:100,boden:30,masse:135000,farbe:'#f4f5f2',deckFarbe:'#b0120f',farbeUnten:'#f4f5f2',
+  aufmassAktiv:true,eigen:true,offen:false,aufmass:{bezug:{laengs:'heck',versatz:0,wl:WL,kieloben:false},stationen:st,senten:[]}};
+ const mastX=X(3617),mastY=Y(215),topY=mastY+7000,saY=Y(6000);/* Mast steht unten im Mastfuß auf dem Innenboden und geht durch den Mastausschnitt im Deck */
+ const teile=[
+  base('ausschnitt','Cockpit (Plicht 2,40 × 1,10 m, 0,45 m tief)',{id:'cockpit',form:'frei',ort:'deck',x:2957,s:0,y:0,laenge:2725,breite:1150,
+    ecken:[[1600,50],[1600,330],[1613,405],[1648,450],[1710,472],[2500,565],[4320,555],[4320,-555],[2500,-565],[1710,-472],[1648,-450],[1613,-405],[1600,-330],[1600,-50],[1430,-50],[1430,50]].map(([x,q])=>[x-2957,q]),radius:40,/* vorn schmaler Mastausschnitt bis zum Mast */
+    tiefe:450,bodenEben:true,durchgangRand:50,suell:0,dicke:4,doppler:0,deckel:false,eck:0,winkel:0,spiegel:false,seite:'stb',farbe:'#b0120f',masse:0}),
+  base('platte','Wellenbrecher Stb.',{id:'wb-stb',farbe:'#b0120f',masse:600,pts:[[1110,Y(652),0],[1880,Y(613),700],[1880,Y(663),700],[1110,Y(722),0]]}),
+  base('platte','Wellenbrecher Bb.',{id:'wb-bb',farbe:'#b0120f',masse:600,pts:[[1110,Y(652),0],[1880,Y(613),-700],[1880,Y(663),-700],[1110,Y(722),0]]}),
+  /* Bugstauraum: unter dem Vordeck offen zum Cockpit (Mast steht darin) – für Bootshaken, Leinen, Anker. Deckel = Vordeck */
+  base('ausschnitt','Bugstauraum unter dem Vordeck (offen zum Cockpit)',{id:'bugstau',form:'frei',ort:'deck',x:1330,s:0,y:0,laenge:560,breite:760,
+    ecken:[[1610,45],[1610,330],[1300,300],[1050,230],[1050,-230],[1300,-300],[1610,-330],[1610,-45],[1425,-45],[1425,45]].map(([x,q])=>[x-1330,q]),radius:30,
+    tiefe:487,bodenEben:true,deckZu:true,suell:0,dicke:4,doppler:0,deckel:false,eck:0,winkel:0,spiegel:false,seite:'stb',farbe:'#b0120f',masse:0}),
+  /* Lukendeckel in der hinteren Cockpitwand (Stauraum Achterpiek): weißes Rechteck mit runden Ecken */
+  base('platte','Lukendeckel Achterpiek (Cockpitwand)',{id:'luke-heck',farbe:'#f4f5f2',masse:600,pts:rundRechteck(4316,Y(380),0,500,250,60)}),
+  base('platte','Lukenrahmen',{id:'luke-heck-rahmen',farbe:'#cfd3d6',masse:200,pts:rundRechteck(4318,Y(380),0,540,290,75)}),
+  /* Ausreitgurte schwarz auf dem Cockpitboden: Steuermann achtern länger, Vorschoter vorn kürzer */
+  base('kasten','Ausreitgurt Steuermann Stb.',{id:'gurt-st-stb',x:3447,y:Y(224),s:280,laenge:855,breite:50,hoehe:14,farbe:'#15181b',masse:300}),
+  base('kasten','Ausreitgurt Steuermann Bb.',{id:'gurt-st-bb',x:3447,y:Y(224),s:-280,laenge:855,breite:50,hoehe:14,farbe:'#15181b',masse:300}),
+  base('kasten','Ausreitgurt Vorschoter Stb.',{id:'gurt-vs-stb',x:2545,y:Y(224),s:280,laenge:550,breite:50,hoehe:14,farbe:'#15181b',masse:250}),
+  base('kasten','Ausreitgurt Vorschoter Bb.',{id:'gurt-vs-bb',x:2545,y:Y(224),s:-280,laenge:550,breite:50,hoehe:14,farbe:'#15181b',masse:250}),
+  /* Großschot: Talje vom Baum auf den Leitwagen der querlaufenden Travellerschiene zwischen den Ausreitgurten */
+  base('kasten','Travellerschiene (quer)',{id:'traveller',x:2920,y:Y(224),s:0,laenge:32,breite:900,hoehe:18,farbe:'#aab2b8',masse:1200}),
+  base('kasten','Großschot-Leitwagen',{id:'leitwagen',x:2920,y:Y(248),s:0,laenge:70,breite:60,hoehe:30,farbe:'#1b2024',masse:300,anker:[0,15,0]}),
+  /* Fockschoten: liegender Rollenblock mit Curryklemme mittschiffs auf dem Seitendeck, dann nach innen ins Cockpit */
+  base('kasten','Fockschotblock Stb. (liegend)',{id:'fsb-stb',x:2350,y:Y(FSB_Y),s:720,laenge:70,breite:44,hoehe:28,farbe:'#1b2024',masse:150}),
+  base('kasten','Fockschotblock Bb. (liegend)',{id:'fsb-bb',x:2350,y:Y(FSB_Y),s:-720,laenge:70,breite:44,hoehe:28,farbe:'#1b2024',masse:150}),
+  base('kasten','Curryklemme Fock Stb.',{id:'fcl-stb',x:2440,y:Y(FSB_Y),s:690,laenge:60,breite:34,hoehe:26,farbe:'#8a9299',masse:80}),
+  base('kasten','Curryklemme Fock Bb.',{id:'fcl-bb',x:2440,y:Y(FSB_Y),s:-690,laenge:60,breite:34,hoehe:26,farbe:'#8a9299',masse:80}),
+  base('rohr','Fockschot Stb. (Ende ins Cockpit)',{id:'fs-ende-stb',x:2440,y:Y(FSB_Y+5),s:690,x2:2520,y2:Y(FSB_Y+15),s2:560,durchm:8,farbe:'#2e6fb5',masse:50}),
+  base('rohr','Fockschot Stb. (lose Part)',{id:'fs-lose-stb',x:2520,y:Y(FSB_Y+15),s:560,x2:2600,y2:Y(330),s2:500,durchm:8,farbe:'#2e6fb5',masse:50}),
+  base('rohr','Fockschot Bb. (Ende ins Cockpit)',{id:'fs-ende-bb',x:2440,y:Y(FSB_Y+5),s:-690,x2:2520,y2:Y(FSB_Y+15),s2:-560,durchm:8,farbe:'#2e6fb5',masse:50}),
+  base('rohr','Fockschot Bb. (lose Part)',{id:'fs-lose-bb',x:2520,y:Y(FSB_Y+15),s:-560,x2:2600,y2:Y(330),s2:-500,durchm:8,farbe:'#2e6fb5',masse:50}),
+  /* Verklicker am Masttopp */
+  base('rohr','Verklicker-Stab',{id:'verklicker-stab',x:mastX+60,y:topY,s:0,x2:mastX+60,y2:topY+320,s2:0,durchm:6,farbe:'#1b2024',masse:60}),
+  base('platte','Verklicker-Fahne',{id:'verklicker',farbe:'#e03a2f',masse:20,pts:[[mastX+60,topY+320,0],[mastX+60+280,topY+345,0],[mastX+60+280,topY+275,0]]}),
+  base('kasten','Schwertkasten Stb.',{id:'sk-stb',x:X(2500),y:Y(360),s:490,laenge:1080,breite:50,hoehe:310,farbe:'#b0120f',masse:4000}),
+  base('kasten','Schwertkasten Bb.',{id:'sk-bb',x:X(2500),y:Y(360),s:-490,laenge:1080,breite:50,hoehe:310,farbe:'#b0120f',masse:4000}),
+  base('profil','Kimmschwert Stb. (Holz)',{id:'schwert-stb',x:X(2740),y:Y(110),s:490,achse:'x',antrieb:drv('steuer:schwert',-1,0,-90,0),farbe:'#a8794c',masse:6000,lage:'senkrecht',spann:720,sehneWurzel:380,sehneSpitze:320,dicke:7,pfeil:40,drehpunkt:0}),
+  base('profil','Kimmschwert Bb. (Holz)',{id:'schwert-bb',x:X(2740),y:Y(110),s:-490,achse:'x',antrieb:drv('steuer:schwert',-1,0,-90,0),farbe:'#a8794c',masse:6000,lage:'senkrecht',spann:720,sehneWurzel:380,sehneSpitze:320,dicke:7,pfeil:40,drehpunkt:0}),
+  base('profil','Senkruder',{id:'ruder',x:L+40,y:Y(720),s:0,achse:'y',antrieb:drv('steuer:ruder',1,0,-40,40),farbe:'#f0eee8',masse:5000,lage:'senkrecht',spann:1160,sehneWurzel:280,sehneSpitze:300,dicke:8,pfeil:30,drehpunkt:8}),
+  base('kasten','Ruderkopf',{id:'ruderkopf',parent:'ruder',x:L+40,y:Y(650),s:0,laenge:120,breite:48,hoehe:170,farbe:'#d9dcdf',masse:1500}),
+  base('rohr','Pinne mit Ausleger',{id:'pinne',parent:'ruder',x:L+20,y:Y(705),s:0,x2:L-1100,y2:Y(775),s2:0,durchm:32,farbe:'#8a6a48',masse:1200}),
+  base('rohr','Mast (Leichtmetall, eloxiert)',{id:'mast',x:mastX,y:mastY,s:0,x2:mastX+60,y2:topY,s2:0,durchm:72,farbe:'#b9c0c6',masse:9000}),
+  base('rohr','Vorstag',{id:'vorstag',x:120,y:Y(705),s:0,x2:mastX+50,y2:saY,s2:0,durchm:4,farbe:'#9aa3a8',masse:300}),
+  base('rohr','Want Stb.',{id:'want-stb',x:mastX+50,y:saY,s:0,x2:X(3330),y2:Y(612),s2:880,durchm:3,farbe:'#9aa3a8',masse:250}),
+  base('rohr','Want Bb.',{id:'want-bb',x:mastX+50,y:saY,s:0,x2:X(3330),y2:Y(612),s2:-880,durchm:3,farbe:'#9aa3a8',masse:250}),
+  base('rohr','Saling Stb.',{id:'saling-stb',x:mastX+40,y:Y(3900),s:0,x2:mastX+110,y2:Y(3900),s2:420,durchm:22,farbe:'#b9c0c6',masse:300}),
+  base('rohr','Saling Bb.',{id:'saling-bb',x:mastX+40,y:Y(3900),s:0,x2:mastX+110,y2:Y(3900),s2:-420,durchm:22,farbe:'#b9c0c6',masse:300}),
+  base('segel','Großsegel 8,8 m²',{id:'gross',x:mastX+45,y:Y(1170),vorliek:5750,fall:1,unterliek:2600,kopf:110,rundung:352,woelbung:8,baum:true,antrieb:drv('steuer:schot',1,0,0,90),anker:[2450,0,0],farbe:'#f3f1ea',masse:4000}),
+  base('segel','Fock 3,7 m² (Rollfock)',{id:'fock',x:150,y:Y(760),vorliek:4700,fall:13,unterliek:1600,kopf:20,rundung:0,woelbung:8,baum:false,antrieb:drv('steuer:schot',1,0,0,90),anker:[1559,360,0],farbe:'#f3f1ea',masse:2000})];
+ /* Farbfelder: was zusammen umgefärbt wird (Werftkoje → Rumpf → Farbe, später im Spiel vom Spieler wählbar) */
+ const farbwahl=[{id:'deck',name:'Deck & Cockpit',farbe:'#b0120f',ziele:['rumpf.deckFarbe','teil:cockpit','teil:wb-stb','teil:wb-bb','teil:sk-stb','teil:sk-bb']},
+  {id:'rumpf',name:'Rumpf außen',farbe:'#f4f5f2',ziele:['rumpf.farbe','rumpf.farbeUnten']}];
+ const verbindungen=[
+  {id:'grossschot',name:'Großschot (Talje)',a:'gross',b:'leitwagen',art:'talje',parten:4,d:8,farbe:'#203a6b',ankerA:[1392,-40,0],ankerB:[0,15,0]},
+  {id:'niederholer',name:'Baumniederholer (Talje)',a:'gross',b:'mast',art:'talje',parten:3,d:6,farbe:'#203a6b',ankerA:[650,-40,0],ankerB:[45,30,0]},
+  {id:'fockschot-stb',name:'Fockschot Stb.',a:'fock',b:'fsb-stb',art:'tau',d:8,farbe:'#2e6fb5'},
+  {id:'fockschot-bb',name:'Fockschot Bb.',a:'fock',b:'fsb-bb',art:'tau',d:8,farbe:'#2e6fb5'}];
+ return{v:1,name:'Ixylon',klasse:'ixylon',farbwahl,rumpf:R,lage:{hoehe:0,kraengung:0,trimm:0,hMin:-200,hMax:200},
+  steuer:[{id:'ruder',name:'Ruder',min:-35,max:35,wert:0,einheit:'°'},{id:'schot',name:'Schot (Segelwinkel)',min:0,max:80,wert:15,einheit:'°'},{id:'schwert',name:'Kimmschwerter hochholen',min:0,max:85,wert:0,einheit:'°'}],
+  teile,verbindungen,linien:[]};}
+/* Gorch Fock (1958), Bark – nach dem Linienriss „Rekonstruktion des Linienrisses, Maßstab 1:200“ (jocham-schiffe.de) und den
+   technischen Daten dort: Länge zw. Heck und Galion 81,78 m, über Bugspriet 89,32 m, zw. d. Loten 70,20 m, Breite 12,00 m,
+   Seitenhöhe 7,30 m, Tiefgang KWL 4,80 m, Verdrängung 1.715 t. Spantform aus dem Hauptspant des Spantenrisses, Völligkeit zu den
+   Enden aus dem Wasserlinienriss; Masthöhen über WL Fock 45,0 m / Groß 44,9 m / Besan 39,8 m, Fock- und Großrah 24 m, Bugspriet 18,8 m. */
+function tplGorchFock(){const L=81780,WL=4800,X=p=>Math.round(L-p),Y=h=>Math.round(h-WL);
+ const ip=(T,p)=>{if(p<=T[0][0])return T[0][1];for(let i=1;i<T.length;i++)if(p<=T[i][0]){const [a,va]=T[i-1],[b,vb]=T[i];return va+(vb-va)*(p-a)/(b-a);}return T[T.length-1][1];};
+ /* Oberkante Schanzkleid über Basis, aus dem Seitenriss */
+ const RAIL=[[0,10500],[5100,10000],[15700,9500],[26300,9100],[40100,8800],[47500,8900],[58100,9400],[68700,9900],[76700,10500],[81780,11300]];
+ /* Hauptspant: Höhe über Kiel → Anteil der größten halben Breite */
+ const MID=[[930,0.40],[1860,0.75],[3180,0.926],[4500,0.99],[5570,1],[6600,0.97],[7470,0.947],[8800,0.935]];
+ const VF=1.4;/* Völligkeit: Verdrängung ≈ 2.000 t bei KWL 4,80 m (Marine: 2.020 t) */
+
+ /* Stützwerte (Abstand vom Spiegel): Kiel/Steven-Höhe, größte halbe Breite, Völligkeit – dazwischen glatt (monoton kubisch) interpoliert,
+    damit Bug und Heck ohne Knicke und Wellen laufen; Stationen an den Enden dicht */
+ const pchip=(T)=>{const n=T.length,xs=T.map(q=>q[0]),ys=T.map(q=>q[1]),h=[],d=[],m=new Array(n);for(let i=0;i<n-1;i++){h[i]=xs[i+1]-xs[i];d[i]=(ys[i+1]-ys[i])/h[i];}
+   m[0]=d[0];m[n-1]=d[n-2];for(let i=1;i<n-1;i++){if(d[i-1]*d[i]<=0)m[i]=0;else{const w1=2*h[i]+h[i-1],w2=h[i]+2*h[i-1];m[i]=(w1+w2)/(w1/d[i-1]+w2/d[i]);}}
+   return x=>{if(x<=xs[0])return ys[0];if(x>=xs[n-1])return ys[n-1];let i=0;while(x>xs[i+1])i++;const t=(x-xs[i])/h[i],t2=t*t,t3=t2*t;return (2*t3-3*t2+1)*ys[i]+(t3-2*t2+t)*h[i]*m[i]+(-2*t3+3*t2)*ys[i+1]+(t3-t2)*h[i]*m[i+1];};};
+ const KIEL=pchip([[600,9400],[900,8600],[2500,6300],[3800,4400],[4300,1500],[4800,150],[5600,0],[70000,0],[71400,150],[73000,700],[74800,2300],[76400,4160],[78800,6760],[80400,8840],[81780,11000]]),
+  BMAX=pchip([[0,600],[900,3500],[2500,4300],[3800,4650],[4600,4850],[8000,5150],[12000,5450],[18000,5720],[26000,5900],[34000,5980],[40000,6000],[47000,5980],[54000,5850],[60000,5500],[65000,4950],[69000,4500],[71400,4300],[73000,3800],[74800,3300],[76400,2800],[78800,1600],[80400,900],[81780,120]]),
+  PV=pchip([[0,1.2],[2500,1.3],[3800,1.6],[4600,3],[6500,3],[8000,2.6],[12000,1.8],[18000,1.3],[26000,1.05],[34000,1],[47000,1],[54000,1.1],[60000,1.35],[65000,1.8],[69000,2.4],[71400,3],[74000,2.9],[76400,2.4],[78800,2],[80400,1.6],[81780,1.4]]);
+ const TF=MID.map(([h,f])=>[h/8800,f]);
+ const sp=pos=>{const kiel=Math.max(0,KIEL(pos)),bmax=BMAX(pos),p0=PV(pos),p=Math.min(2.4,kiel>200&&pos<5000?p0:p0*VF),d=Math.round(ip(RAIL,pos)),D=d-kiel,e=Math.min(0.45,Math.max(0,(p0-1)/2.2)),pts=[];
+   for(const [t,f] of TF){const y=kiel+t*D;if(y>=d-60)continue;const g=(t<0.633?Math.pow(f,p):1-(1-f)/p)*(1-e*Math.max(0,1-(y-kiel)/D)*1.25);pts.push([Math.round(y),Math.round(bmax*Math.max(0.02,g))]);}
+   return{id:'gf'+Math.round(pos),pos:Math.round(pos),deck:d,kiel:Math.round(kiel),breite:Math.round(bmax*(1-(1-0.935)/p)),spant:pts};};
+ const PS=[900,1700,2500,3200,3800,4300,4800,5600,6500,8000,10000,12000,15000,18000,22000,26000,30000,34000,40000,47000,54000,58000,62000,65000,67500,69000,70300,71400,72300,73200,74000,74800,75600,76400,77200,78000,78800,79600,80400,81100];
+ const st=[{id:'gf0',pos:0,deck:10500,kiel:10150,breite:400,spant:[]},...PS.map(sp),{id:'gf81780',pos:81780,deck:11300,kiel:11300,breite:0,spant:[]}];
+ const R={L,B:12000,Bpos:50,H:7300,sprung:1500,T:4800,seite:300,bug:10,spiegel:30,boden:60,masse:1500000000,farbe:'#f4f4f0',farbeUnten:'#7c2c22',deckFarbe:'#7a5a3a',
+  aufmassAktiv:true,eigen:true,offen:false,aufmass:{bezug:{laengs:'heck',versatz:0,wl:WL,kieloben:false},stationen:st,senten:[]}};
+ const brAt=pos=>ip(st.map(q=>[q.pos,q.breite]),pos),railY=pos=>Y(ip(RAIL,pos)),deckY=pos=>railY(pos)-1300;
+ /* Decks: Schanzkleid 1,3 m, innen umlaufend – als abgesenkter Ausschnitt, Boden = Deck (folgt dem Sprung) */
+ const wp=[1800,3000,4600,8000,12000,18000,26000,34000,40000,47000,54000,60000,65000,69000,71400,73000,74000,76400,78000,79300];
+ const wx=wp.map(q=>[X(q),Math.max(250,Math.round(brAt(q)-380))]),xc=Math.round((X(1800)+X(79300))/2);
+ const ecken=[...wx.map(([x,q])=>[x-xc,q]),...wx.slice().reverse().map(([x,q])=>[x-xc,-q])];
+ const teile=[base('ausschnitt','Decks innerhalb des Schanzkleids (Teak)',{id:'decks',form:'frei',ort:'deck',x:xc,s:0,y:0,laenge:X(1800)-X(79300),breite:12000,ecken,radius:200,
+   tiefe:1300,bodenEben:false,suell:0,dicke:20,doppler:0,deckel:false,eck:0,winkel:0,spiegel:false,seite:'stb',farbe:'#b3895c',masse:0})];
+ const kasten=(id,name,pos0,pos1,b,h,farbe)=>{const pc=(pos0+pos1)/2,dy=deckY(pc);teile.push(base('kasten',name,{id,x:X(pc),y:dy+h/2,s:0,laenge:pos1-pos0,breite:b,hoehe:h,farbe,masse:30000000}));};
+ kasten('dh-achtern','Achteres Deckshaus (Kartenhaus)',9900,15700,4800,2650,'#f2f1ec');
+ kasten('dh-kombuese','Kombüsenhaus',27000,30000,3000,2300,'#f2f1ec');
+ kasten('dh-vorn','Vorderes Deckshaus',47300,59500,5200,2300,'#f2f1ec');
+ teile.push(base('profil','Ruder',{id:'ruder',x:X(5900),y:-300,s:0,achse:'y',antrieb:drv('steuer:ruder',1,0,-35,35),farbe:'#7c2c22',masse:6000000,lage:'senkrecht',spann:4400,sehneWurzel:2400,sehneSpitze:2300,dicke:12,pfeil:0,drehpunkt:3}));
+ teile.push(base('schriftzug','Schriftzug GORCH FOCK',{id:'name-bug',x:X(73500),y:railY(73500)-900,s:0,farbe:'#1d2a3a',masse:0,text:'GORCH FOCK',x0:X(78000),x1:X(68000),hoehe:700,beide:true,serif:true,abst:0}));
+ /* Masten (ockergelb), Rahen (dunkel) */
+ const M={fock:{x:X(60800),top:45000,pos:60800,n:'Fock'},gross:{x:X(36400),top:44900,pos:36400,n:'Groß'},besan:{x:X(16500),top:39800,pos:16500,n:'Besan'}};
+ const MASTF='#d9b44a',RAHF='#d9b44a',TAUF='#5f5a52',SEGF='#f5f2ea';
+ const rohr=(id,name,x,y,s0,x2,y2,s2,d,farbe,masse)=>teile.push(base('rohr',name,{id,x,y,s:s0,x2,y2,s2,durchm:d,farbe,masse:masse||200000}));
+ for(const k in M){const m=M[k],y0=deckY(m.pos)-300;if(k==='besan'){rohr('mast-'+k,m.n+'mast (Untermast)',m.x,y0,0,m.x,20500,0,650,MASTF,12000000);rohr('stenge-'+k,m.n+'stenge',m.x,20000,0,m.x,m.top,0,380,MASTF,4000000);}
+  else{rohr('mast-'+k,m.n+'mast (Untermast)',m.x,y0,0,m.x,19500,0,780,MASTF,15000000);rohr('stenge-'+k,m.n+'marsstenge',m.x,19000,0,m.x,33500,0,480,MASTF,6000000);rohr('bram-'+k,m.n+'bramstenge',m.x,33000,0,m.x,m.top,0,300,MASTF,2500000);}
+  const rb=brAt(m.pos)-150,ry=railY(m.pos);for(const sg of [1,-1]){const sd=sg>0?'Stb.':'Bb.';
+   for(let w=0;w<3;w++)rohr('want-'+k+w+(sg>0?'-s':'-b'),m.n+'want '+(w+1)+' '+sd,m.x,k==='besan'?17000:16000,0,m.x+600+w*1100,ry,sg*rb,60,TAUF,150000);
+   rohr('pard-'+k+(sg>0?'-s':'-b'),m.n+'pardune '+sd,m.x,k==='besan'?36000:40000,0,m.x+7500,ry,sg*rb,45,TAUF,150000);
+   rohr('stwant-'+k+(sg>0?'-s':'-b'),m.n+'stengewanten '+sd,m.x,k==='besan'?32000:31000,0,m.x+2600,ry,sg*rb,50,TAUF,200000);}}
+ /* Rahen und Rahsegel (je 5 an Fock- und Großmast: Fock/Groß, Untermars, Obermars, Bram, Royal) */
+ const RAH=[['Unter',16500,24000,420],['Untermars',22000,21500,380],['Obermars',26500,19500,340],['Bram',32000,15500,280],['Royal',37000,11500,220]];
+ const SEG=[['',16300,23500,8200,24500],['Untermars',21800,21000,16700,23500],['Obermars',26300,19000,22200,21000],['Bram',31800,15000,26700,19000],['Royal',36800,11000,32200,15000]];
+ for(const k of ['fock','gross']){const m=M[k];RAH.forEach(([n,y,l,d],i)=>rohr('rah-'+k+i,(n==='Unter'?m.n:m.n+n.toLowerCase())+'rah',m.x-900,y,-l/2,m.x-900,y,l/2,d,RAHF,800000));
+  SEG.forEach(([n,yk,kopf,yf,fuss],i)=>teile.push(base('segel',n?m.n+n.toLowerCase()+'segel':(k==='fock'?'Focksegel':'Großsegel'),{id:'rs-'+k+i,x:m.x-1050,y:yf,s:0,rah:true,vorliek:yk-yf,unterliek:fuss,kopf,fall:0,rundung:0,woelbung:7,baum:false,farbe:SEGF,masse:600000})));}
+ /* Stagsegel und Vorsegel: Hals unten, Vorliek am Stag nach oben-achtern */
+ const stag=(id,name,T,H,A,quelle)=>{const dx=H[0]-T[0],dy=H[1]-T[1],l=Math.hypot(dx,dy)*0.92,fa=Math.atan2(dx,dy)/DEG,f=Math.round(2*A*1e6/(l*Math.cos(fa*DEG)));
+   rohr('stag-'+id,name.replace(/segel$/,'').replace(/ \(.*\)/,'')+' (Stag)',T[0],T[1],0,H[0],H[1],0,40,TAUF,100000);
+   teile.push(base('segel',name,{id,x:T[0]+150,y:T[1]+400,s:0,vorliek:Math.round(l),fall:+fa.toFixed(1),unterliek:f,kopf:0,rundung:0,woelbung:8,baum:false,antrieb:drv('steuer:'+quelle,1,0,0,80),anker:[f,0,0],farbe:SEGF,masse:300000}));};
+ const F=M.fock.x,G=M.gross.x,B=M.besan.x;
+ rohr('bugspriet','Bugspriet mit Klüverbaum (18,8 m, 8,9 m außenbords)',9900,6300,0,-8900,7900,0,420,MASTF,4000000);
+ stag('vs1','Vorstengestagsegel',[500,6900],[F-400,24500],60,'schot');stag('vs2','Innenklüver',[-3000,7250],[F-400,29500],60,'schot');
+ stag('vs3','Außenklüver',[-6000,7550],[F-400,34000],55,'schot');stag('vs4','Flieger',[-8600,7850],[F-300,38500],45,'schot');
+ stag('gs1','Großstengestagsegel',[F+900,17200],[G-500,28000],70,'schot');stag('gs2','Großbramstagsegel',[F+900,22700],[G-500,33000],60,'schot');stag('gs3','Großroyalstagsegel',[F+900,27200],[G-400,37500],45,'schot');
+ stag('bs1','Besanstagsegel',[G+900,9500],[B-400,19000],70,'besanschot');stag('bs2','Besanstengestagsegel',[G+900,17600],[B-400,28000],60,'besanschot');stag('bs3','Besanbramstagsegel',[G+900,23000],[B-300,34000],45,'besanschot');
+ /* Besan: zwei Gaffelsegel und Besantoppsegel */
+ teile.push(base('segel','Untere Besan',{id:'besan-u',x:B+450,y:6500,s:0,vorliek:8200,fall:0,unterliek:16400,kopf:0,gaffel:12000,gaffelWinkel:24,rundung:0,woelbung:8,baum:true,antrieb:drv('steuer:besanschot',1,0,0,80),anker:[16400,0,0],farbe:SEGF,masse:900000}));
+ teile.push(base('segel','Obere Besan',{id:'besan-o',x:B+450,y:15000,s:0,vorliek:6800,fall:0,unterliek:11500,kopf:0,gaffel:10000,gaffelWinkel:24,rundung:0,woelbung:8,baum:false,antrieb:drv('steuer:besanschot',1,0,0,80),anker:[11500,0,0],farbe:SEGF,masse:700000}));
+ teile.push(base('segel','Besantoppsegel',{id:'besan-t',x:B+400,y:22500,s:0,vorliek:12500,fall:0,unterliek:8000,kopf:0,rundung:0,woelbung:7,baum:false,antrieb:drv('steuer:besanschot',1,0,0,80),anker:[8000,0,0],farbe:SEGF,masse:400000}));
+
+ /* ---------- Details am Rumpf und an Deck (nach Fotos) ---------- */
+ const linie=(off)=>{const o=[];for(let q=81500;q>=300;q-=1000)o.push([X(q),railY(q)-off]);o.push([X(300),railY(300)-off]);return o;};
+ teile.push(base('band','Goldleiste unter der Reling',{id:'goldleiste',x:L/2,y:0,s:0,farbe:'#c9a03a',masse:200000,hoehe:110,vor:30,taperStart:81000,taperEnd:81700,oben:linie(60)}));
+ teile.push(base('band','Dunkle Zierlinie (Scheuerleiste)',{id:'zierlinie',x:L/2,y:0,s:0,farbe:'#1f2b3d',masse:200000,hoehe:130,vor:20,taperStart:81000,taperEnd:81700,oben:linie(1650)}));
+ teile.push(base('bullaugen','Bullaugen obere Reihe',{id:'bull-oben',x:L/2,y:0,s:0,x0:X(74500),x1:X(7500),abstand:2600,unter:2650,durchm:420,beide:true,farbe:'#b08a3c',glas:'#18202b',masse:300000}));
+ teile.push(base('bullaugen','Bullaugen untere Reihe',{id:'bull-unten',x:L/2,y:0,s:0,x0:X(70500),x1:X(11500),abstand:3200,unter:3950,durchm:380,beide:true,farbe:'#b08a3c',glas:'#18202b',masse:250000}));
+ teile.push(base('bullaugen','Ankerklüse',{id:'ankerkluese',x:X(79000),y:0,s:0,x0:X(79000),x1:X(79000),abstand:1000,unter:2300,durchm:1000,beide:true,farbe:'#2a2a2a',glas:'#0b0b0b',masse:500000}));
+ teile.push(base('reling','Reling auf dem Schanzkleid',{id:'reling',x:L/2,y:0,s:0,x0:X(81000),x1:X(700),hoehe:1000,abstand:2200,einzug:140,durchm:60,beide:true,farbe:'#eceded',masse:3000000}));
+ /* Galionsfigur: vergoldeter Albatros unter dem Klüverbaum (angedeutet) */
+ for(const sg of [1,-1])teile.push(base('platte','Galionsfigur Albatros (Flügel '+(sg>0?'Stb.':'Bb.')+')',{id:'albatros'+(sg>0?'-s':'-b'),farbe:'#d4a937',masse:100000,pts:[[120,5900,sg*90],[2400,6250,sg*1420],[2700,5350,sg*1420],[500,5150,sg*150]]}));
+ /* Marsen, Salinge, Antennen, Radom */
+ for(const k of ['fock','gross']){const m=M[k];teile.push(base('kasten',m.n+'mars',{id:'mars-'+k,x:m.x+300,y:19300,s:0,laenge:3200,breite:5200,hoehe:250,farbe:'#3b3127',masse:2000000}));
+  rohr('saling-'+k,m.n+'bramsaling',m.x,33200,-2400,m.x,33200,2400,180,MASTF,400000);rohr('ant-'+k,m.n+'topp-Antenne',m.x,m.top,0,m.x,m.top+1500,0,60,'#cfd3d6',20000);}
+ rohr('saling-besan','Besansaling',B,20300,-1800,B,20300,1800,160,MASTF,300000);
+ rohr('ant-besan','Besantopp-Antennenträger',B,M.besan.top,-800,B,M.besan.top,800,90,'#cfd3d6',30000);rohr('ant-besan2','Besantopp-Antenne',B,M.besan.top,0,B,M.besan.top+1800,0,60,'#cfd3d6',20000);
+ teile.push(base('bombe','Radom (Satellitenantenne) am Besan',{id:'radom',x:B-900,y:22800,s:0,laenge:1100,durchm:1050,blei:false,farbe:'#f2f2f0',masse:100000}));
+ /* Schornstein auf dem Kombüsenhaus */
+ {const fy=deckY(28500)+2300;rohr('schornstein','Schornstein',X(28800),fy,0,X(28800),fy+2000,0,1400,'#f2f1ec',2000000);rohr('schornstein-kappe','Schornsteinkappe',X(28800),fy+2000,0,X(28800),fy+2500,0,1460,'#1b1d20',300000);}
+ /* Rettungsinseln (weiße Behälter) an der Reling */
+ for(const q of [75500,73500,66500,64500,22500,20500,7500])for(const sg of [1,-1]){const sy=deckY(q)+520,ss=sg*Math.round(brAt(q)-1050);rohr('insel-'+q+(sg>0?'s':'b'),'Rettungsinsel '+(sg>0?'Stb.':'Bb.')+' '+Math.round(q/1000)+' m',X(q)-750,sy,ss,X(q)+750,sy,ss,760,'#f4f4f2',180000);}
+ /* Beiboote mit Davits */
+ [[31500,'#f4f4f2'],[42000,'#e06a2a']].forEach(([q,fb],j)=>{for(const sg of [1,-1]){const by=deckY(q)+1700,bs=sg*Math.round(brAt(q)-1500);
+   teile.push(base('kasten','Beiboot '+(j+1)+' '+(sg>0?'Stb.':'Bb.'),{id:'boot'+j+(sg>0?'s':'b'),x:X(q),y:by,s:bs,laenge:7600,breite:2100,hoehe:900,farbe:fb,masse:2500000}));
+   teile.push(base('kasten','Persenning Beiboot '+(j+1)+' '+(sg>0?'Stb.':'Bb.'),{id:'pers'+j+(sg>0?'s':'b'),x:X(q),y:by+600,s:bs,laenge:6800,breite:1800,hoehe:320,farbe:j?'#e8e4da':'#e8e4da',masse:100000}));
+   for(const dx of [-2900,2900])rohr('davit'+j+(sg>0?'s':'b')+(dx>0?'a':'v'),'Davit '+(j+1)+' '+(sg>0?'Stb.':'Bb.'),X(q)+dx,deckY(q),sg*Math.round(brAt(q)-500),X(q)+dx,by+1300,bs,200,'#e9eaec',400000);}});
+ /* Deutschlandflagge an der Piek der oberen Besangaffel (dreht mit dem Segel) */
+ {const pO=teile.find(t=>t.id==='besan-o'),G2=gaffPts(pO),px=pO.x+G2.Pk[1],py=pO.y+G2.Pk[0],w=2400,hs=480;
+  [['#111111',0],['#dd0000',1],['#ffcc00',2]].forEach(([c,k])=>teile.push(base('platte','Flagge '+['schwarz','rot','gold'][k],{id:'flagge'+k,parent:'besan-o',farbe:c,masse:3000,
+   pts:[[px+150,py-200-k*hs,0],[px+150+w,py-260-k*hs,0],[px+150+w,py-260-(k+1)*hs,0],[px+150,py-200-(k+1)*hs,0]]})));
+  rohr('flaggleine','Flaggleine',px,py,0,px+150,py-200-3*hs,0,25,TAUF,1000);teile[teile.length-1].parent='besan-o';}
+ return{v:1,name:'Gorch Fock',klasse:'gorchfock',rumpf:R,lage:{hoehe:0,kraengung:0,trimm:0,hMin:-1500,hMax:1500},
+  steuer:[{id:'ruder',name:'Ruder',min:-35,max:35,wert:0,einheit:'°'},{id:'schot',name:'Vor- und Stagsegel (Schot)',min:0,max:80,wert:12,einheit:'°'},{id:'besanschot',name:'Besan (Schot)',min:0,max:80,wert:12,einheit:'°'}],
+  teile,verbindungen:[],linien:[]};}
 const TEMPLATES={
  topcatk2:()=>JSON.parse(TOPCATK2_JSON),
  motordingi:()=>JSON.parse(MOTORDINGI_JSON),
@@ -808,6 +1000,8 @@ const TEMPLATES={
  k6:()=>JSON.parse(K6_JSON),
  zk10:()=>JSON.parse(ZK10_JSON),
  zk10gfk:()=>JSON.parse(ZK10GFK_JSON),
+ ixylon:()=>tplIxylon(),
+ gorchfock:()=>tplGorchFock(),
  leer:()=>({v:1,name:'Neues Boot',klasse:'frei',
   rumpf:{L:1290,B:230,Bpos:55,H:50,sprung:25,T:70,seite:30,bug:35,spiegel:50,boden:15,masse:0,farbe:'#f4f5f2'},
   lage:{hoehe:0,kraengung:0,trimm:0,hMin:-60,hMax:60},steuer:[],teile:[],verbindungen:[]})
@@ -826,6 +1020,8 @@ function typDefaults(typ,R){const L=R.L,r=v=>Math.round(v);const d=base(typ,TYPE
   case 'kiel':Object.assign(d,{breite:Math.max(20,r(L*0.013)),hoehe:r(L*0.02),hoeheSteven:r(L*0.01),hoeheHeck:r(L*0.02),farbe:'#8a6a48'});break;
   case 'aufbau':Object.assign(d,{laenge:r(L*0.15),breite:r(L*0.08),hoehe:r(L*0.03),hoeheHinten:r(L*0.03),eck:40,neigung:8,woelbung:r(L*0.005),dach:true,farbe:'#c9cfd3'});break;
   case 'verdeck':Object.assign(d,{xSpitze:1750,xEcke:2210,xEckeUnten:1960,xFenster:2800,xFirst:2800,xHinten:6000,halbbreite:813,hVorn:560,hFirst:860,kron:120,hHinten:560,kronHinten:160,scheibeIn:true,xScheibeUnten:1500,farbe:'#1b3fa8'});break;
+  case 'reling':Object.assign(d,{x0:r(L*0.05),x1:r(L*0.95),hoehe:r(Math.min(1000,L*0.012)),abstand:r(Math.max(100,L*0.022)),einzug:r(L*0.0012),durchm:r(Math.max(4,L*0.0005)),beide:true,farbe:'#e9eaec'});break;
+  case 'bullaugen':Object.assign(d,{x0:r(L*0.1),x1:r(L*0.9),abstand:r(L*0.03),unter:r(L*0.03),durchm:r(L*0.005),beide:true,farbe:'#b08a3c',glas:'#18202b'});break;
   case 'band':Object.assign(d,{hoehe:300,vor:45,taperStart:7250,taperEnd:7490,oben:[],farbe:'#15171b'});break;
   case 'schriftzug':Object.assign(d,{text:'Achim',x0:1050,x1:2050,y:330,hoehe:230,beide:true,bandFolgen:true,farbe:'#ffffff'});break;
   case 'beschlag':Object.assign(d,{art:'rolle',groesse:12,masse:1,farbe:'#d0d6da'});break;
@@ -836,6 +1032,8 @@ function typDefaults(typ,R){const L=R.L,r=v=>Math.round(v);const d=base(typ,TYPE
  }
  if(typ==='profil')d.achse='y';return d;}
 
+/* Farbfeld: eine Farbe auf mehrere Ziele (rumpf.<Feld> oder teil:<id>) legen */
+function farbfeldSetzen(f,c){f.farbe=c;for(const z of f.ziele||[]){if(z.startsWith('rumpf.'))P.rumpf[z.slice(6)]=c;else if(z.startsWith('teil:')){const t=P.teile.find(q=>q.id===z.slice(5));if(t)t.farbe=c;}}}
 function normalize(o){const d=TEMPLATES.leer();o=o&&typeof o==='object'?o:{};
  o.rumpf=Object.assign(d.rumpf,o.rumpf||{});o.lage=Object.assign(d.lage,o.lage||{});
  o.steuer=Array.isArray(o.steuer)?o.steuer:[];o.verbindungen=Array.isArray(o.verbindungen)?o.verbindungen:[];
@@ -978,14 +1176,16 @@ const deckMat=new THREE.MeshStandardMaterial({color:'#dfe3e5',roughness:0.6,side
 function zweiseitMat(aussen,innen){const m=new THREE.MeshStandardMaterial({color:aussen,roughness:0.42,metalness:0.12,side:THREE.DoubleSide});const ci=new THREE.Color(innen);m.onBeforeCompile=sh=>{sh.uniforms.uInnen={value:ci};sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nuniform vec3 uInnen;').replace('#include <color_fragment>','#include <color_fragment>\nif(!gl_FrontFacing)diffuseColor.rgb=uInnen;');};return m;}
 const battenTex=(()=>{const c=document.createElement('canvas');c.width=128;c.height=512;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,128,512);x.strokeStyle='rgba(120,130,140,.55)';x.lineWidth=3;for(let k=1;k<7;k++){x.beginPath();x.moveTo(0,k*73);x.lineTo(128,k*73-8);x.stroke();}x.fillStyle='rgba(242,194,48,.9)';x.fillRect(0,0,6,512);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t;})();
 const SAILM={};
-const SEGEL_ST_MATS=[];const SDT={key:'',tex:[null,null],box:new THREE.Vector4(0,0,1,1)};
-function segelTexte(){const D=P.segelDesign,T=(D&&Array.isArray(D.texte)?D.texte:[]).filter(t=>t&&t.text);if(!T.length||!THREE.CanvasTexture){SDT.tex=[null,null];SDT.key='';return;}
- let X0=Infinity,X1=-Infinity,Y0=Infinity,Y1=-Infinity;for(const t of T){const h=+t.hoehe||200,w=h*String(t.text).length*0.9;X0=Math.min(X0,+t.x-w);X1=Math.max(X1,+t.x+w);Y0=Math.min(Y0,+t.y-h*1.5);Y1=Math.max(Y1,+t.y+h*1.5);}
- const key=JSON.stringify(T);if(key===SDT.key&&SDT.tex[0])return;SDT.key=key;SDT.box.set(X0,Y0,X1-X0,Y1-Y0);
+const SEGEL_ST_MATS=[];const SDT={key:'',tex:[null,null],box:new THREE.Vector4(0,0,1,1),bilder:{}};
+/* Segelzeichen als Bild (vom Nutzer geladen): einmal dekodieren, danach neu zeichnen */
+function sdtBild(src){let b=SDT.bilder[src];if(!b){b=SDT.bilder[src]=new Image();b.onload=()=>{SDT.key='';needRebuild=true;};b.src=src;}return b.complete&&b.naturalWidth?b:null;}
+function segelTexte(){const D=P.segelDesign,T=(D&&Array.isArray(D.texte)?D.texte:[]).filter(t=>t&&(t.text||t.bild));if(!T.length||!THREE.CanvasTexture){SDT.tex=[null,null];SDT.key='';return;}
+ let X0=Infinity,X1=-Infinity,Y0=Infinity,Y1=-Infinity;for(const t of T){const h=+t.hoehe||200,bi=t.bild?sdtBild(t.bild):null,w=t.bild?h*(bi?bi.naturalWidth/bi.naturalHeight:1)*0.75:h*String(t.text).length*0.9;X0=Math.min(X0,+t.x-w);X1=Math.max(X1,+t.x+w);Y0=Math.min(Y0,+t.y-h*1.5);Y1=Math.max(Y1,+t.y+h*1.5);}
+ const key=JSON.stringify(T)+'|'+T.filter(t=>t.bild&&sdtBild(t.bild)).length;if(key===SDT.key&&SDT.tex[0])return;SDT.key=key;SDT.box.set(X0,Y0,X1-X0,Y1-Y0);
  const mm=Math.max((X1-X0)/2048,(Y1-Y0)/2048,0.5),W=Math.ceil((X1-X0)/mm),H=Math.ceil((Y1-Y0)/mm);
  SDT.tex=[false,true].map(spiegel=>{const cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');
   for(const t of T){const h=(+t.hoehe||200)/mm,px=(+t.x-X0)/mm,py=(Y1-(+t.y))/mm,fam=t.stil==='serif'?"'Georgia',serif":"'Arial Black','Helvetica Neue','Arial',sans-serif",stl=t.stil==='serif'?'700 ':'italic 900 ';
-   c.save();c.translate(px,py);if(spiegel){c.scale(-1,1);}c.rotate(-(+t.winkel||0)*DEG*(spiegel?-1:1));c.font=stl+h+'px '+fam;c.textAlign='center';c.textBaseline='middle';
+   c.save();c.translate(px,py);if(spiegel){c.scale(-1,1);}c.rotate(-(+t.winkel||0)*DEG*(spiegel?-1:1));if(t.bild){const bi=sdtBild(t.bild);if(bi){const bw=h*bi.naturalWidth/bi.naturalHeight;c.drawImage(bi,-bw/2,-h/2,bw,h);}c.restore();continue;}c.font=stl+h+'px '+fam;c.textAlign='center';c.textBaseline='middle';
    if(t.schatten){const o=h*0.08;c.fillStyle=t.schatten;c.fillText(t.text,o,o);}c.fillStyle=t.farbe||'#111418';c.fillText(t.text,0,0);c.restore();}
   const tx=new THREE.CanvasTexture(cv);tx.anisotropy=4;if('encoding' in tx)tx.encoding=THREE.sRGBEncoding;return tx;});}
 function sailStreifenMat(p){const D=P.segelDesign;if(!D||p.streifenAus)return null;const hatS=Array.isArray(D.streifen)&&D.streifen.length,hatT=!!SDT.tex[0]&&!p.texteAus;if(!hatS&&!hatT)return null;const m=new THREE.MeshStandardMaterial({color:p.farbe,map:battenTex,roughness:0.6,side:THREE.DoubleSide,transparent:true,opacity:0.9});
@@ -1070,7 +1270,31 @@ function tubeGeo(a,b,r){const v=b.clone().sub(a),len=Math.max(1e-4,v.length());c
 const sailChord=(p,v)=>p.unterliek*(1-v)+p.kopf*v+p.rundung*Math.sin(Math.PI*v)*(1-0.5*v);
 function gaffPts(p){const f=p.fall*DEG,a=(+p.gaffelWinkel||0)*DEG,lu=p.vorliek,U=p.unterliek,G=+p.gaffel; // lokal [y,z] in mm, Vorliek = y
  const T=[0,0],C=[U*Math.sin(f),U*Math.cos(f)],Th=[lu,0],Pk=[lu+G*Math.cos(a),G*Math.sin(a)];return {T,C,Th,Pk};}
-function sailArea(p){if(+p.gaffel>0){const {T,C,Th,Pk}=gaffPts(p),q=[T,C,Pk,Th];let A=0;for(let k=0;k<4;k++){const a=q[k],b=q[(k+1)%4];A+=a[1]*b[0]-b[1]*a[0];}
+/* Rahsegel-Fläche: Breite unten = unterliek, oben = kopf, Höhe = vorliek; Wölbung nach vorn (Wind von achtern) */
+/* Geometrien zusammenführen (nicht indiziert) */
+function geosMerge(list){let n=0;for(const g of list)n+=(g.index?g.index.count:g.attributes.position.count);if(!n)return null;const P=new Float32Array(n*3),N=new Float32Array(n*3);let o=0;
+ for(let g of list){if(g.index)g=g.toNonIndexed();if(!g.attributes.normal)g.computeVertexNormals();P.set(g.attributes.position.array,o*3);N.set(g.attributes.normal.array,o*3);o+=g.attributes.position.count;}
+ const r=new THREE.BufferGeometry();r.setAttribute('position',new THREE.BufferAttribute(P,3));r.setAttribute('normal',new THREE.BufferAttribute(N,3));return r;}
+/* Reling auf der Bordkante: Stützen im Abstand, Handlauf oben und Mittellauf, folgt Deckslinie und Breite des Rumpfs */
+function relingGeo(p){const L=P.rumpf.L,x0=clamp(Math.min(+p.x0,+p.x1),0,L),x1=clamp(Math.max(+p.x0,+p.x1),0,L),h=Math.max(10,+p.hoehe||1000),ab=Math.max(20,+p.abstand||1800),ez=+p.einzug||0,r=Math.max(1,+p.durchm||40)/2000,list=[];
+ const n=Math.max(1,Math.round((x1-x0)/ab)),pt=(x,sg,dh)=>{const d=hdims(x/L),b=Math.max(0,d.B*1000-ez);return posOf(x,d.Ys*1000+dh,sg*b);};
+ for(const sg of p.beide===false?[1]:[1,-1]){let alt=null,altM=null;for(let i=0;i<=n;i++){const x=x0+(x1-x0)*i/n,a=pt(x,sg,0),t=pt(x,sg,h),m=pt(x,sg,h*0.5);if(hdims(x/L).B*1000<ez+5){alt=null;altM=null;continue;}
+   list.push(tubeGeo(a,t,r));if(alt){list.push(tubeGeo(alt,t,r*1.15));list.push(tubeGeo(altM,m,r*0.8));}alt=t;altM=m;}}
+ return geosMerge(list);}
+/* Bullaugen: Reihe runder Fenster auf der Rumpfoberfläche, Abstand unter der Bordkante, Messingring + dunkles Glas */
+function bullaugenGeos(p){const hmesh=hullGrp&&hullGrp.children[0];if(!hmesh)return null;const L=P.rumpf.L,tmp=new THREE.Mesh(hmesh.geometry,new THREE.MeshBasicMaterial());tmp.updateMatrixWorld(true);const qg=querGitter([tmp]);
+ const x0=+p.x0,x1=+p.x1,ab=Math.max(10,+p.abstand||1000),R=Math.max(2,+p.durchm||300)/2000,n=Math.max(0,Math.round(Math.abs(x1-x0)/ab)),ringe=[],glas=[];
+ for(let i=0;i<=n;i++){const x=n?x0+(x1-x0)*i/n:x0;if(x<0||x>L)continue;const y=hdims(x/L).Ys*1000-(+p.unter||0);
+  for(const sg of p.beide===false?[1]:[1,-1]){const o=posOf(x,y,sg*Math.max(3000,P.rumpf.B*2)),h=qg(o.y,o.z,sg,o.x*sg);if(!h)continue;const nn=h.normal.clone();if(nn.x*sg<0)nn.negate();
+   const q=new THREE.Quaternion().setFromUnitVectors(V(0,1,0),nn),M=new THREE.Matrix4().compose(h.point.clone().addScaledVector(nn,R*0.08),q,V(1,1,1));
+   const rg=new THREE.CylinderGeometry(R,R,R*0.22,18,1,true);rg.applyMatrix4(M);ringe.push(rg);const rc=new THREE.RingGeometry(R*0.72,R,18);rc.rotateX(-Math.PI/2);rc.translate(0,R*0.11,0);rc.applyMatrix4(M);ringe.push(rc);
+   const gl=new THREE.CircleGeometry(R*0.74,18);gl.rotateX(-Math.PI/2);gl.translate(0,R*0.05,0);gl.applyMatrix4(M);glas.push(gl);}}
+ if(!ringe.length)return null;return{ring:geosMerge(ringe),glas:geosMerge(glas)};}
+function rahGeo(p){const NU=16,NV=10,H=(+p.vorliek||1000)/1000,F=(+p.unterliek||1000)/1000,K=(+p.kopf||F*1000)/1000,cb=(+p.woelbung||6)/100,pos=[],idx=[],uv=[];
+ for(let j=0;j<=NV;j++){const v=j/NV,w=(F*(1-v)+K*v)/2;for(let i=0;i<=NU;i++){const a=-1+2*i/NU,bauch=cb*Math.min(F,H)*0.55*(1-a*a)*Math.sin(Math.PI*Math.min(1,v*0.85+0.15));pos.push(a*w,v*H-(1-a*a)*0.04*H*(1-v),-bauch);uv.push((a+1)/2,v);}}
+ for(let j=0;j<NV;j++)for(let i=0;i<NU;i++){const a=j*(NU+1)+i,b=a+NU+1;idx.push(a,b,a+1,a+1,b,b+1);}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g;}
+function sailArea(p){if(p.rah)return (Math.max(0,+p.unterliek||0)+Math.max(0,+p.kopf||0))/2*Math.max(0,+p.vorliek||0)/100;if(+p.gaffel>0){const {T,C,Th,Pk}=gaffPts(p),q=[T,C,Pk,Th];let A=0;for(let k=0;k<4;k++){const a=q[k],b=q[(k+1)%4];A+=a[1]*b[0]-b[1]*a[0];}
   const lee=Math.hypot(Pk[0]-C[0],Pk[1]-C[1]);return (Math.abs(A)/2+2/3*(+p.rundung||0)*lee)/100;}
  let a=0;const n=60;for(let k=0;k<n;k++)a+=sailChord(p,(k+0.5)/n);return a/n*p.vorliek*Math.cos(p.fall*DEG)/100;} // cm², Sehnen waagerecht
 function segelGeoGaff(p){const nu=12,nv=24,pos=[],uv=[],idx=[],{T,C,Th,Pk}=gaffPts(p),L=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
@@ -1156,8 +1380,11 @@ function buildPart(p){const g=new THREE.Group(),rot=new THREE.Group();g.add(rot)
    if(+p.trommel>0){const tr=new THREE.CylinderGeometry(p.trommel/2000,p.trommel/2000,0.009,28);tr.translate(0,0.004,0);put(tr,mat('#e8eef0'));const mk=new THREE.BoxGeometry(0.002,0.0095,0.004);mk.translate(p.trommel/2000,0.004,0);put(mk,mat('#c9322a'));}else{const arm=new THREE.BoxGeometry(p.arm/1000+0.006,0.003,0.008);arm.translate(p.arm/2000,0,0);put(arm,mat('#e8eef0'));put(new THREE.CylinderGeometry(0.005,0.005,0.006,12),mat('#e8eef0'));}break;}
   case 'beschlag':beschlagGeo(p,put,null);break;
   case 'bank':piv=V(0,0,0);put(bankGeo(p));break;
+  case 'reling':{piv=V(0,0,0);const g=relingGeo(p);if(g)put(g);break;}
+  case 'bullaugen':{piv=V(0,0,0);const G=bullaugenGeos(p);if(G){put(G.ring);put(G.glas,mat(p.glas||'#18202b'));}break;}
   case 'boden':piv=V(0,0,0);for(const gg of bodenGeos(p))put(gg);break;
   case 'segel':{// Segel dreht um sein Vorliek (Mast bzw. Vorstag), nicht um die Senkrechte
+   if(p.rah){/* Rahsegel: symmetrisches Trapez quer zum Boot, Ursprung = Mitte des Unterlieks, Kopf an der Rah darüber */put(rahGeo(p),sailMat(p.farbe));break;}
    const tilt=new THREE.Group();tilt.rotation.x=p.fall*DEG;g.remove(rot);g.add(tilt);tilt.add(rot);
    put(segelGeo(p),sailStreifenMat(p)||sailMat(p.farbe));if(p.baum){const w=Math.max(0.004,p.unterliek*0.000022);const b=new THREE.BoxGeometry(w,w*1.4,p.unterliek/1000);b.translate(0,-w,p.unterliek/2000);b.rotateX(-p.fall*DEG);put(b,mat('#1b2024'));}
    if(+p.gaffel>0){const w=Math.max(0.004,p.gaffel*0.000018),{Th,Pk}=gaffPts(p);put(tubeGeo(V(0,Th[0]/1000,Th[1]/1000),V(0,Pk[0]/1000,Pk[1]/1000),w),mat('#c9a77c'));}break;}
@@ -1180,7 +1407,7 @@ function buildPart(p){const g=new THREE.Group(),rot=new THREE.Group();g.add(rot)
    break;}
   case 'band':{const ob=Array.isArray(p.oben)?p.oben:[];const hmesh=hullGrp&&hullGrp.children[0];if(ob.length<2||!hmesh)break;
    const tmp=new THREE.Mesh(hmesh.geometry,new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));tmp.updateMatrixWorld(true);
-   const qg=querGitter([tmp]);const hit=(x,y,sg)=>{const o=posOf(x,y,sg*3000),h=qg(o.y,o.z,sg,o.x*sg);if(!h)return null;const pt=h.point;let nn=h.normal;if(nn.x*sg<0)nn.negate();pt.nrm=nn;return pt;};
+   const qg=querGitter([tmp]);const hit=(x,y,sg)=>{const o=posOf(x,y,sg*Math.max(3000,P.rumpf.B*2)),h=qg(o.y,o.z,sg,o.x*sg);if(!h)return null;const pt=h.point;let nn=h.normal;if(nn.x*sg<0)nn.negate();pt.nrm=nn;return pt;};
    const ob2=[];for(let i=0;i<ob.length-1;i++){const [x0,y0]=ob[i],[x1,y1]=ob[i+1],m=Math.max(1,Math.ceil((x1-x0)/20));for(let k=0;k<m;k++)ob2.push([x0+(x1-x0)*k/m,y0+(y1-y0)*k/m]);}ob2.push(ob[ob.length-1]);
    const po={polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1};
    const matA=new THREE.MeshStandardMaterial(Object.assign({color:p.farbe||'#15171b',roughness:0.42,metalness:0.12,side:p.farbeInnen?THREE.FrontSide:THREE.DoubleSide},po)),matI=p.farbeInnen?new THREE.MeshStandardMaterial(Object.assign({color:p.farbeInnen,roughness:0.5,metalness:0.05,side:THREE.BackSide},po)):null;const hh=+p.hoehe||300,vor0=+p.vor||0,t0=+p.taperStart||1e9,t1=Math.max(t0+1,+p.taperEnd||t0+1),mid=ob[Math.floor(ob.length/2)];piv=posOf(mid[0],mid[1]-hh/2,0);
@@ -1200,7 +1427,7 @@ function buildPart(p){const g=new THREE.Group(),rot=new THREE.Group();g.add(rot)
     /* Bänder (z. B. Schwarzband) zählen mit zur Außenhaut, der Schriftzug liegt dann darauf */
     for(const q of P.teile){if(q.typ!=='band'||q.parent||q.id===p.id||!built[q.id])continue;for(const o of built[q.id].rot.children){const bx=new THREE.Mesh(o.geometry,bm0);bx.position.copy(built[q.id].piv);tmp.add(bx);}}
     tmp.updateMatrixWorld(true);}
-   const qg=tmp?querGitter(tmp.children):null;const hit=(x,y,sg)=>{if(!qg)return null;const o=posOf(x,y,sg*3000),q=qg(o.y,o.z,sg,o.x*sg);if(!q)return null;
+   const qg=tmp?querGitter(tmp.children):null;const hit=(x,y,sg)=>{if(!qg)return null;const o=posOf(x,y,sg*Math.max(3000,P.rumpf.B*2)),q=qg(o.y,o.z,sg,o.x*sg);if(!q)return null;
     const pt=q.point,off=0.002+(+p.abst||0)/1000;const nn=q.normal;if(nn.x*sg<0)nn.negate();pt.addScaledVector(nn,off);return pt;};
    const cw=1024,ch=Math.max(64,Math.round(cw*hh/Math.max(1,xb-xa)));const cv=document.createElement('canvas');cv.width=cw;cv.height=ch;const cx=cv.getContext('2d');
    let fs=ch*0.95;const sport=p.stil==='sport',fam=sport?"'Arial Black','Helvetica Neue','Arial',sans-serif":p.serif?"'Rockwell','Georgia','Times New Roman',serif":"'Brush Script MT','Segoe Script','Snell Roundhand','Lucida Handwriting',cursive",stl=sport?'italic 900 ':p.serif?'700 ':'italic 700 ';cx.font=stl+fs+'px '+fam;while(cx.measureText(p.text||'').width>cw*0.96&&fs>10){fs*=0.94;cx.font=stl+fs+'px '+fam;}
@@ -1233,7 +1460,7 @@ function rebuild0(){if(P.rumpf.aufmassAktiv&&P.rumpf.aufmass)deriveAufmass();SHA
   if(par){const origin=par.piv.clone().add(par.rot.position);b.g.position.copy(b.piv).sub(origin);par.rot.add(b.g);}else{b.g.position.copy(b.piv);boat.add(b.g);}}
  linkGrp=new THREE.Group();boat.add(linkGrp);linkObjs=[];
  const rr=Math.max(0.0012,L*0.0013);
- for(const v of P.verbindungen){let o;if(v.art==='stange'){const g=new THREE.CylinderGeometry(rr,rr,1,8);g.translate(0,0.5,0);o=new THREE.Mesh(g,linkMatStange);}else{o=new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0,0,0),V(0,0,0)]),linkMatSeil);}o.renderOrder=9;linkGrp.add(o);linkObjs.push({v,o});}
+ for(const v of P.verbindungen){let o;if(v.art==='tau'||v.art==='talje'){o=tauObjekt(v);}else if(v.art==='stange'){const g=new THREE.CylinderGeometry(rr,rr,1,8);g.translate(0,0.5,0);o=new THREE.Mesh(g,linkMatStange);}else{o=new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0,0,0),V(0,0,0)]),linkMatSeil);}o.renderOrder=9;linkGrp.add(o);linkObjs.push({v,o});}
  dimGrp=new THREE.Group();boat.add(dimGrp);dimKey='';
  stGrp=new THREE.Group();stGrp.position.x=katH()/1000;boat.add(stGrp);buildStations();
  // Konstruktionslinien
@@ -1262,7 +1489,13 @@ const DREH_NEIN=new Set(['kiel','aufbau','ausschnitt','verdeck','schriftzug','ba
 const drehOK=p=>!!p&&!DREH_NEIN.has(p.typ);
 const hatDreh=p=>drehOK(p)&&!!(+p.drehX||+p.drehY||+p.drehZ);
 function drehQ(p,q){q=q||new THREE.Quaternion();if(!hatDreh(p))return q.identity();_eu.set((+p.drehX||0)*DEG,(+p.drehY||0)*DEG,(+p.drehZ||0)*DEG,'YXZ');return q.setFromEuler(_eu);}
-function anchorBoat(id){const b=built[id];if(!b)return null;const v=ankerVec(b.p);b.rot.localToWorld(v);return boat.worldToLocal(v);}
+/* Echtes Tauwerk zwischen zwei Teilen (Schoten, Niederholer): „tau“ = eine Leine, „talje“ = mehrere Parten mit Blöcken an beiden Enden */
+function tauObjekt(v){const g=new THREE.Group(),d=Math.max(2,+v.d||8)/1000,m=mat(v.farbe||'#203a6b'),n=v.art==='talje'?Math.max(2,+v.parten||4):1,blk=Math.max(0.035,d*6);
+ const zyl=(ox,oz)=>{const c=new THREE.CylinderGeometry(d/2,d/2,1,6);c.translate(ox,0.5,oz);const o=new THREE.Mesh(c,m);o.userData.tau=true;o.castShadow=true;g.add(o);};
+ if(n===1)zyl(0,0);else{const r=blk*0.25;for(let k=0;k<n;k++){const w=k/n*Math.PI*2;zyl(Math.cos(w)*r,Math.sin(w)*r);}
+  const bm=mat(v.blockFarbe||'#1b2024');for(const ende of [false,true]){const b=new THREE.Mesh(new THREE.BoxGeometry(blk*0.6,blk,blk*0.9),bm);b.userData.ende=ende;g.add(b);}}
+ return g;}
+function anchorBoat(id,ank){const b=built[id];if(!b)return null;const v=Array.isArray(ank)?V((+ank[2]||0)/1000,(+ank[1]||0)/1000,(+ank[0]||0)/1000):ankerVec(b.p);b.rot.localToWorld(v);return boat.worldToLocal(v);}
 const flipped=()=>!!(P.rumpf.aufmass&&P.rumpf.aufmass.bezug.kieloben);
 function applyDrives(){if(flipped()){// Boot liegt kieloben auf der Platte: Bezugsebene = Rasterboden
   boat.position.y=-(+P.rumpf.aufmass.bezug.wl||0)/1000;boat.rotation.set(0,0,0);world.rotation.set(0,0,Math.PI);}
@@ -1270,8 +1503,9 @@ function applyDrives(){if(flipped()){// Boot liegt kieloben auf der Platte: Bezu
  let C={};for(let pass=0;pass<3;pass++){world.updateMatrixWorld(true);C={};for(const id in built)angleOf(id,C,new Set());for(const id in built){const b=built[id];const q=b.rot.quaternion;drehQ(b.p,q);if(b.rot.parent!==b.g&&hatDreh(b.p)){const T=b.rot.parent.quaternion;q.premultiply(_qb.copy(T).invert()).multiply(T);} /* Segel: Mastfall-Kippung ausgleichen, Ausrichtung wirkt um die Bootsachsen */
  if(C[id])q.multiply(_qa.setFromAxisAngle(AXV[b.p.achse]||AXV.y,C[id]*DEG));}}
  world.updateMatrixWorld(true);ANG=C;LEN={};
- for(const {v,o} of linkObjs){const a=anchorBoat(v.a),b=anchorBoat(v.b);o.visible=!!(a&&b);if(!a||!b)continue;const d=b.clone().sub(a),len=d.length();LEN[v.id]=len*1000;
-  if(v.art==='stange'){o.position.copy(a);o.quaternion.setFromUnitVectors(V(0,1,0),len>1e-6?d.clone().normalize():V(0,1,0));o.scale.set(1,Math.max(1e-5,len),1);}
+ for(const {v,o} of linkObjs){const a=anchorBoat(v.a,v.ankerA),b=anchorBoat(v.b,v.ankerB);o.visible=!!(a&&b);if(!a||!b)continue;const d=b.clone().sub(a),len=d.length();LEN[v.id]=len*1000;
+  if(v.art==='tau'||v.art==='talje'){o.position.copy(a);o.quaternion.setFromUnitVectors(V(0,1,0),len>1e-6?d.clone().normalize():V(0,1,0));for(const c of o.children){if(c.userData.tau)c.scale.y=Math.max(1e-5,len-(c.userData.kuerzer||0));else if(c.userData.ende)c.position.y=len;}}
+  else if(v.art==='stange'){o.position.copy(a);o.quaternion.setFromUnitVectors(V(0,1,0),len>1e-6?d.clone().normalize():V(0,1,0));o.scale.set(1,Math.max(1e-5,len),1);}
   else{const pa=o.geometry.attributes.position;pa.setXYZ(0,a.x,a.y,a.z);pa.setXYZ(1,b.x,b.y,b.z);pa.needsUpdate=true;o.geometry.computeBoundingSphere();o.computeLineDistances();}}}
 
 /* ================= Messen: Klassenmaße, Masse, Schwerpunkt ================= */
@@ -1284,7 +1518,7 @@ function measure(){const bp=boat.position.clone(),br=boat.rotation.clone(),wr=wo
   const m=p.typ==='bombe'&&p.blei?bombeMasse(p):(+p.masse||0)+(SA&&p.typ==='ausschnitt'?(partMeshes[id]||[]).reduce((a,o)=>a+geoFlaeche(o.geometry),0)*(+SA.deck||0):0);if(m>0){masse+=m;const bc=bx.getCenter(new THREE.Vector3());mom.addScaledVector(bc,m);TL.push({id,name:p.name,m,x:bc.z*1000+P.rumpf.L/2,y:bc.y*1000});}}
  boat.position.copy(bp);boat.rotation.copy(br);world.rotation.copy(wr);world.updateMatrixWorld(true);
  const cg=masse>0?mom.multiplyScalar(1/masse):V(0,0,0);const deckRef=hdims(0.5).Ys;
- const hullBox=ownBox('rumpf',new THREE.Box3());M={hullBox,loa:+P.rumpf.L,breite:(noSail.max.x-noSail.min.x)*1000,tiefgang:Math.max(0,-all.min.y*1000),hoehe:(all.max.y-deckRef)*1000,segel,masse,schale,cgx:cg.z*1000+P.rumpf.L/2,cgy:cg.y*1000,teile:TL,box:all,noSail,deckRef};}
+ const hullBox=ownBox('rumpf',new THREE.Box3());const nb=P.rumpf.scanLeer&&!all.isEmpty();M={hullBox,loa:nb?(all.max.z-all.min.z)*1000:+P.rumpf.L,breite:all.isEmpty()?0:(noSail.max.x-noSail.min.x)*1000,tiefgang:nb?0:Math.max(0,-all.min.y*1000),hoehe:nb?(all.max.y-all.min.y)*1000:(all.max.y-deckRef)*1000,nurBauteil:!!P.rumpf.scanLeer,segel,masse,schale,cgx:cg.z*1000+P.rumpf.L/2,cgy:cg.y*1000,teile:TL,box:all,noSail,deckRef};}
 
 /* Maßlinien im Modell */
 const LBL=new Map();let dimKey='';
@@ -1303,7 +1537,7 @@ function updDims(){const key=[M.loa,M.breite,M.tiefgang,M.hoehe].map(Math.round)
 /* ================= Anzeige-Schalter ================= */
 const isOn=id=>$(id).getAttribute('aria-pressed')==='true';
 let lastSee=null;
-function applyToggles(){const fl=flipped();for(const id in built)built[id].g.visible=!fl&&!built[id].p.aus&&(built[id].p.typ!=='segel'||isOn('tSail'));if(linkGrp&&fl)linkGrp.visible=false;if(fl)water.visible=false;if(lineGrp)lineGrp.visible=isOn('tLines');if(stGrp)stGrp.visible=isOn('tLines');const see=isOn('tSee');if(see!==lastSee){lastSee=see;for(const m of [hullMat,deckMat]){m.transparent=see;m.opacity=see?0.28:1;m.depthWrite=!see;m.needsUpdate=true;}}if(linkGrp)linkGrp.visible=isOn('tMech')&&!fl;water.visible=isOn('tWater')&&!fl;if(dimGrp)dimGrp.visible=isOn('tDims');if(markGrp)markGrp.visible=isOn('tMark');if(stGrp)stGrp.traverse(o=>{if(o.userData&&o.userData.beschr)o.visible=isOn('tMark');});if(grid)grid.visible=isOn('tGrid');if(scanGrp)scanGrp.visible=isOn('tScan');}
+function applyToggles(){const fl=flipped();for(const id in built)built[id].g.visible=!fl&&!built[id].p.aus&&(built[id].p.typ!=='segel'||isOn('tSail'));if(linkGrp&&fl)linkGrp.visible=false;if(fl)water.visible=false;const nb=!!P.rumpf.scanLeer;/* Scan-Projekt ohne Rumpf: keine Rumpflinien, Maße, Schwerpunkte, kein Wasser */if(lineGrp)lineGrp.visible=isOn('tLines')&&!nb;if(stGrp)stGrp.visible=isOn('tLines')&&!nb;const see=isOn('tSee');if(see!==lastSee){lastSee=see;for(const m of [hullMat,deckMat]){m.transparent=see;m.opacity=see?0.28:1;m.depthWrite=!see;m.needsUpdate=true;}}if(linkGrp)linkGrp.visible=isOn('tMech')&&!fl;water.visible=isOn('tWater')&&!fl&&!nb;if(dimGrp)dimGrp.visible=isOn('tDims')&&!nb;if(markGrp)markGrp.visible=isOn('tMark')&&!nb;if(stGrp)stGrp.traverse(o=>{if(o.userData&&o.userData.beschr)o.visible=isOn('tMark')&&!nb;});if(grid)grid.visible=isOn('tGrid');if(scanGrp)scanGrp.visible=isOn('tScan');}
 const tog=(id,fn)=>$(id).addEventListener('click',()=>{const b=$(id),on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);fn(on);});
 ['tSail','tMech','tWater','tDims','tMark','tGrid','tLines','tSee','tScan'].forEach(id=>tog(id,applyToggles));
 $('bBeschr').addEventListener('click',()=>{const on=$('bBeschr').getAttribute('aria-pressed')!=='true';$('bBeschr').setAttribute('aria-pressed',on);for(const id of ['tMark','tDims'])$(id).setAttribute('aria-pressed',on);applyToggles();});
@@ -1325,7 +1559,8 @@ let fly=null;
 function goView(name,instant){if(!M)return;world.updateMatrixWorld(true);const bx=(flipped()?M.hullBox:M.box).clone().applyMatrix4(boat.matrixWorld),c=bx.getCenter(V(0,0,0)),sz=bx.getSize(V(0,0,0));let S=Math.max(sz.x,sz.y,sz.z)/2;
  if(name==='under'&&!flipped()){S=Math.max(sz.x,sz.z,-bx.min.y)/2;c.y=bx.min.y/2;}
  if(name==='top')S=Math.max(sz.x,sz.z)/2;
- S=Math.max(S,0.1);const dir=V(...VIEWDIR[name]).normalize();const t1=c,p1=c.clone().add(dir.multiplyScalar(cam===ortho?S*4:S*3.1));
+ if(M.nurBauteil)S=Math.max(S,sz.length()/2)*1.5;/* einzelnes Bauteil: ganz ins Bild, auch hochkant */
+ S=Math.max(S,M.nurBauteil?0.04:0.1);const dir=V(...VIEWDIR[name]).normalize();const t1=c,p1=c.clone().add(dir.multiplyScalar(cam===ortho?S*4:S*3.1));
  if(cam===ortho){orthoH=S*1.12;ortho.zoom=1;resize();}
  persp.near=S*0.005;persp.far=S*400;persp.updateProjectionMatrix();scene.fog.near=S*10;scene.fog.far=S*40;
  const sc=sun.shadow.camera,R=S*1.4;sc.left=-R;sc.right=R;sc.top=R;sc.bottom=-R;sc.near=0.01;sc.far=S*12;sc.updateProjectionMatrix();sun.position.copy(c).add(V(-S*1.6,S*3.2,-S*1.3));sun.target.position.copy(c);
@@ -1467,9 +1702,9 @@ function querGitter(objs){const T=[];const v=new THREE.Vector3();let z0=1e9,z1=-
  /* liefert den äußersten Treffer von der Seite sg aus (wie Raycaster ab x=sg*xs Richtung -sg) */
  return(y,z,sg,xs)=>{if(z<z0||z>z1||y<y0||y>y1)return null;const L=Z[cz(z)*NY+cy(y)];if(!L)return null;let best=null,bx=-1e9,bt=-1;
   for(const t of L){const ay=T[t+1],az=T[t+2],by=T[t+4],bz=T[t+5],cy2=T[t+7],cz2=T[t+8];const d=(bz-az)*(cy2-ay)-(by-ay)*(cz2-az);if(Math.abs(d)<1e-14)continue;
-   const u=((z-az)*(cy2-ay)-(y-ay)*(cz2-az))/d,w=((bz-az)*(y-ay)-(by-ay)*(z-az))/d;if(u<-1e-9||w<-1e-9||u+w>1+1e-9)continue;const x=T[t]+u*(T[t+3]-T[t])+w*(T[t+6]-T[t]);const q=x*sg;if(q>xs||q<xs-10)continue;if(q>bx){bx=q;best=x;bt=t;}}
+   const u=((z-az)*(cy2-ay)-(y-ay)*(cz2-az))/d,w=((bz-az)*(y-ay)-(by-ay)*(z-az))/d;if(u<-1e-9||w<-1e-9||u+w>1+1e-9)continue;const x=T[t]+u*(T[t+3]-T[t])+w*(T[t+6]-T[t]);const q=x*sg;if(q>xs||q<xs-Math.max(10,xs*4))continue;if(q>bx){bx=q;best=x;bt=t;}}
   if(bt<0)return null;const e1=new THREE.Vector3(T[bt+3]-T[bt],T[bt+4]-T[bt+1],T[bt+5]-T[bt+2]),e2=new THREE.Vector3(T[bt+6]-T[bt],T[bt+7]-T[bt+1],T[bt+8]-T[bt+2]);const nn=e1.cross(e2).normalize();return{point:V(best,y,z),normal:nn};};}
-function hullHit(x,y,sg){const hm=hullGrp&&hullGrp.children[0];if(!hm)return null;const t=new THREE.Mesh(hm.geometry,new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));t.updateMatrixWorld(true);const rc=new THREE.Raycaster();rc.set(posOf(x,y,sg*3000),V(-sg,0,0));rc.near=0;rc.far=10;const h=rc.intersectObject(t,false);return h.length?h[0].point.clone():null;}
+function hullHit(x,y,sg){const hm=hullGrp&&hullGrp.children[0];if(!hm)return null;const t=new THREE.Mesh(hm.geometry,new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));t.updateMatrixWorld(true);const rc=new THREE.Raycaster();rc.set(posOf(x,y,sg*Math.max(3000,P.rumpf.B*2)),V(-sg,0,0));rc.near=0;rc.far=10;const h=rc.intersectObject(t,false);return h.length?h[0].point.clone():null;}
 function ptCollect(p){const out=[],Lh=P.rumpf.L;
  if(p.typ==='profil'&&p.umriss&&Array.isArray(p.umriss.pts)){const vert=p.lage!=='waagerecht';p.umriss.pts.forEach(q=>{out.push({pos:vert?posOf(p.x+q[0],p.y+q[1],+p.s||0):posOf(p.x+q[0],p.y,(+p.s||0)+q[1]),n:vert?'x':'y',set:(X,Y,S)=>{q[0]=gsn(X-p.x);q[1]=vert?gsn(Y-p.y):gsn(Math.abs(S-(+p.s||0)));umrissNeu(p);}});});}
  else if(p.typ==='ausschnitt'&&p.form==='frei'&&Array.isArray(p.ecken)){const e=eckenAbs(p);e.forEach(([a,b],j)=>{if(p.ort==='seite'){const sg=(+p.s||0)<0?-1:1,h=hullHit(a,b,sg),pos=h||posOf(a,b,+p.s||0);out.push({pos,n:'x',set:(X,Y)=>{p.ecken[j]=eckenRel(p,gsn(X),gsn(Y));}});}
@@ -1828,9 +2063,16 @@ function renderRumpf(box){const R=P.rumpf,L=R.L,g='geo',i='rumpf';sel='rumpf';
  const sw=el('div',{class:'row'});for(const [c,n] of [['#f4f5f2','Weiß'],['#9aa3a8','Grau'],['#1f2a33','Anthrazit'],['#2f6db3','Blau'],['#c9322a','Rot'],['#f2c230','Gelb']])sw.append(el('button',{class:'v',type:'button',style:'width:30px;height:28px;padding:0;background:'+c,title:n,'aria-label':'Rumpffarbe '+n,onclick:()=>{R.farbe=c;cp.value=c;changed('geo');}}));
  const cp=el('input',{type:'color',value:R.farbe||'#f4f5f2','aria-label':'Eigene Rumpffarbe'});cp.addEventListener('input',()=>{R.farbe=cp.value;changed('geo');});sw.append(cp);
  box.append(sw);
+ if(Array.isArray(P.farbwahl)&&P.farbwahl.length){box.append(note('Farbfelder dieses Boots – jedes färbt alles mit, was dazugehört (im Spiel später vom Spieler wählbar):'));
+  for(const f of P.farbwahl){const cq=el('input',{type:'color',id:'fw-'+f.id,value:f.farbe||'#ffffff'});cq.addEventListener('input',()=>{farbfeldSetzen(f,cq.value);changed('geo');});box.append(el('div',{class:'fld2'},el('label',{for:'fw-'+f.id,text:f.name}),el('div',null,cq)));}}
  for(const [k,lb,df] of [['farbeUnten','Unterwasserfarbe (leer = einfarbig)','#b5402c'],['deckFarbe','Deckfarbe','#dfe3e5'],['farbeInnen','Innenfarbe des Rumpfs (leer = wie außen)','#ffffff']]){const cq=el('input',{type:'color',id:'rf-'+k,value:R[k]||df});cq.addEventListener('input',()=>{R[k]=cq.value;changed('geo');});box.append(el('div',{class:'fld2'},el('label',{for:'rf-'+k,text:lb}),el('div',null,cq)));}
  if(!(R.schale&&R.schale.auto))box.append(num(R,'masse','Rumpf leer (für Schwerpunkt)',0,Math.max(5000,L*15),1,'g','drive',i));schaleBereich(box);box.append(
   note('Alle Teile werden in mm ab Bug gemessen, Höhe ab Wasserlinie. Änderst du die Länge, bleiben die Teile an ihrer Stelle stehen.'));if(P.klasse==='zk10'&&R.aufmass&&R.aufmass.bezug&&R.aufmass.bezug.laengs==='heck')box.append(sub('Form vom K6'),note('Überträgt Bug und Heck des K6 auf diesen Rumpf: Stevenlinie, Spantformen und Breitenverlauf, angepasst an Länge, Sprung und Breite. Die Mitte bleibt. Rückgängig mit ↶.'),el('div',{class:'row'},twoStep('Bug & Heck vom K6 übernehmen','Rumpf ändern?',()=>{if(bugHeckVonK6()){changed('geo');renderWin();toast('Bug und Heck vom K6 übernommen');}})));if(P.klasse==='zk10')box.append(sub('Geglättete Form (Stand Vorlage)'),note('Übernimmt die geglätteten Rumpflinien der aktuellen ZK-10-Vorlage: Draufsicht ohne Wellen, Spantformen gleichmäßig von Bug bis Heck. Dollen, Wanten und Dollenplatten rücken mit an die Bordwand, der Boden bekommt senkrechte Wände unter den Bänken. Deine übrigen Teile bleiben. Rückgängig mit ↶.'),el('div',{class:'row'},twoStep('Geglättete Linien übernehmen','Rumpf ändern?',()=>{if(zkGlattUebernehmen()){changed('geo');renderWin();toast('Geglättete Linien übernommen');}})));zierBereich(box);paramBereich(box);}
+function segelZeichenLaden(p){const inp=el('input',{type:'file',accept:'image/*',style:'display:none'});document.body.append(inp);
+ inp.addEventListener('change',()=>{const f=inp.files&&inp.files[0];inp.remove();if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,512/Math.max(im.width,im.height)),cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(im.width*k));cv.height=Math.max(1,Math.round(im.height*k));
+   const c=cv.getContext('2d');c.drawImage(im,0,0,cv.width,cv.height);/* weißen Hintergrund durchsichtig machen */try{const d=c.getImageData(0,0,cv.width,cv.height),a=d.data;let hell=0;for(let j=0;j<a.length;j+=4)if(a[j+3]>250&&a[j]>235&&a[j+1]>235&&a[j+2]>235)hell++;if(hell>a.length/4*0.3){for(let j=0;j<a.length;j+=4){const m=Math.min(a[j],a[j+1],a[j+2]);if(m>200){a[j+3]=Math.round(a[j+3]*Math.max(0,(245-m)/45));}}c.putImageData(d,0,0);}}catch(e){}
+   const D=P.segelDesign||(P.segelDesign={streifen:[]});if(!Array.isArray(D.texte))D.texte=[];const v=0.78,lu=+p.vorliek||1000,fa=(+p.fall||0)*DEG,ch=sailChord(p,v);
+   const h=Math.round(Math.min(ch*0.8,lu*0.13));D.texte.push({bild:cv.toDataURL('image/png'),text:'',x:Math.round((+p.x||0)+lu*v*Math.sin(fa)+ch*0.45),y:Math.round((+p.y||0)+lu*v*Math.cos(fa)),hoehe:h,winkel:0});changed('geo');renderWin();toast('Zeichen oben ins Segel gesetzt');};im.src=r.result;};r.readAsDataURL(f);});inp.click();}
 function segelDesignBereich(box,p,i){const D=P.segelDesign||(P.segelDesign={streifen:[]}),L=P.rumpf.L;
  box.append(sub('Farbstreifen (laufen über alle Segel)'),note('Jeder Streifen ist ein schräges Band in der Seitenansicht: Höhe der Unterkante über dem Bug, senkrechte Breite und Steigung nach achtern. So läuft er von der Fock ins Großsegel durch.'));
  D.streifen.forEach((z,k)=>{const id='sd'+k;box.append(el('div',{class:'sub',text:'Streifen '+(k+1)}),num(z,'y0','Unterkante über dem Bug (Höhe bei x = 0)',-Math.round(L),Math.round(L*3),10,'mm','geo',id),num(z,'breite','Breite (senkrecht)',10,Math.round(L),5,'mm','geo',id),num(z,'winkel','Steigung nach achtern',-60,60,0.5,'°','geo',id));
@@ -1838,10 +2080,14 @@ function segelDesignBereich(box,p,i){const D=P.segelDesign||(P.segelDesign={stre
  box.append(el('div',{class:'row'},D.streifen.length<4?btn('+ Farbstreifen',()=>{const last=D.streifen[D.streifen.length-1];D.streifen.push(last?{y0:Math.round(+last.y0+(+last.breite)*1.9),breite:last.breite,winkel:last.winkel,farbe:last.farbe}:{y0:Math.round(L*0.12),breite:Math.round(L*0.17),winkel:27,farbe:'#e30b1c'});changed('geo');renderWin();}):null),
   check(p,'streifenAus','Dieses Segel ohne Streifen','geo',i));
  if(!Array.isArray(D.texte))D.texte=[];box.append(sub('Beschriftung auf den Segeln'),note('Text in der Seitenansicht: Mitte (ab Bug, über WL), Schrifthöhe, Drehung. Liegt auf jedem Segel, das an dieser Stelle ist, und ist von beiden Seiten lesbar.'));
- D.texte.forEach((t,k)=>{const id='st'+k,ti=el('input',{type:'text',id:'f-'+id+'-text',value:t.text||''});ti.addEventListener('input',()=>{t.text=ti.value;changed('geo');});
+ D.texte.forEach((t,k)=>{if(t.bild)return;const id='st'+k,ti=el('input',{type:'text',id:'f-'+id+'-text',value:t.text||''});ti.addEventListener('input',()=>{t.text=ti.value;changed('geo');});
   box.append(el('div',{class:'fld2'},el('label',{for:'f-'+id+'-text',text:'Text '+(k+1)}),el('div',null,ti)),num(t,'x','Mitte ab Bug',-Math.round(L*0.5),Math.round(L*1.5),10,'mm','geo',id),num(t,'y','Mitte über WL',0,Math.round(L*3),10,'mm','geo',id),num(t,'hoehe','Schrifthöhe',20,Math.round(L*0.5),5,'mm','geo',id),num(t,'winkel','Drehung (+ = achtern hoch)',-60,60,0.5,'°','geo',id),
    pick(t,'stil','Schriftart',[['','Sportlich (fett, kursiv)'],['serif','Serifenschrift']],id,v=>{t.stil=v;changed('geo');}),check({get s(){return !!t.schatten;},set s(v){t.schatten=v?'#9aa3a8':null;}},'s','Mit Schatten','geo',id));
   const cp=el('input',{type:'color',id:'f-'+id+'-farbe',value:t.farbe||'#111418'});cp.addEventListener('input',()=>{t.farbe=cp.value;changed('geo');});box.append(el('div',{class:'fld2'},el('label',{for:'f-'+id+'-farbe',text:'Farbe'}),el('div',null,cp)),el('div',{class:'row'},twoStep('Text entfernen','Sicher?',()=>{D.texte.splice(k,1);changed('geo');renderWin();})));});
+ D.texte.forEach((t,k)=>{if(!t.bild)return;const id='sz'+k;box.append(el('div',{class:'sub',text:'Zeichen '+(k+1)}),el('img',{src:t.bild,alt:'Segelzeichen',style:'height:56px;width:auto;background:#fff;border-radius:6px;padding:4px;align-self:flex-start'}),
+   num(t,'x','Mitte ab Bug',-Math.round(L*0.5),Math.round(L*1.5),10,'mm','geo',id),num(t,'y','Mitte über WL',0,Math.round(L*3),10,'mm','geo',id),num(t,'hoehe','Höhe des Zeichens',20,Math.round(L*0.5),5,'mm','geo',id),num(t,'winkel','Drehung',-60,60,0.5,'°','geo',id),
+   el('div',{class:'row'},twoStep('Zeichen entfernen','Sicher?',()=>{D.texte.splice(k,1);changed('geo');renderWin();})));});
+ box.append(el('div',{class:'row'},btn('+ Zeichen (Bild) oben ins Segel …',()=>segelZeichenLaden(p))),note('Für Klassenzeichen oder Logos: eigenes Bild (PNG mit transparentem Hintergrund am besten) wählen. Es wird oben ins Segel gesetzt, ist von beiden Seiten sichtbar und lässt sich wie ein Text verschieben.'));
  box.append(el('div',{class:'row'},btn('+ Text aufs Segel',()=>{D.texte.push({text:P.name||'Text',x:Math.round((+p.x||0)+(+p.unterliek||500)*0.55),y:Math.round((+p.y||0)+(+p.vorliek||1000)*0.18),hoehe:Math.round((+p.unterliek||500)*0.15),winkel:8,farbe:'#111418',schatten:'#9aa3a8'});changed('geo');renderWin();})),check(p,'texteAus','Dieses Segel ohne Beschriftung','geo',i));}
 function zierBereich(box){const R=P.rumpf,L=R.L;if(!Array.isArray(R.streifen))R.streifen=[];box.append(sub('Zierstreifen am Rumpf'),note('Farbige Linien längs am Rumpf, z. B. ein dünner Streifen unter der Deckskante. Mit „Abstand unter Deck“ folgt der Streifen dem Sprung.'));
  R.streifen.forEach((z,k)=>{const id='zs'+k,nf=(key,l,a,b,st)=>box.append(num(z,key,l,a,b,st||1,'mm','geo',id));box.append(el('div',{class:'sub',text:'Streifen '+(k+1)}));nf('x0','Beginn ab Bug',0,L);nf('x1','Ende ab Bug',0,L);
@@ -1892,6 +2138,10 @@ function renderTeile(box){if(sel==='rumpf')sel=null;
   case 'rohr':nf('durchm','Durchmesser',1,Math.round(L*0.05));box.append(sub('Endpunkt'));nf('x2','Abstand vom Bug',Math.round(-L*0.4),Math.round(L*1.5));nf('y2','Höhe über Wasserlinie',Math.round(-L),Math.round(L*2.2));nf('s2','Seitlich (+ = Steuerbord)',Math.round(-L),Math.round(L));
    {const len=posOf(p.x,p.y,p.s).distanceTo(posOf(p.x2,p.y2,p.s2))*1000;box.append(note('Länge: '+mm(len)));}rohrBereich(box,p,i);break;
   case 'aufbau':aufbauBereich(box,p,i);break;
+  case 'reling':{box.append(note('Die Reling steht auf der Bordkante und folgt Deckslinie und Rumpfbreite.'),num(p,'x0','Beginn (Abstand vom Bug)',0,Math.round(L),10,'mm',g,i),num(p,'x1','Ende (Abstand vom Bug)',0,Math.round(L),10,'mm',g,i),num(p,'hoehe','Höhe',10,Math.round(L*0.05),5,'mm',g,i),num(p,'abstand','Abstand der Stützen',10,Math.round(L*0.2),5,'mm',g,i),num(p,'einzug','Einzug von der Bordkante',0,Math.round(L*0.02),1,'mm',g,i),num(p,'durchm','Rohrdurchmesser',1,Math.round(L*0.01),1,'mm',g,i));
+   {const c=el('input',{type:'checkbox',id:'rel-b'});c.checked=p.beide!==false;c.addEventListener('change',()=>{p.beide=c.checked;changed('geo');});box.append(el('label',{class:'chk',for:'rel-b'},c,' beide Seiten'));}break;}
+  case 'bullaugen':{box.append(note('Runde Fenster in der Bordwand, gleichmäßig verteilt; Höhe = Abstand unter der Bordkante. Für ein einzelnes Bullauge (z. B. Ankerklüse) Beginn = Ende.'),num(p,'x0','Beginn (Abstand vom Bug)',0,Math.round(L),10,'mm',g,i),num(p,'x1','Ende (Abstand vom Bug)',0,Math.round(L),10,'mm',g,i),num(p,'abstand','Abstand',10,Math.round(L*0.2),5,'mm',g,i),num(p,'unter','Unter der Bordkante',0,Math.round(L*0.2),5,'mm',g,i),num(p,'durchm','Durchmesser',2,Math.round(L*0.05),1,'mm',g,i));
+   {const c=el('input',{type:'color',id:'bul-g',value:p.glas||'#18202b'});c.addEventListener('input',()=>{p.glas=c.value;changed('geo');});box.append(el('div',{class:'fld2'},el('label',{for:'bul-g',text:'Glas'}),el('div',null,c)),note('Ringfarbe = Farbe unter „Aussehen & Gewicht“.'));}break;}
   case 'band':{box.append(note('Das Band folgt der Rumpfseite entlang der Deckslinie, steht nach außen vor und läuft am Heckspiegel bündig aus.'));
    box.append(el('div',{class:'row'},btn('Oberkante an die Bordkante legen',()=>{bandAnDeck(p,+p.unterDeck||0);changed('geo');renderWin();toast('Band liegt an der Bordkante an');})),num(p,'unterDeck','Abstand Oberkante unter der Bordkante',0,600,1,'mm',g,i),num(p,'taperBug','Am Bug anschmiegen auf den ersten',0,2000,10,'mm',g,i),num(p,'vorBug','Vorstand am Steven',0,150,1,'mm',g,i));box.append(num(p,'hoehe','Höhe des Bandes',10,800,5,'mm',g,i),num(p,'vor','Vorstand nach außen',0,150,1,'mm',g,i),num(p,'taperStart','Auslauf beginnt bei (Abstand vom Bug)',0,Math.round(L),10,'mm',g,i),num(p,'taperEnd','Bündig ab (Abstand vom Bug)',0,Math.round(L),10,'mm',g,i));
    {const ci=el('input',{type:'color',id:'band-in',value:p.farbeInnen||'#ffffff'});ci.addEventListener('input',()=>{p.farbeInnen=ci.value;changed('geo');});
@@ -2363,7 +2613,7 @@ function scFertig(){if(SCS.fr.length<SC.minBilder||SCS.sek.size<SC.minSektoren){
  SCS.L=parseFloat(document.getElementById('scL').value)||SCS.L;SCS.Bm=parseFloat(document.getElementById('scB').value)||0;SCS.Hm=parseFloat(document.getElementById('scH').value)||0;
  SCS.scanning=false;toast('Rechne fein …');
  setTimeout(()=>{SCS.busy=false;SCS.again=false;clearTimeout(SCS.pT);const ok=scBerechnen(true);scSchliessen();
-  if(ok){tab='scan';try{for(const id of ['tScan','tSee']){const b=$(id);if(b&&b.getAttribute('aria-pressed')!=='true')b.click();}}catch(e){}try{cloudSave(false);}catch(e){}const obj=scanFertigMeldung();renderWin();try{goView('free');}catch(e){}if(!obj)toast('Rumpf aus dem Scan gebaut – Deck-, Kiel- und Breitenlinie unter „Rumpf von Hand formen“ nachbessern');}
+  if(ok){tab='scan';try{const ob=P.rumpf.scanZiel==='objekt';for(const id of ['tScan','tSee']){const b=$(id);if(b&&(b.getAttribute('aria-pressed')==='true')===ob)b.click();}}catch(e){}try{cloudSave(false);}catch(e){}const obj=scanFertigMeldung();renderWin();first=true;/* Ansicht erst nach dem Neuaufbau einpassen */if(!obj)toast('Rumpf aus dem Scan gebaut – Deck-, Kiel- und Breitenlinie unter „Rumpf von Hand formen“ nachbessern');}
   else toast('Die Ansichten reichten nicht für einen Rumpf – bitte noch einmal ganz herumgehen');},40);}
 function scSchliessen(){if(!SCS.on)return;SCS.on=false;SCS.scanning=false;cancelAnimationFrame(SCS.raf);clearTimeout(SCS.pT);
  try{SCS.st.getTracks().forEach(t=>t.stop());}catch(e){}
@@ -2528,7 +2778,7 @@ function mkAufnahme(d,w,h,t){if(!MKS.auf)return;const M=P.rumpf.markerScan;const
  MKS.lastKf={d,t};MKS.grund='Bild aufgenommen';MKS.blitz=performance.now();if(t-MKS.saveT>15000){MKS.saveT=t;commit();}}
 async function mkFertig(){const M=P.rumpf.markerScan;if(!M)return;if(M.frames.length<6){toast('Noch zu wenige Bilder ('+M.frames.length+') – weiter um das Boot gehen');return;}
  MKS.auf=false;const go=document.getElementById('mkGo');if(go)go.textContent='Weiter aufnehmen';const info=document.getElementById('scInfo');
- const ok=await mkBerechnen(t=>{if(info)info.textContent='Rechne … '+t;});if(ok){mkSchliessen();tab='scan';scanFertigMeldung();renderWin();try{for(const id of ['tScan','tSee']){const b=$(id);if(b&&b.getAttribute('aria-pressed')!=='true')b.click();}}catch(e){}try{goView('free');}catch(e){}}}
+ const ok=await mkBerechnen(t=>{if(info)info.textContent='Rechne … '+t;});if(ok){mkSchliessen();tab='scan';scanFertigMeldung();renderWin();try{const ob=P.rumpf.scanZiel==='objekt';for(const id of ['tScan','tSee']){const b=$(id);if(b&&(b.getAttribute('aria-pressed')==='true')===ob)b.click();}}catch(e){}first=true;/* Ansicht erst nach dem Neuaufbau einpassen */}}
 async function mkBerechnen(fort){const M=P.rumpf.markerScan;toast('Rechne den Rumpf aus '+M.frames.length+' Bildern – das dauert etwas');let r;
  try{r=(await mkRufen({typ:'rek',frames:M.frames.map(fr=>({w:fr.w,h:fr.h,s:fr.s,d:mkUnpack(fr)})),s:+M.s||15},null,t=>{const m=/LM (\d+) ([\d.]+)/.exec(t);fort&&fort(m?('Feinausgleich, Fehler '+m[2]+' px'):t);})).r;}
  catch(e){toast('Berechnung fehlgeschlagen: '+e.message);return false;}
@@ -2600,7 +2850,7 @@ function ptAufnahme(tr,w,h){if(!PTS.auf)return;const S=P.rumpf.punktScan;
  const t=performance.now();if(t-PTS.saveT>15000){PTS.saveT=t;commit();}}
 async function ptFertig(){const S=P.rumpf.punktScan;if(!S)return;if(S.frames.length<10){toast('Noch zu wenige Bilder ('+S.frames.length+') – weiter um das Objekt gehen');return;}
  PTS.auf=false;const go=document.getElementById('ptGo');if(go)go.textContent='Neu starten';const info=document.getElementById('scInfo');
- const ok=await ptBerechnen(t=>{if(info)info.textContent='Rechne … '+t;});if(ok){ptSchliessen();tab='scan';scanFertigMeldung();renderWin();try{for(const id of ['tScan','tSee']){const b=$(id);if(b&&b.getAttribute('aria-pressed')!=='true')b.click();}}catch(e){}try{goView('free');}catch(e){}}}
+ const ok=await ptBerechnen(t=>{if(info)info.textContent='Rechne … '+t;});if(ok){ptSchliessen();tab='scan';scanFertigMeldung();renderWin();try{const ob=P.rumpf.scanZiel==='objekt';for(const id of ['tScan','tSee']){const b=$(id);if(b&&(b.getAttribute('aria-pressed')==='true')===ob)b.click();}}catch(e){}first=true;/* Ansicht erst nach dem Neuaufbau einpassen */}}
 async function ptBerechnen(fort){const S=P.rumpf.punktScan;toast('Rechne aus '+S.frames.length+' Bildern – das kann ein bis zwei Minuten dauern');let r;
  try{r=(await mkRufen({typ:'ptrek',frames:S.frames.map(fr=>({w:fr.w,h:fr.h,p:ptUnpack(fr)}))},null,t=>{const m=/LM (\d+) ([\d.]+)/.exec(t);fort&&fort(m?('Feinausgleich, Fehler '+m[2]+' px'):t);})).r;}
  catch(e){toast('Berechnung fehlgeschlagen: '+e.message);return false;}
@@ -3065,7 +3315,7 @@ function renderMech(box){
  for(const v of P.verbindungen){const i='vb-'+v.id,w=el('div',{class:'mrow'});
   const nm=el('input',{type:'text',id:i+'-n',value:v.name});nm.addEventListener('input',()=>{v.name=nm.value;changed('name');});
   const sl=(k,l,o)=>{const s=el('select',{id:i+'-'+k});for(const [a,b] of o){const op=el('option',{value:a,text:b});if((v[k]||'')===a)op.selected=true;s.append(op);}s.addEventListener('change',()=>{v[k]=s.value;changed('geo');});return el('label',{for:i+'-'+k},l,s);};
-  w.append(el('label',{class:'full',for:i+'-n'},'Name',nm),sl('a','Von',opts),sl('b','Nach',opts),sl('art','Art',[['seil','Seil'],['stange','Stange']]),
+  w.append(el('label',{class:'full',for:i+'-n'},'Name',nm),sl('a','Von',opts),sl('b','Nach',opts),sl('art','Art',[['seil','Seil (Mechanik-Linie)'],['stange','Stange'],['tau','Tau (sichtbare Leine)'],['talje','Talje (Leine mit Blöcken)']]),
    el('div',{class:'full row'},el('span',{class:'u',text:LEN[v.id]!=null?'jetzt '+mm(LEN[v.id]):'Anker fehlt'}),btn('Entfernen',()=>{P.verbindungen=P.verbindungen.filter(x=>x!==v);changed('geo');renderWin();})));box.append(w);}
  box.append(el('div',{class:'row'},btn('+ Verbindung',()=>{if(P.teile.length<2)return;P.verbindungen.push({id:uid(),name:'Verbindung '+(P.verbindungen.length+1),a:P.teile[0].id,b:P.teile[1].id,art:'seil'});changed('geo');renderWin();},P.teile.length<2?'':'')));
 
@@ -3091,7 +3341,7 @@ function renderProjekt(box){const i='prj';
  const K=KLASSEN[P.klasse];if(Object.keys(K.regeln).length)box.append(note('Grenzen dieser Klasse sind fest hinterlegt. Vor dem Bau mit der aktuellen Klassenregel abgleichen.'));
  neuesProjektBereich(box);
  box.append(sub('Vorlage ins aktuelle Projekt laden'),note('Ersetzt den Inhalt des aktuellen Projekts. Mit ↶ kommst du zurück. Für ein zusätzliches Projekt lieber „Neues Projekt“ oben.'),el('div',{class:'row'},
-  twoStep('Marblehead','Ersetzen?',()=>loadTpl('marblehead')),twoStep('Foiling Moth','Ersetzen?',()=>loadTpl('moth')),twoStep('Motordingi 401','Ersetzen?',()=>loadTpl('motordingi')),twoStep('Kutter K6','Ersetzen?',()=>loadTpl('k6')),twoStep('ZK 10','Ersetzen?',()=>loadTpl('zk10')),twoStep('ZK 10 GFK','Ersetzen?',()=>loadTpl('zk10gfk')),twoStep('Skua V1','Ersetzen?',()=>loadTpl('topcatk2')),twoStep('Nur Rumpf','Ersetzen?',()=>loadTpl('leer'))));
+  twoStep('Marblehead','Ersetzen?',()=>loadTpl('marblehead')),twoStep('Foiling Moth','Ersetzen?',()=>loadTpl('moth')),twoStep('Motordingi 401','Ersetzen?',()=>loadTpl('motordingi')),twoStep('Kutter K6','Ersetzen?',()=>loadTpl('k6')),twoStep('ZK 10','Ersetzen?',()=>loadTpl('zk10')),twoStep('ZK 10 GFK','Ersetzen?',()=>loadTpl('zk10gfk')),twoStep('Ixylon','Ersetzen?',()=>loadTpl('ixylon')),twoStep('Gorch Fock','Ersetzen?',()=>loadTpl('gorchfock')),twoStep('Skua V1','Ersetzen?',()=>loadTpl('topcatk2')),twoStep('Nur Rumpf','Ersetzen?',()=>loadTpl('leer'))));
  box.append(sub('Speichern'));
  {box.append(note(P.cloudId?'Dieses Projekt ist '+ortName()+' gespeichert. „Speichern“ oben überschreibt es'+(DB?', auf allen deinen Geräten.':'.'):'Noch nicht gespeichert. „Speichern“ oben legt es '+ortName()+' an.'),
    el('div',{class:'row'},btn('Speichern',()=>speichern(),'pri'),btn('Speichern unter …',fileSaveAs),btn('Als Kopie speichern',()=>{P.name=P.name+' Kopie';cloudSave(true);}),btn('Als Datei (.json)',fileSave)),
@@ -3186,7 +3436,7 @@ let markGrp=null;
 function zeigeMarker(R){if(markGrp){disposeTree(markGrp);boat.remove(markGrp);markGrp=null;}if(!R||!RC().marker)return;markGrp=new THREE.Group();boat.add(markGrp);
  const k=clamp(P.rumpf.L/3400,0.22,2);const mk=(x,y,col,txt)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(0.018*k*1.6,14,10),new THREE.MeshBasicMaterial({color:col,depthTest:false}));m.position.copy(posOf(x,y,0));m.renderOrder=16;markGrp.add(m);
   const s=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTex(txt),depthTest:false,transparent:true}));s.scale.set(0.75*k,0.22*k,1);s.position.copy(posOf(x,y+P.rumpf.L*0.045,0));s.renderOrder=16;markGrp.add(s);};
- if(R.ce)mk(R.ce.x,R.ce.y,0xf2c230,'Segel-SP');if(R.lat)mk(R.lat.x,R.lat.y,0x5fd0ff,'Lateral-SP');if(R.h.V>0)mk(R.h.lcb,R.h.vcb,0x7fd49b,'Auftrieb');if(M.masse>0)mk(M.cgx,M.cgy,0xffffff,'Gewicht');markGrp.visible=isOn('tMark');}
+ if(R.ce)mk(R.ce.x,R.ce.y,0xf2c230,'Segel-SP');if(R.lat)mk(R.lat.x,R.lat.y,0x5fd0ff,'Lateral-SP');if(R.h.V>0)mk(R.h.lcb,R.h.vcb,0x7fd49b,'Auftrieb');if(M.masse>0)mk(M.cgx,M.cgy,0xffffff,'Gewicht');markGrp.visible=isOn('tMark')&&!P.rumpf.scanLeer;}
 
 /* ---- Datei-Ausgabe: im Claude-Viewer über die Download-Freigabe (ggf. als ZIP), sonst direkt ---- */
 const CRCT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
@@ -3857,9 +4107,11 @@ function ausKonturRoh(p,n){n=n||48;const L=P.rumpf.L;
  if(p.form==='frei'&&Array.isArray(p.ecken)&&p.ecken.length>=3){let e=eckenAbs(p);if(polyFlaeche(e)<0)e=e.reverse();return verrunden(e,+p.radius||0);}
  const L2=Math.max(0.5,+p.laenge||10)/2,B2=Math.max(0.5,+p.breite||10)/2,ee=0.12+0.88*clamp((p.eck==null?100:+p.eck)/100,0,1),[cw,sw]=ausDreh(p),[c0,c1]=ausMitte(p),o=[];
  for(let j=0;j<n;j++){const th=j/n*2*Math.PI,c=Math.cos(th),s=Math.sin(th),a=Math.sign(c)*Math.abs(c)**ee*L2,b=Math.sign(s)*Math.abs(s)**ee*B2;o.push([c0+a*cw-b*sw,c1+a*sw+b*cw]);}return o;}
+/* lange Kanten unterteilen: Deckloch (gerade in u/t) und Wand (gerade in x/s) laufen sonst bei schmaler werdendem Rumpf auseinander – es entsteht ein Spalt */
+function konturVerdichten(k,d){const o=[],n=k.length;for(let i=0;i<n;i++){const A=k[i],B=k[(i+1)%n],m=Math.max(1,Math.ceil(Math.hypot(B[0]-A[0],B[1]-A[1])/d));for(let j=0;j<m;j++)o.push([A[0]+(B[0]-A[0])*j/m,A[1]+(B[1]-A[1])*j/m]);}return o;}
 const AUSK=new Map();
 function ausKontur(p,n){const key=JSON.stringify([p.form,p.ort,p.x,p.y,p.s,p.laenge,p.breite,p.eck,p.winkel,p.ecken,p.radius,p.x0,p.x1,p.abstand,p.bisHeck,n,P.rumpf.L]);let k=AUSK.get(p.id);if(k&&k.key===key&&k.h===hullKey)return k.k;
- let r=ausKonturRoh(p,n);if(kreuztSich(r)){const h=konvexHuelle(r);if(h.length>=3)r=h;}if(polyFlaeche(r)<0)r=r.slice().reverse();AUSK.set(p.id,{key,h:hullKey,k:r});return r;}
+ let r=ausKonturRoh(p,n);if(kreuztSich(r)){const h=konvexHuelle(r);if(h.length>=3)r=h;}if(polyFlaeche(r)<0)r=r.slice().reverse();r=konturVerdichten(r,Math.max(8,P.rumpf.L*0.012));AUSK.set(p.id,{key,h:hullKey,k:r});return r;}
 let hullKey='';
 function offsetKontur(k,d){const n=k.length,sg=polyFlaeche(k)>=0?1:-1,o=[];for(let i=0;i<n;i++){const A=k[(i-1+n)%n],P0=k[i],B=k[(i+1)%n];
   const n1=[(P0[1]-A[1]),-(P0[0]-A[0])],n2=[(B[1]-P0[1]),-(B[0]-P0[0])],l1=Math.hypot(...n1)||1,l2=Math.hypot(...n2)||1,m=[n1[0]/l1+n2[0]/l2,n1[1]/l1+n2[1]/l2],lm=Math.hypot(...m)||1,cs=Math.max(0.35,(m[0]/lm)*(n1[0]/l1)+(m[1]/lm)*(n1[1]/l1));
@@ -3871,7 +4123,7 @@ function tVonY(u,y){const f=secAt(u,hdims(u),exH());if(y<=f(0)[1]*1000)return 0;
 function deckH(x,s){const L=P.rumpf.L,u=clamp(x/L,0,1),d=hdims(u),t=d.B>0?clamp(s/(d.B*1000),-1,1):0;return (d.Ys+deckBucht(u,d)*(1-t*t))*1000;}
 function bodenH(p,x,s){const T=Math.max(0,+p.tiefe||0);if(p.bodenEben){const [c0,c1]=ausMitte(p);return deckH(c0,p.form==='rand'?0:c1)-T;}return deckH(x,s)-T;}
 function ausLoecher(ort){const L=P.rumpf.L,out=[];if(ort==='deck'&&P.rumpf.offen)return out;
- for(const p of P.teile){if(p.typ!=='ausschnitt'||(p.ort==='seite'?'seite':'deck')!==ort)continue;
+ for(const p of P.teile){if(p.typ!=='ausschnitt'||(p.ort==='seite'?'seite':'deck')!==ort||(p.deckZu&&+p.tiefe>0))continue;
   for(const I of ausInstanzen(p)){let C=I.k.map(([a,b])=>{const u=clamp(a/L,0,1);if(ort==='deck'){const B=hdims(u).B*1000;return [a/L,B>0.5?b/B:Math.sign(b)*5];}return [a/L,I.sd*tVonY(u,b)];});
    if(polyFlaeche(C)<0)C.reverse();out.push(...konvexZerlegen(C));}}return out;}
 /* konvexes Loch C (gegen den Uhrzeigersinn) aus einem konvexen Vieleck herausschneiden */
@@ -3909,6 +4161,7 @@ function heckKerbe(){if(P.rumpf.offen)return null;const L=P.rumpf.L;let best=nul
   const w=Math.max(...k.map(q=>Math.abs(q[1]))),y=bodenH(p,L,0);if(!best||w>best.w)best={w,y};}return best;}
 function capGeo(){const ex=exH(),d=hdims(1),M=(NB+NT)*2,pts=[];for(let j=0;j<=M;j++){const t=Math.abs(j/M*2-1),sd=j<M/2?-1:1;const [x,y]=secAt(1,d,ex)(t);pts.push(new THREE.Vector2(sd*x,y));}
  const k=heckKerbe();if(k){const w=Math.min(k.w/1000,d.B*0.999),y=Math.max(k.y/1000,d.Yk+0.001);if(y<d.Ys)pts.push(new THREE.Vector2(w,d.Ys),new THREE.Vector2(w,y),new THREE.Vector2(-w,y),new THREE.Vector2(-w,d.Ys));}
+ else if(!P.rumpf.offen){/* Deckswölbung: Spiegel oben bis an die gewölbte Deckkante führen */const bu=deckBucht(1,d),n=16;if(bu>0.0003)for(let k=1;k<n;k++){const t=1-2*k/n;pts.push(new THREE.Vector2(t*d.B,d.Ys+bu*(1-t*t)));}}
  const g=new THREE.ShapeGeometry(new THREE.Shape(pts));g.translate(0,0,zOf(1)+0.0005);return g;}
 /* Punkt auf der Oberfläche am Ausschnittrand; off = mm nach außen (Deck: nach oben, Bordwand: nach außen) */
 function ausPunkt(p,sd,a,b,off){const L=P.rumpf.L,u=clamp(a/L,0,1),d=hdims(u),ax=clamp(a,0,L);
@@ -3923,11 +4176,27 @@ function fanGeo(A){const n=A.length,c=A.reduce((s,v)=>s.add(v),V(0,0,0)).multipl
 function bodenGeo(p,k){const L=P.rumpf.L,C=k.map(([a,b])=>{const B=halbB(a);return [a/L,B>0.5?b/B:Math.sign(b)*5];});if(polyFlaeche(C)<0)C.reverse();
  let cu=-1,d=null;const f=(u,t)=>{if(u!==cu){cu=u;d=hdims(clamp(u,0,1));}const x=u*L,s=t*d.B*1000;return [s/1000,bodenH(p,x,s)/1000,zOf(clamp(u,0,1))];};
  return gitterGeo(deckUs(),deckVs(),f,[],false,konvexZerlegen(C));}
+/* Schnittpunkte mit anderen Konturen in die Kontur einfügen – so endet eine Wand genau dort, wo der Nachbarraum beginnt */
+function konturSchneiden(k,andere){const o=[],n=k.length;for(let i=0;i<n;i++){const A=k[i],B=k[(i+1)%n],ts=[];o.push(A);
+  for(const K of andere)for(let j=0;j<K.length;j++){const C=K[j],D=K[(j+1)%K.length],r=[B[0]-A[0],B[1]-A[1]],q=[D[0]-C[0],D[1]-C[1]],den=r[0]*q[1]-r[1]*q[0];if(Math.abs(den)<1e-9)continue;
+   const t=((C[0]-A[0])*q[1]-(C[1]-A[1])*q[0])/den,u=((C[0]-A[0])*r[1]-(C[1]-A[1])*r[0])/den;if(t>1e-6&&t<1-1e-6&&u>=0&&u<=1)ts.push(t);}
+  ts.sort((a,b)=>a-b);for(const t of ts)o.push([A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t]);}return o;}
+function imVieleck(q,K){let c=false;for(let i=0,j=K.length-1;i<K.length;j=i++){const a=K[i],b=K[j];if((a[1]>q[1])!==(b[1]>q[1])&&q[0]<(b[0]-a[0])*(q[1]-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;}
 function ausGeos(p){const out=[],L=P.rumpf.L,st=Math.max(0.3,+p.dicke||2),su=Math.max(0,+p.suell||0),dw=Math.max(0,+p.doppler||0),T=p.ort==='seite'?0:Math.max(0,+p.tiefe||0);
- for(const I of ausInstanzen(p)){const k=I.k,ring=off=>k.map(([a,b])=>ausPunkt(p,I.sd,a,b,off)),heck=j=>k[j][0]>=L-0.5&&k[(j+1)%k.length][0]>=L-0.5;
-  if(T>0){const unten=k.map(([a,b])=>posOf(clamp(a,0,L),bodenH(p,a,b),b));out.push({g:bandGeo(ring(su||0.3),unten,heck)},{g:bodenGeo(p,k)});}
+ /* abgesenkte Ausschnitte, die sich überlappen, sind ein Raum: keine Wand dort, wo die Kante im anderen Ausschnitt liegt */
+ const andere=T>0?P.teile.filter(q=>q!==p&&q.typ==='ausschnitt'&&q.ort!=='seite'&&+q.tiefe>0&&!q.aus).flatMap(q=>ausInstanzen(q).map(I=>I.k)):[];
+ for(const I of ausInstanzen(p)){const k=T>0&&andere.length?konturSchneiden(I.k,andere):I.k,ring=off=>k.map(([a,b])=>ausPunkt(p,I.sd,a,b,off)),heck=j=>k[j][0]>=L-0.5&&k[(j+1)%k.length][0]>=L-0.5;
+  if(T>0){const n=k.length,unten=k.map(([a,b])=>posOf(clamp(a,0,L),bodenH(p,a,b),b)),
+   ueber=k.map((A,j)=>{if(!andere.length)return false;const B=k[(j+1)%n],m=[(A[0]+B[0])/2,(A[1]+B[1])/2];return andere.some(K=>imVieleck(m,K));});
+   /* Durchgang zum Nachbarraum mit Rand (Schwelle unten, Lippe oben, Wangen seitlich), damit kein Wasser durchläuft */
+   const R=Math.max(0,+p.durchgangRand||0),wange=new Array(n).fill(false);
+   if(R>0&&ueber.some(v=>v)&&!ueber.every(v=>v)){const len=k.map((A,j)=>{const B=k[(j+1)%n];return Math.hypot(B[0]-A[0],B[1]-A[1]);});
+    for(let j=0;j<n;j++){if(!ueber[j])continue;let d1=len[j]/2,i=(j-1+n)%n;while(ueber[i]&&d1<R){d1+=len[i];i=(i-1+n)%n;}let d2=len[j]/2;i=(j+1)%n;while(ueber[i]&&d2<R){d2+=len[i];i=(i+1)%n;}if(d1<R||d2<R)wange[j]=true;}}
+   const offen=j=>heck(j)||(ueber[j]&&!wange[j]),top=ring(p.deckZu?-Math.max(2,st):(su||0.3));
+   out.push({g:bandGeo(top,unten,offen)},{g:bodenGeo(p,k)});
+   if(R>0&&ueber.some((v,j)=>v&&!wange[j])){const nur=j=>!(ueber[j]&&!wange[j])||heck(j),sch=k.map(([a,b])=>posOf(clamp(a,0,L),bodenH(p,a,b)+R,b));out.push({g:bandGeo(sch,unten,nur)},{g:bandGeo(top,ring(-R),nur)});}}
   else out.push({g:bandGeo(ring(su||0.3),ring(-st))});
-  if(p.deckel)out.push({g:flaecheGeo(k,ring(su+0.6)),deckel:true});
+  if(p.deckel&&!(p.deckZu&&T>0))out.push({g:flaecheGeo(k,ring(su+0.6)),deckel:true});
   if(dw>0&&!T){const k2=offsetKontur(k,dw),r2=off=>k2.map(([a,b])=>ausPunkt(p,I.sd,a,b,off)),i1=ring(-st),i2=ring(-2*st),o1=r2(-st),o2=r2(-2*st);out.push({g:bandGeo(i1,o1)},{g:bandGeo(i2,o2)},{g:bandGeo(o1,o2)});}}
  return out;}
 const glasMat=new THREE.MeshStandardMaterial({color:'#8fc3dd',transparent:true,opacity:0.45,roughness:0.1,metalness:0.1,side:THREE.DoubleSide});
@@ -4388,7 +4657,7 @@ function rcVorlage(k){const V=RC_VORLAGEN[k],R=P.rumpf,L=R.L,r=v=>Math.round(v*1
  auswahlSetzen(neu.map(t=>t.id));return neu[neu.length-1]||null;}
 
 /* ================= Projekte anlegen, sichern, auf andere Geräte bringen ================= */
-const VORLAGEN_NAMEN={marblehead:'Marblehead',moth:'Foiling Moth',k6:'Kutter K6',zk10:'ZK 10',zk10gfk:'ZK 10 GFK (Seesport Leipzig)',motordingi:'Motordingi Typ 401',topcatk2:'Skua V1 (Katamaran)',leer:'Nur Rumpf (leer)',scan:'Rundum-Scan (leer, baut sich beim Scannen auf)'};
+const VORLAGEN_NAMEN={marblehead:'Marblehead',moth:'Foiling Moth',k6:'Kutter K6',zk10:'ZK 10',zk10gfk:'ZK 10 GFK (Seesport Leipzig)',ixylon:'Ixylon (Segeljolle)',gorchfock:'Gorch Fock (Bark)',motordingi:'Motordingi Typ 401',topcatk2:'Skua V1 (Katamaran)',leer:'Nur Rumpf (leer)',scan:'Rundum-Scan (leer, baut sich beim Scannen auf)'};
 async function neuesProjekt(name,vorlage,vorherSichern){flush();if(vorherSichern)await cloudSave(false);
  P=normalize(TEMPLATES[vorlage]());P.name=String(name||'').trim()||'Neues Projekt';delete P.cloudId;sel=null;auswahl=new Set();commit();needRebuild=true;renderAll();setTimeout(()=>goView('free'),50);
  await cloudSave(true);tab=vorlage==='scan'?'scan':'projekt';renderWin();if(vorlage==='scan')toast('Leeres Projekt – im Tab Scan eine Scan-Art wählen');}
@@ -4445,7 +4714,7 @@ setTimeout(linkPruefen,600);
 /* ================= Modell-Karte ================= */
 const MESS=[['loa','Länge über alles'],['breite','Breite'],['tiefgang','Tiefgang'],['hoehe','Höhe über Deck'],['segel','Segelfläche']];
 function renderRegeln(){const K=KLASSEN[P.klasse],box=$('regeln');box.textContent='';
- for(const [k,lab] of MESS){const lim=K.regeln[k],v=M[k];const ok=lim==null||v<=lim+0.5;const f=x=>k==='segel'?area(x):mm(x);
+ const MB=[['loa','Länge'],['breite','Breite'],['hoehe','Höhe']];for(const [k,lab] of (M.nurBauteil?MB:MESS)){const lim=K.regeln[k],v=M[k];const ok=lim==null||v<=lim+0.5;const f=x=>k==='segel'?area(x):mm(x);
   box.append(el('dt',{text:lab}),el('dd',{class:lim==null?'':(ok?'ok':'bad'),text:f(v)+(lim!=null?' / '+f(lim)+(ok?' ✓':' ✗'):'')}));}}
 function renderLive(){const out=[];
  for(const id in built){const p=built[id].p;if((p.typ==='fuehler'&&p.auto)||(p.antrieb&&p.antrieb.quelle))out.push(esc(p.name)+' '+deg(ANG[id]||0));}
@@ -4460,7 +4729,7 @@ function renderLage(){const l=P.lage,h=$('lHoehe');h.min=l.hMin;h.max=l.hMax;h.s
 $('lHoehe').addEventListener('input',e=>{P.lage.hoehe=+e.target.value;animBase=P.lage.hoehe;$('lHoeheO').textContent=mm(P.lage.hoehe);changed('drive');});
 $('lHeel').addEventListener('input',e=>{P.lage.kraengung=+e.target.value;$('lHeelO').textContent=fmtN(P.lage.kraengung,0)+'°';changed('drive');});
 $('lTrim').addEventListener('input',e=>{P.lage.trimm=+e.target.value;$('lTrimO').textContent=deg(P.lage.trimm);changed('drive');});
-function renderCard(){$('pName').firstChild.textContent=P.name;$('pSub').textContent=KLASSEN[P.klasse].name+' · Rumpf '+mm(P.rumpf.L);renderLage();renderSteuer();}
+function renderCard(){$('pName').firstChild.textContent=P.name;$('pSub').textContent=P.rumpf.scanLeer?(P.rumpf.scanZiel==='objekt'?'Bauteil-Scan · nur das gescannte Teil, kein Rumpf':'Scan-Projekt · noch kein Rumpf'):KLASSEN[P.klasse].name+' · Rumpf '+mm(P.rumpf.L);renderLage();renderSteuer();}
 function renderAll(){renderCard();renderWin();}
 
 /* ================= Erststart-Hilfe ================= */

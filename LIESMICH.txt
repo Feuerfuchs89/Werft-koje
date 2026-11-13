@@ -198,3 +198,89 @@ Tempo
 - Schriftzug und Bänder werden über ein Raster statt Dreieck für Dreieck an den Rumpf gelegt,
   Bänke/Böden nutzen einen Zwischenspeicher: Neuaufbau beim ZK10 GFK ca. 2,3 s → 0,1 s,
   Start spürbar schneller.
+
+=== Version 38 ===
+- Bauteil-Scan (z. B. Tasse): Im Projekt erscheint nur noch das gescannte Teil. Rumpflinien, Maße,
+  Schwerpunkte und Wasser des leeren Platzhalter-Rumpfs werden ausgeblendet; die Karte zeigt
+  Länge, Breite und Höhe des Teils. Die Ansicht zoomt nach dem Scan auf das Teil.
+- Das gelbe Scan-Netz und die Durchsicht werden bei Bauteil-Scans nicht mehr automatisch eingeschaltet.
+
+=== Version 39 ===
+- Neue Vorlage „Ixylon (Segeljolle)“ (Projekt → Vorlagen bzw. Neues Projekt).
+  Rumpf als Aufmaß nach dem Pallungsplan der DDR-Bedienungsanleitung (6 Spantkonturen ab Spiegel,
+  Höhen ab Basis, Wasserlinien 90 mm), Deckbreiten aus dem Deckplan, Schandeck aus dem Seitenriss.
+  LüA 5,10 m, B 1,80 m, Rumpftiefgang 0,18 m, mit Kimmschwertern ca. 0,80 m, Masse segelklar ca. 180 kg.
+  Cockpit 2,40 × 1,10 m, 0,45 m tief, Wellenbrecher, zwei Kimmschwerter, Senkruder mit Pinne,
+  Mast ca. 7 m mit Salingen, Groß 8,8 m², Rollfock 3,7 m².
+  Vor dem Mastfuß und zwischen den Spanten ist die Form aus den Rissen ergänzt – dort ggf. nachmessen.
+
+=== Version 40 ===
+- Spiegel reicht bei Booten mit geschlossenem Deck jetzt bis an die gewölbte Deckkante (keine Lücke mehr am Heck).
+- Ixylon: Deck, Cockpit, Wellenbrecher und Schwertkästen rot wie bei den Regattabooten, Rumpf weiß.
+- Farbfelder: Eine Vorlage kann Farbgruppen festlegen (Ixylon: „Deck & Cockpit“, „Rumpf außen“).
+  Unter Rumpf → Farbe & Gewicht färbt ein Farbwähler die ganze Gruppe um; dieselben Felder kann später
+  das Spiel dem Spieler anbieten.
+- Segelzeichen: Segel auswählen → „+ Zeichen (Bild) oben ins Segel …“ lädt ein eigenes Bild (z. B. Klassenzeichen),
+  weißer Hintergrund wird durchsichtig, Lage und Größe einstellbar, von beiden Seiten sichtbar.
+
+=== Version 41 ===
+- Ixylon: Mast steht unten im Mastfuß auf dem Innenboden (7 m ab Mastfuß), Wanten, Saling und Groß angepasst.
+- Ixylon: schmaler Mastausschnitt vorn im Cockpit bis zum Mast – zum Aufstellen vom Heck aus nach vorn.
+- Ixylon: Schwertkästen schauten unten durch den Rumpf – höher gesetzt, jetzt komplett innen.
+
+=== Version 42 ===
+- Ixylon: vordere Cockpitecken nur leicht gerundet statt schräg abgeschnitten.
+- Ixylon: keine Luken mehr im Achterdeck (alles Deckfarbe); dafür weißer Lukendeckel mit runden Ecken
+  in der hinteren Cockpitwand zum Stauraum im Heck.
+- Ixylon: schwarze Ausreitgurte auf dem Cockpitboden, je Seite zwei – Steuermann achtern länger, Vorschoter vorn kürzer.
+
+=== Version 43 ===
+- Ausschnitte im Deck (Cockpit, Luken): kein Spalt mehr zwischen Deckkante und Cockpitwand, durch den man
+  die Rumpfinnenseite (weiß) sah. Lange gerade Kanten werden jetzt fein unterteilt, damit Deckloch und Wand
+  genau aufeinander liegen – gilt für alle Boote.
+
+=== Version 44 ===
+- Ixylon: Lukendeckel in der hinteren Cockpitwand 5 cm höher und größer (50 × 25 cm).
+- Ixylon: Bugstauraum unter dem Vordeck, offen zum Cockpit, Mast steht darin – Platz für Bootshaken, Leinen, Anker.
+- Neu für alle Boote: abgesenkte Ausschnitte, die sich überlappen, bilden einen gemeinsamen Raum (keine Trennwand).
+  Option „deckZu“: Raum unter geschlossenem Deck (Stauraum), das Deck darüber bleibt durchgehend.
+
+=== Version 45 ===
+- Ixylon: Durchgang vom Cockpit in den Bugstauraum mit 5 cm Rand rundherum (Schwelle unten, Lippe oben,
+  Wangen seitlich), damit kein Wasser nach vorn läuft.
+- Neue Einstellung für abgesenkte Ausschnitte: „durchgangRand“ (mm) – Rand am Übergang zu einem Nachbarraum.
+
+=== Version 46 ===
+- Neue Verbindungsarten (Mechanik → Verbindungen): „Tau“ (sichtbare Leine) und „Talje“ (Leine mit Blöcken und
+  mehreren Parten). Sie bewegen sich mit den Teilen mit (z. B. Baum beim Fieren der Schot).
+- Ixylon: Pinne höher und am Ruderkopf befestigt; Großschot als Talje vom Baum auf den Leitwagen einer quer laufenden
+  Travellerschiene zwischen den Ausreitgurten; Fockschoten links und rechts über liegende Rollenblöcke mit
+  Curryklemme mittschiffs auf dem Seitendeck nach innen ins Cockpit; Baumniederholer (Talje) vom Baum zur Mastspur;
+  Verklicker am Masttopp.
+
+=== Version 47 ===
+- Ixylon: Kimmschwerter 12 cm weiter vorn und Schwertkästen 9 cm höher – hochgeholt verschwinden die Schwerter
+  jetzt ganz im Schwertkasten statt hinten und oben herauszuschauen.
+
+=== Version 48 ===
+- Neue Vorlage „Gorch Fock (Bark)“: Rumpf als Aufmaß nach dem rekonstruierten Linienriss 1:200 (jocham-schiffe.de),
+  Hauptdaten von dort (Heck–Galion 81,78 m, Breite 12,00 m, Seitenhöhe 7,30 m, Tiefgang KWL 4,80 m, Verdrängung 1.715 t).
+  Schanzkleid 1,3 m mit Teakdeck, drei Deckshäuser, Ruder, Bugspriet mit Klüverbaum, Fock-, Groß- und Besanmast
+  (45,0 / 44,9 / 39,8 m über WL), je 5 Rahen und Rahsegel an Fock- und Großmast, 4 Vorsegel, 6 Stagsegel, 2 Besan-Gaffelsegel
+  und Besantoppsegel – 23 Segel, rund 1.975 m². Verdrängung im Modell bei KWL ca. 2.060 t (Marine: 2.020 t).
+- Neu für alle Boote: Rahsegel (Segel mit „rah“: symmetrisches Trapez quer zum Boot, unten unterliek, oben kopf).
+
+=== Version 49 ===
+- Gorch Fock mit Details nach Fotos: zwei Reihen Bullaugen mit Messingring, Ankerklüsen, Goldleiste und dunkle
+  Zierlinie am Rumpf, Schriftzug GORCH FOCK, umlaufende Reling, angedeutete Galionsfigur (Albatros), Rahen und
+  Bugspriet ockergelb, Marsen und Salinge, je drei Wanten und eine Pardune pro Seite, Antennen und Radom am Besan,
+  Schornstein, 14 Rettungsinseln, vier Beiboote mit Davits, Deutschlandflagge an der Piek der oberen Besangaffel
+  (dreht mit dem Segel).
+- Neue Bauteile für alle Boote: „Reling“ (Stützen + Handlauf, folgt der Bordkante) und „Bullaugenreihe“
+  (runde Fenster auf der Bordwand, auch einzeln als Klüse).
+- Scheuerbänder, Schriftzüge und Bullaugen treffen jetzt auch bei breiten Rümpfen (über 3 m) die Bordwand.
+
+=== Version 50 ===
+- Gorch Fock: Rumpf am Bug (und Heck) geglättet. Kielsprung, Breiten und Völligkeit werden jetzt über glatte Kurven
+  vorgegeben, alle Spanten haben gleich viele Punkte, an den Enden liegen die Spanten alle 0,8 m – keine Knicke und
+  Falten mehr. Verdrängung bei KWL ca. 2.000 t.
